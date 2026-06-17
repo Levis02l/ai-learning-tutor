@@ -1,0 +1,30 @@
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+Difficulty = Literal["easy", "medium", "hard"]
+
+
+class QuizGenerateRequest(BaseModel):
+    topic: str = Field(..., min_length=1)
+    user_id: str = "demo-user"
+    count: int = Field(default=5, ge=1, le=10)
+    difficulty: Difficulty = "medium"
+    top_k: int = Field(default=5, ge=1, le=10)
+
+
+class QuizItemResponse(BaseModel):
+    id: int
+    user_id: str
+    question: str
+    answer: str
+    difficulty: str
+    source_chunk_ids: list[int]
+    created_at: datetime
+
+
+class QuizGenerateResponse(BaseModel):
+    topic: str
+    user_id: str
+    items: list[QuizItemResponse]
