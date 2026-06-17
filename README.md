@@ -4,6 +4,33 @@ Agentic personal learning tutor MVP: upload course materials, ground answers in 
 
 ## Local Development
 
+Recommended command runner:
+
+```bash
+brew install just
+just setup
+just dev
+```
+
+Then open:
+
+```text
+http://localhost:5173
+http://localhost:8000/docs
+```
+
+Useful commands:
+
+```bash
+just db          # start Postgres only
+just backend     # run DB migration and start FastAPI
+just frontend    # start Vite
+just check       # backend lint/type/test + frontend lint/build
+just db-shell    # open psql inside the Postgres container
+```
+
+Manual startup:
+
 ```bash
 cp .env.example .env
 docker compose up -d postgres
@@ -29,6 +56,19 @@ npm run dev
 ```
 
 Open `http://localhost:5173`. The frontend proxies `/api/*` to `http://localhost:8000` locally. In Docker Compose it uses `http://backend:8000`.
+
+FastAPI docs:
+
+```text
+http://localhost:8000/docs
+```
+
+Documents API:
+
+- `POST /documents` uploads `.pdf`, `.pptx`, `.docx`, `.txt`, or `.md`, parses text, chunks it, embeds chunks with OpenAI `text-embedding-3-small`, and stores the result in Postgres/pgvector.
+- `GET /documents` lists uploaded documents for `demo-user` by default.
+
+Set `OPENAI_API_KEY` in `.env` before using `POST /documents`.
 
 ## Database Troubleshooting
 
@@ -61,7 +101,7 @@ source .venv/bin/activate
 alembic upgrade head
 ```
 
-If you have another important Postgres on port `5432`, change the Postgres port mapping in `docker-compose.yml` and the local `DATABASE_URL` in `.env` to the same new port.
+This project maps Postgres to local port `5433` by default to avoid conflicts with a local Postgres on `5432`.
 
 ## Checks
 

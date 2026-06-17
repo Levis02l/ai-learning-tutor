@@ -1,18 +1,16 @@
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from app.config import settings
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Read DATABASE_URL from environment (overrides empty alembic.ini value)
-database_url = os.environ.get("DATABASE_URL", "postgresql+psycopg://tutor:tutor@localhost:5432/tutor")
-config.set_main_option("sqlalchemy.url", database_url)
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Import models so alembic can detect schema changes
 import app.models  # noqa: E402, F401
