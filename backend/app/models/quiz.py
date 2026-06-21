@@ -15,4 +15,7 @@ class QuizItem(Base):
     answer: Mapped[str] = mapped_column(Text)
     difficulty: Mapped[str] = mapped_column(String)
     source_chunk_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
+    evidence_quote: Mapped[str] = mapped_column(Text, default="")
+    question_type: Mapped[str] = mapped_column(String, default="conceptual")
+    traceability_label: Mapped[str] = mapped_column(String, default="not_traceable")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

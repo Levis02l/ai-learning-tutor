@@ -4,6 +4,13 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 Difficulty = Literal["easy", "medium", "hard"]
+QuestionType = Literal["definition", "conceptual", "application", "comparison"]
+TraceabilityLabel = Literal[
+    "fully_traceable",
+    "partially_traceable",
+    "weakly_traceable",
+    "not_traceable",
+]
 
 
 class QuizGenerateRequest(BaseModel):
@@ -21,6 +28,9 @@ class QuizItemResponse(BaseModel):
     answer: str
     difficulty: str
     source_chunk_ids: list[int]
+    evidence_quote: str
+    question_type: str
+    traceability_label: str
     created_at: datetime
 
 

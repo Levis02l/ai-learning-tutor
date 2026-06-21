@@ -70,5 +70,8 @@ def _to_response(item: QuizItem) -> QuizItemResponse:
         answer=item.answer,
         difficulty=item.difficulty,
         source_chunk_ids=item.source_chunk_ids,
+        evidence_quote=item.evidence_quote,
+        question_type=item.question_type,
+        traceability_label=item.traceability_label,
         created_at=item.created_at,
     )

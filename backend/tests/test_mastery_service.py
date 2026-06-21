@@ -13,6 +13,9 @@ def test_build_mastery_item_marks_unreviewed_item_due() -> None:
         answer="A field studying intelligent agents.",
         difficulty="medium",
         source_chunk_ids=[82],
+        evidence_quote="AI is the field...",
+        question_type="definition",
+        traceability_label="fully_traceable",
         created_at=datetime(2026, 6, 17, 12, 0, 0),
     )
 
@@ -54,6 +57,9 @@ def test_build_mastery_item_marks_future_review_not_due() -> None:
         answer="A field studying intelligent agents.",
         difficulty="medium",
         source_chunk_ids=[82],
+        evidence_quote="AI is the field...",
+        question_type="definition",
+        traceability_label="fully_traceable",
         created_at=current_time,
     )
     review = ReviewRecord(

@@ -27,6 +27,9 @@ def test_quiz_generate_returns_items(monkeypatch) -> None:
                 answer="An entity that perceives and acts in an environment.",
                 difficulty="medium",
                 source_chunk_ids=[82],
+                evidence_quote="An agent is an entity that perceives and acts.",
+                question_type="definition",
+                traceability_label="fully_traceable",
                 created_at=created_at,
             )
         ]
@@ -44,6 +47,7 @@ def test_quiz_generate_returns_items(monkeypatch) -> None:
     assert body["topic"] == "artificial intelligence"
     assert body["items"][0]["question"] == "What is an intelligent agent?"
     assert body["items"][0]["source_chunk_ids"] == [82]
+    assert body["items"][0]["traceability_label"] == "fully_traceable"
 
 
 def test_quiz_generate_returns_422_when_no_materials(monkeypatch) -> None:

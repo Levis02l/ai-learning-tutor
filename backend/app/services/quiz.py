@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.provider import LLMProvider
 from app.models.quiz import QuizItem
-from app.schemas.quiz import Difficulty
+from app.schemas.quiz import Difficulty, QuestionType, TraceabilityLabel
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 
 
@@ -20,6 +20,9 @@ class GeneratedQuizItem(BaseModel):
     question: str = Field(..., min_length=1)
     answer: str = Field(..., min_length=1)
     source_chunk_ids: list[int] = Field(default_factory=list)
+    evidence_quote: str = ""
+    question_type: QuestionType = "conceptual"
+    traceability_label: TraceabilityLabel = "not_traceable"
 
 
 class GeneratedQuizPayload(BaseModel):
@@ -30,7 +33,11 @@ SYSTEM_PROMPT = (
     "You generate study quiz questions for a student's uploaded course materials.\n"
     "Use only the provided source excerpts.\n"
     "Return valid JSON only. Do not include markdown fences or commentary.\n"
-    "Every item must include question, answer, and source_chunk_ids."
+    "Every item must include question, answer, source_chunk_ids, evidence_quote, "
+    "question_type, and traceability_label.\n"
+    "Allowed question_type values: definition, conceptual, application, comparison.\n"
+    "Allowed traceability_label values: fully_traceable, partially_traceable, "
+    "weakly_traceable, not_traceable."
 )
 
 
@@ -64,14 +71,11 @@ def generate_quiz_items(
     source_ids = {chunk.chunk_id for chunk in chunks}
 
     quiz_items = [
-        QuizItem(
+        _to_quiz_item(
+            item=item,
             user_id=user_id,
-            question=item.question,
-            answer=item.answer,
             difficulty=difficulty,
-            source_chunk_ids=[
-                chunk_id for chunk_id in item.source_chunk_ids if chunk_id in source_ids
-            ],
+            valid_source_ids=source_ids,
         )
         for item in payload.items[:count]
     ]
@@ -131,7 +135,10 @@ Return this exact JSON shape:
     {{
       "question": "question text",
       "answer": "answer text",
-      "source_chunk_ids": [123]
+      "source_chunk_ids": [123],
+      "evidence_quote": "short quote or close paraphrase from the source",
+      "question_type": "conceptual",
+      "traceability_label": "fully_traceable"
     }}
   ]
 }}"""
@@ -156,3 +163,31 @@ def _strip_markdown_fence(text: str) -> str:
     if match:
         return match.group(1).strip()
     return cleaned
+
+
+def _to_quiz_item(
+    *,
+    item: GeneratedQuizItem,
+    user_id: str,
+    difficulty: Difficulty,
+    valid_source_ids: set[int],
+) -> QuizItem:
+    source_chunk_ids = [
+        chunk_id for chunk_id in item.source_chunk_ids if chunk_id in valid_source_ids
+    ]
+    traceability_label = item.traceability_label
+    if not source_chunk_ids:
+        traceability_label = "not_traceable"
+    elif traceability_label == "not_traceable":
+        traceability_label = "weakly_traceable"
+
+    return QuizItem(
+        user_id=user_id,
+        question=item.question,
+        answer=item.answer,
+        difficulty=difficulty,
+        source_chunk_ids=source_chunk_ids,
+        evidence_quote=item.evidence_quote,
+        question_type=item.question_type,
+        traceability_label=traceability_label,
+    )
