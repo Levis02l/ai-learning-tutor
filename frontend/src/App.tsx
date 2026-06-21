@@ -40,7 +40,7 @@ import type {
   QuizItem,
 } from './types'
 
-type View = 'documents' | 'chat' | 'quiz' | 'review'
+type View = 'documents' | 'chat' | 'quiz' | 'review' | 'evaluation'
 type HealthStatus = 'checking' | 'connected' | 'unreachable'
 
 const userIdDefault = 'demo-user'
@@ -95,6 +95,7 @@ function App() {
     { id: 'chat' as const, label: 'Evidence Chat', icon: MessageSquareText },
     { id: 'quiz' as const, label: 'Quiz Lab', icon: ClipboardList },
     { id: 'review' as const, label: 'Review', icon: Brain },
+    { id: 'evaluation' as const, label: 'Evaluation', icon: BarChart3 },
   ]
 
   return (
@@ -181,6 +182,7 @@ function App() {
             onReviewed={refreshCoreData}
           />
         )}
+        {activeView === 'evaluation' && <EvaluationView userId={userId} />}
       </main>
     </div>
   )
@@ -385,9 +387,194 @@ function ChatView({ userId }: { userId: string }) {
   )
 }
 
+function EvaluationView({ userId }: { userId: string }) {
+  const [query, setQuery] = useState('What is artificial intelligence?')
+  const [expectedAnswerable, setExpectedAnswerable] = useState(true)
+  const [topK, setTopK] = useState(5)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [comparison, setComparison] = useState<ChatCompareResponse | null>(null)
+  const [groundedEvaluation, setGroundedEvaluation] =
+    useState<AnswerEvaluation | null>(null)
+  const [ungroundedEvaluation, setUngroundedEvaluation] =
+    useState<AnswerEvaluation | null>(null)
+
+  async function handleRun(event: FormEvent) {
+    event.preventDefault()
+    if (!query.trim()) return
+
+    setBusy(true)
+    setError('')
+    setComparison(null)
+    setGroundedEvaluation(null)
+    setUngroundedEvaluation(null)
+    try {
+      const result = await compareChat(userId, query, topK)
+      const [grounded, ungrounded] = await Promise.all([
+        evaluateAnswer(result.grounded, expectedAnswerable),
+        evaluateAnswer(result.ungrounded, expectedAnswerable),
+      ])
+      setComparison(result)
+      setGroundedEvaluation(grounded)
+      setUngroundedEvaluation(ungrounded)
+    } catch (evaluationError) {
+      setError(getErrorMessage(evaluationError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="grid two">
+      <section className="panel">
+        <div className="panel-header">
+          <h3 className="panel-title">
+            <BarChart3 size={18} aria-hidden="true" />
+            Experiment Case
+          </h3>
+          <span className="badge info">Grounded vs Ungrounded</span>
+        </div>
+        <div className="panel-body stack">
+          <form className="stack" onSubmit={handleRun}>
+            <textarea
+              className="textarea"
+              onChange={(event) => setQuery(event.target.value)}
+              value={query}
+            />
+            <div className="form-row">
+              <label>
+                <span className="field-label">Expected</span>
+                <select
+                  className="select"
+                  onChange={(event) =>
+                    setExpectedAnswerable(event.target.value === 'true')
+                  }
+                  value={String(expectedAnswerable)}
+                >
+                  <option value="true">answerable</option>
+                  <option value="false">unanswerable</option>
+                </select>
+              </label>
+              <label>
+                <span className="field-label">Top K</span>
+                <input
+                  className="input"
+                  max={10}
+                  min={1}
+                  onChange={(event) => setTopK(Number(event.target.value))}
+                  type="number"
+                  value={topK}
+                />
+              </label>
+              <button className="button" disabled={busy || !query.trim()} type="submit">
+                {busy ? <Loader2 size={16} aria-hidden="true" /> : <SearchCheck size={16} />}
+                Run
+              </button>
+            </div>
+          </form>
+          {error && <div className="error">{error}</div>}
+
+          {groundedEvaluation && ungroundedEvaluation ? (
+            <EvaluationMatrix
+              grounded={groundedEvaluation}
+              ungrounded={ungroundedEvaluation}
+            />
+          ) : (
+            <EmptyState label="Run an experiment case to compare evidence-aware grounding." />
+          )}
+        </div>
+      </section>
+
+      {!comparison ? (
+        <section className="panel">
+          <div className="panel-header">
+            <h3 className="panel-title">
+              <Gauge size={18} aria-hidden="true" />
+              Results
+            </h3>
+          </div>
+          <div className="panel-body">
+            <EmptyState label="No comparison result" />
+          </div>
+        </section>
+      ) : (
+        <div className="stack">
+          <div className="compare-grid">
+            <AnswerPanel title="Grounded" response={comparison.grounded} />
+            <AnswerPanel title="Ungrounded" response={comparison.ungrounded} />
+          </div>
+          <EvidenceInspector response={comparison.grounded} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EvaluationMatrix({
+  grounded,
+  ungrounded,
+}: {
+  grounded: AnswerEvaluation
+  ungrounded: AnswerEvaluation
+}) {
+  const rows = [
+    {
+      label: 'Groundedness',
+      grounded: `${Math.round(grounded.groundedness_score * 100)}%`,
+      ungrounded: `${Math.round(ungrounded.groundedness_score * 100)}%`,
+      direction: 'higher',
+    },
+    {
+      label: 'Unsupported claims',
+      grounded: `${Math.round(grounded.unsupported_claim_rate * 100)}%`,
+      ungrounded: `${Math.round(ungrounded.unsupported_claim_rate * 100)}%`,
+      direction: 'lower',
+    },
+    {
+      label: 'Citation precision',
+      grounded: `${Math.round(grounded.citation_precision * 100)}%`,
+      ungrounded: `${Math.round(ungrounded.citation_precision * 100)}%`,
+      direction: 'higher',
+    },
+    {
+      label: 'Correct refusal',
+      grounded: grounded.correct_refusal ? 'yes' : 'no',
+      ungrounded: ungrounded.correct_refusal ? 'yes' : 'no',
+      direction: 'higher',
+    },
+    {
+      label: 'Claims',
+      grounded: grounded.claim_count,
+      ungrounded: ungrounded.claim_count,
+      direction: 'context',
+    },
+  ]
+
+  return (
+    <div className="evaluation-matrix">
+      <div className="evaluation-row header">
+        <span>Metric</span>
+        <span>Grounded</span>
+        <span>Ungrounded</span>
+      </div>
+      {rows.map((row) => (
+        <div className="evaluation-row" key={row.label}>
+          <span>{row.label}</span>
+          <strong className={row.direction === 'higher' ? 'metric-good' : ''}>
+            {row.grounded}
+          </strong>
+          <strong className={row.direction === 'lower' ? 'metric-warn' : ''}>
+            {row.ungrounded}
+          </strong>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function AnswerPanel({ title, response }: { title: string; response: ChatResponse }) {
   return (
-    <div className="panel">
+    <div className="answer-card">
       <div className="panel-header">
         <h3 className="panel-title">
           <SearchCheck size={18} aria-hidden="true" />
@@ -770,6 +957,7 @@ function pageTitle(view: View) {
     chat: 'Evidence Chat',
     quiz: 'Quiz Lab',
     review: 'Review & Mastery',
+    evaluation: 'Evaluation',
   }
   return titles[view]
 }
@@ -780,6 +968,7 @@ function pageKicker(view: View) {
     chat: 'Claim-level evidence, citations and grounded comparison',
     quiz: 'Traceable practice items linked to source chunks',
     review: 'Due items, ratings and mastery indicators',
+    evaluation: 'Grounded vs ungrounded reliability experiments',
   }
   return subtitles[view]
 }
