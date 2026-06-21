@@ -24,6 +24,9 @@ backend/alembic/versions/*.pyc
 # ML checkpoints
 ml/dkt/checkpoints/*.pt
 
+# Evaluation outputs
+backend/eval/results/
+
 # OS
 .DS_Store
 Thumbs.db
