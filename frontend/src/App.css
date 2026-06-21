@@ -425,6 +425,48 @@ button {
   gap: 12px;
 }
 
+.item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.icon-button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #d9e4e8;
+  border-radius: 8px;
+  color: #42545c;
+  background: #ffffff;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.icon-button:hover {
+  border-color: #c5d5db;
+  background: #f3f7f8;
+}
+
+.icon-button.danger {
+  color: var(--red);
+}
+
+.icon-button.danger:hover {
+  border-color: #e2b9b9;
+  background: #fff1f1;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .item-title {
   margin: 0;
   font-size: 14px;

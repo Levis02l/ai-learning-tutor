@@ -49,6 +49,18 @@ export async function uploadDocument(
   })
 }
 
+export async function deleteDocument(
+  userId: string,
+  documentId: number,
+): Promise<void> {
+  await request<void>(
+    `/documents/${documentId}?user_id=${encodeURIComponent(userId)}`,
+    {
+      method: 'DELETE',
+    },
+  )
+}
+
 export async function chat(
   userId: string,
   query: string,

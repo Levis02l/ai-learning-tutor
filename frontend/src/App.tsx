@@ -13,6 +13,7 @@ import {
   RefreshCw,
   SearchCheck,
   Send,
+  Trash2,
   Upload,
 } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
@@ -20,6 +21,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import {
   chat,
   compareChat,
+  deleteDocument,
   evaluateAnswer,
   generateQuiz,
   getHealth,
@@ -199,6 +201,7 @@ function DocumentsView({
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [error, setError] = useState('')
 
   async function handleUpload(event: FormEvent) {
@@ -215,6 +218,22 @@ function DocumentsView({
       setError(getErrorMessage(uploadError))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleDelete(document: DocumentItem) {
+    const confirmed = window.confirm(`Delete "${document.filename}" from the library?`)
+    if (!confirmed) return
+
+    setDeletingId(document.id)
+    setError('')
+    try {
+      await deleteDocument(userId, document.id)
+      await onUploaded()
+    } catch (deleteError) {
+      setError(getErrorMessage(deleteError))
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -267,9 +286,27 @@ function DocumentsView({
                 <div className="item-row" key={document.id}>
                   <div className="item-topline">
                     <h4 className="item-title">{document.filename}</h4>
-                    <span className={`badge ${document.status === 'done' ? 'good' : 'warn'}`}>
-                      {document.status}
-                    </span>
+                    <div className="item-actions">
+                      <span
+                        className={`badge ${document.status === 'done' ? 'good' : 'warn'}`}
+                      >
+                        {document.status}
+                      </span>
+                      <button
+                        aria-label={`Delete ${document.filename}`}
+                        className="icon-button danger"
+                        disabled={deletingId === document.id}
+                        onClick={() => void handleDelete(document)}
+                        title="Delete document"
+                        type="button"
+                      >
+                        {deletingId === document.id ? (
+                          <Loader2 className="spin" size={16} aria-hidden="true" />
+                        ) : (
+                          <Trash2 size={16} aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div className="badge-row">
                     <span className="badge">{document.file_type}</span>

@@ -14,6 +14,7 @@ class Document(Base):
     user_id: Mapped[str] = mapped_column(String, index=True)
     filename: Mapped[str] = mapped_column(String)
     file_type: Mapped[str] = mapped_column(String)  # pdf, pptx, docx, audio
+    storage_path: Mapped[str | None] = mapped_column(String, nullable=True)
     # pending, processing, done, error
     status: Mapped[str] = mapped_column(String, default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

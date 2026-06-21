@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.document import Chunk, Document
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
+from app.services.documents import DocumentNotFoundError, delete_document
 from app.services.embeddings import EmbeddingConfigurationError, embed_texts
 from app.services.ingestion import (
     EmptyDocumentError,
@@ -35,7 +36,7 @@ async def upload_document(
         text = await extract_text_from_upload(file)
         chunks = chunk_text(text)
         embeddings = embed_texts(chunks)
-        await save_upload_file(file)
+        stored_path = await save_upload_file(file)
     except UnsupportedDocumentTypeError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except EmptyDocumentError as exc:
@@ -54,6 +55,7 @@ async def upload_document(
         user_id=user_id,
         filename=filename,
         file_type=file_type,
+        storage_path=str(stored_path),
         status="done",
     )
     db.add(document)
@@ -112,3 +114,18 @@ def list_documents(
         )
         for document, count in rows
     ]
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_document(
+    document_id: int,
+    user_id: str = "demo-user",
+    db: Session = Depends(get_db),
+) -> None:
+    try:
+        delete_document(db=db, document_id=document_id, user_id=user_id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
