@@ -137,9 +137,7 @@ function App() {
         </nav>
 
         <div className="sidebar-footer">
-          <span className={`status-dot ${health === 'connected' ? 'ok' : ''} ${
-            health === 'unreachable' ? 'bad' : ''
-          }`} />
+          <span className={statusDotClass(health)} />
           <span>{healthLabel(health)}</span>
         </div>
       </aside>
@@ -758,6 +756,12 @@ function healthLabel(status: HealthStatus) {
   if (status === 'connected') return 'Backend connected'
   if (status === 'unreachable') return 'Backend unreachable'
   return 'Checking backend'
+}
+
+function statusDotClass(status: HealthStatus) {
+  if (status === 'connected') return 'status-dot ok'
+  if (status === 'unreachable') return 'status-dot bad'
+  return 'status-dot'
 }
 
 function pageTitle(view: View) {

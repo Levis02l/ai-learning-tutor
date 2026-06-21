@@ -1,6 +1,20 @@
 :root {
-  color: #172026;
-  background: #f6f7f8;
+  color: #162329;
+  background: #eef3f5;
+  --ink: #162329;
+  --muted: #66777f;
+  --line: #dce6ea;
+  --panel: rgba(255, 255, 255, 0.92);
+  --panel-solid: #ffffff;
+  --app-bg: #eef3f5;
+  --accent: #245c6e;
+  --accent-strong: #174556;
+  --accent-soft: #dceff3;
+  --green: #1b8a5a;
+  --yellow: #b67616;
+  --red: #b53f3f;
+  --shadow: 0 14px 42px rgba(23, 43, 52, 0.08);
+  --shadow-soft: 0 8px 24px rgba(23, 43, 52, 0.06);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -18,8 +32,9 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(246, 247, 248, 0.88)),
-    #f6f7f8;
+    radial-gradient(circle at top left, rgba(55, 122, 143, 0.12), transparent 34rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(238, 243, 245, 0.96)),
+    var(--app-bg);
 }
 
 button,
@@ -35,7 +50,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 264px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -43,9 +58,11 @@ button {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 24px 18px;
-  border-right: 1px solid #dde3e7;
-  background: #ffffff;
+  padding: 24px 18px 18px;
+  border-right: 1px solid rgba(199, 214, 221, 0.78);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 10px 0 32px rgba(24, 47, 56, 0.04);
+  backdrop-filter: blur(14px);
 }
 
 .brand {
@@ -57,12 +74,13 @@ button {
 
 .brand-mark {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   place-items: center;
   border-radius: 8px;
   color: #ffffff;
-  background: #234c5c;
+  background: linear-gradient(135deg, #174556, #2f7d95);
+  box-shadow: 0 8px 18px rgba(36, 92, 110, 0.22);
 }
 
 .brand-title {
@@ -74,17 +92,21 @@ button {
 
 .brand-subtitle {
   margin: 2px 0 0;
-  color: #6c7a80;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .user-block {
   display: grid;
   gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(217, 228, 232, 0.9);
+  border-radius: 8px;
+  background: rgba(248, 251, 252, 0.78);
 }
 
 .field-label {
-  color: #516066;
+  color: #465b63;
   font-size: 12px;
   font-weight: 680;
 }
@@ -93,13 +115,14 @@ button {
 .textarea,
 .select {
   width: 100%;
-  border: 1px solid #d7e0e4;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  color: #172026;
+  color: var(--ink);
   background: #ffffff;
   outline: none;
   transition:
     border-color 140ms ease,
+    background 140ms ease,
     box-shadow 140ms ease;
 }
 
@@ -120,15 +143,17 @@ button {
 .textarea:focus,
 .select:focus {
   border-color: #2f7d95;
+  background: #ffffff;
   box-shadow: 0 0 0 3px rgba(47, 125, 149, 0.14);
 }
 
 .nav {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .nav-button {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -136,20 +161,25 @@ button {
   min-height: 42px;
   padding: 0 12px;
   border-radius: 8px;
-  color: #435158;
+  color: #43565e;
   background: transparent;
   cursor: pointer;
   text-align: left;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
 }
 
 .nav-button:hover {
-  background: #f1f5f6;
+  background: rgba(230, 239, 242, 0.82);
 }
 
 .nav-button.active {
-  color: #12343f;
-  background: #e4f1f4;
+  color: #102f3a;
+  background: var(--accent-soft);
   font-weight: 720;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .sidebar-footer {
@@ -157,7 +187,11 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #68777d;
+  padding: 10px 12px;
+  border: 1px solid rgba(217, 228, 232, 0.9);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(248, 251, 252, 0.78);
   font-size: 13px;
 }
 
@@ -178,7 +212,7 @@ button {
 
 .workspace {
   min-width: 0;
-  padding: 24px;
+  padding: 28px;
 }
 
 .topbar {
@@ -186,18 +220,25 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+  padding: 18px 20px;
+  border: 1px solid rgba(216, 228, 232, 0.88);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(12px);
 }
 
 .page-title {
   margin: 0;
-  font-size: 24px;
+  font-size: 25px;
+  font-weight: 780;
   line-height: 1.2;
 }
 
 .page-kicker {
   margin: 4px 0 0;
-  color: #6a787e;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -217,19 +258,30 @@ button {
   padding: 0 14px;
   border-radius: 8px;
   color: #ffffff;
-  background: #234c5c;
+  background: var(--accent);
   cursor: pointer;
   font-weight: 720;
   white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(36, 92, 110, 0.18);
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.button:active {
+  transform: translateY(1px);
 }
 
 .button:hover {
-  background: #1b3d4a;
+  background: var(--accent-strong);
+  box-shadow: 0 10px 24px rgba(36, 92, 110, 0.22);
 }
 
 .button.secondary {
   color: #253238;
-  background: #e8edf0;
+  background: #e8eef1;
+  box-shadow: none;
 }
 
 .button.secondary:hover {
@@ -237,8 +289,9 @@ button {
 }
 
 .button.ghost {
-  color: #234c5c;
+  color: var(--accent);
   background: transparent;
+  box-shadow: none;
 }
 
 .button.ghost:hover {
@@ -262,11 +315,11 @@ button {
 
 .grid {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .grid.two {
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
 }
 
 .grid.three {
@@ -274,9 +327,12 @@ button {
 }
 
 .panel {
-  border: 1px solid #dfe6e9;
+  overflow: hidden;
+  border: 1px solid rgba(216, 228, 232, 0.9);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--panel);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(10px);
 }
 
 .panel-header {
@@ -284,8 +340,10 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 18px;
-  border-bottom: 1px solid #e5ecef;
+  min-height: 58px;
+  padding: 15px 18px;
+  border-bottom: 1px solid rgba(226, 235, 238, 0.94);
+  background: rgba(250, 252, 252, 0.72);
 }
 
 .panel-title {
@@ -294,6 +352,7 @@ button {
   gap: 8px;
   margin: 0;
   font-size: 15px;
+  font-weight: 760;
 }
 
 .panel-body {
@@ -315,9 +374,9 @@ button {
   display: grid;
   gap: 10px;
   padding: 18px;
-  border: 1px dashed #b9c8ce;
+  border: 1px dashed #aec5cd;
   border-radius: 8px;
-  background: #f8fbfb;
+  background: rgba(248, 251, 252, 0.82);
 }
 
 .file-input input {
@@ -333,9 +392,18 @@ button {
   display: grid;
   gap: 8px;
   padding: 14px;
-  border: 1px solid #e1e8eb;
+  border: 1px solid rgba(224, 233, 236, 0.95);
   border-radius: 8px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.86);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.item-row:hover {
+  border-color: #c9d9de;
+  box-shadow: 0 8px 20px rgba(23, 43, 52, 0.06);
 }
 
 .item-row.compact {
@@ -357,7 +425,7 @@ button {
 }
 
 .muted {
-  color: #6a787e;
+  color: var(--muted);
 }
 
 .small {
@@ -377,7 +445,7 @@ button {
   padding: 0 8px;
   border-radius: 999px;
   color: #3f4d53;
-  background: #edf2f3;
+  background: #edf3f5;
   font-size: 12px;
   font-weight: 680;
 }
@@ -399,7 +467,7 @@ button {
 
 .badge.info {
   color: #235477;
-  background: #deedf7;
+  background: #ddeff8;
 }
 
 .answer {
@@ -417,9 +485,10 @@ button {
 
 .metric {
   padding: 14px;
-  border: 1px solid #e0e7ea;
+  border: 1px solid rgba(224, 233, 236, 0.95);
   border-radius: 8px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-soft);
 }
 
 .metric-value {
@@ -430,7 +499,7 @@ button {
 
 .metric-label {
   margin: 4px 0 0;
-  color: #68777d;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -438,10 +507,10 @@ button {
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid #dfe7ea;
+  border: 1px solid rgba(224, 233, 236, 0.95);
   border-left: 4px solid #8ca2aa;
   border-radius: 8px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .claim-card.fully_supported {
@@ -463,7 +532,8 @@ button {
   padding: 10px 12px;
   border-radius: 8px;
   color: #3d4a50;
-  background: #f3f6f7;
+  background: #f1f6f7;
+  border: 1px solid #e1ebee;
   line-height: 1.45;
 }
 
@@ -495,7 +565,7 @@ button {
 .progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: #2f7d95;
+  background: linear-gradient(90deg, #2f7d95, #1b8a5a);
 }
 
 .empty {
@@ -503,10 +573,10 @@ button {
   min-height: 160px;
   place-items: center;
   padding: 24px;
-  color: #69777d;
-  border: 1px dashed #c9d4d9;
+  color: var(--muted);
+  border: 1px dashed #c5d5db;
   border-radius: 8px;
-  background: #fafcfc;
+  background: rgba(250, 252, 252, 0.72);
   text-align: center;
 }
 
