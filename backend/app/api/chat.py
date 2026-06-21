@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.llm.provider import LLMConfigurationError, LLMProviderError
-from app.schemas.chat import ChatRequest, ChatResponse, ChatSource
+from app.schemas.chat import ChatClaim, ChatRequest, ChatResponse, ChatSource
 from app.services.embeddings import EmbeddingConfigurationError
 from app.services.rag import answer_question
 
@@ -36,7 +36,19 @@ def chat_with_documents(
     return ChatResponse(
         query=request.query,
         user_id=request.user_id,
+        mode=result.mode,
+        answer_status=result.answer_status,
         answer=result.answer,
+        claims=[
+            ChatClaim(
+                claim=claim.claim,
+                source_chunk_ids=claim.source_chunk_ids,
+                support_level=claim.support_level,
+                evidence_quote=claim.evidence_quote,
+            )
+            for claim in result.claims
+        ],
+        overall_groundedness=result.overall_groundedness,
         sources=[
             ChatSource(
                 chunk_id=source.chunk_id,

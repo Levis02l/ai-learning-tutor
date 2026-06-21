@@ -1,4 +1,21 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+AnswerStatus = Literal[
+    "answered",
+    "partially_answered",
+    "refused_no_evidence",
+    "refused_ambiguous_material",
+    "needs_more_material",
+]
+SupportLevel = Literal[
+    "fully_supported",
+    "partially_supported",
+    "unsupported",
+    "contradicted",
+    "not_enough_information",
+]
 
 
 class ChatRequest(BaseModel):
@@ -17,8 +34,19 @@ class ChatSource(BaseModel):
     similarity: float
 
 
+class ChatClaim(BaseModel):
+    claim: str
+    source_chunk_ids: list[int]
+    support_level: SupportLevel
+    evidence_quote: str
+
+
 class ChatResponse(BaseModel):
     query: str
     user_id: str
+    mode: str
+    answer_status: AnswerStatus
     answer: str
+    claims: list[ChatClaim]
+    overall_groundedness: float
     sources: list[ChatSource]

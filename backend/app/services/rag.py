@@ -1,10 +1,14 @@
+import json
+import re
 from dataclasses import dataclass
+from typing import Literal
 
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.llm.openai_provider import OpenAIProvider
-from app.llm.provider import LLMProvider
+from app.llm.provider import LLMProvider, LLMProviderError
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 
 
@@ -19,19 +23,64 @@ class RagSource:
     similarity: float
 
 
+AnswerStatus = Literal[
+    "answered",
+    "partially_answered",
+    "refused_no_evidence",
+    "refused_ambiguous_material",
+    "needs_more_material",
+]
+SupportLevel = Literal[
+    "fully_supported",
+    "partially_supported",
+    "unsupported",
+    "contradicted",
+    "not_enough_information",
+]
+
+
+@dataclass(frozen=True)
+class RagClaim:
+    claim: str
+    source_chunk_ids: list[int]
+    support_level: SupportLevel
+    evidence_quote: str
+
+
 @dataclass(frozen=True)
 class RagAnswer:
+    mode: str
+    answer_status: AnswerStatus
     answer: str
+    claims: list[RagClaim]
+    overall_groundedness: float
     sources: list[RagSource]
+
+
+class EvidenceClaimPayload(BaseModel):
+    claim: str = Field(..., min_length=1)
+    source_chunk_ids: list[int] = Field(default_factory=list)
+    support_level: SupportLevel
+    evidence_quote: str = ""
+
+
+class EvidenceAnswerPayload(BaseModel):
+    answer_status: AnswerStatus
+    answer: str = Field(..., min_length=1)
+    claims: list[EvidenceClaimPayload] = Field(default_factory=list)
 
 
 SYSTEM_PROMPT = (
     "You are an AI learning tutor for a student's uploaded course materials.\n"
     "Answer only using the provided source excerpts.\n"
-    "Cite supporting evidence inline with labels such as [S1] and [S2].\n"
-    "If the sources do not contain enough evidence, say that the uploaded "
-    "materials do not contain enough information.\n"
-    "Use the same language as the student's question when possible."
+    "Return valid JSON only. Do not include markdown fences or commentary.\n"
+    "Use the same language as the student's question when possible.\n"
+    "For each factual claim, provide source_chunk_ids, a support_level, and "
+    "a short evidence_quote copied or closely paraphrased from the source.\n"
+    "Allowed support_level values: fully_supported, partially_supported, "
+    "unsupported, contradicted, not_enough_information.\n"
+    "If the sources do not contain enough evidence, set answer_status to "
+    "refused_no_evidence or needs_more_material and explain the limitation."
 )
 
 
@@ -47,10 +96,14 @@ def answer_question(
 
     if not chunks:
         return RagAnswer(
+            mode="grounded_strict",
+            answer_status="refused_no_evidence",
             answer=(
                 "The uploaded materials do not contain enough information "
                 "to answer this question."
             ),
+            claims=[],
+            overall_groundedness=0.0,
             sources=[],
         )
 
@@ -58,11 +111,23 @@ def answer_question(
     response = provider.generate(
         system_prompt=SYSTEM_PROMPT,
         user_prompt=_build_user_prompt(query=query, chunks=chunks),
-        max_tokens=800,
+        max_tokens=1200,
         temperature=0.2,
     )
+    payload = _parse_evidence_answer(response.text)
+    claims = _sanitize_claims(
+        payload.claims,
+        valid_chunk_ids={chunk.chunk_id for chunk in chunks},
+    )
 
-    return RagAnswer(answer=response.text, sources=sources)
+    return RagAnswer(
+        mode="grounded_strict",
+        answer_status=payload.answer_status,
+        answer=payload.answer,
+        claims=claims,
+        overall_groundedness=_calculate_groundedness(claims),
+        sources=sources,
+    )
 
 
 def _to_rag_source(chunk: RetrievedChunk) -> RagSource:
@@ -85,8 +150,22 @@ def _build_user_prompt(query: str, chunks: list[RetrievedChunk]) -> str:
 Source excerpts:
 {context}
 
-Write a clear learning-focused answer. Every factual claim that comes from
-the source excerpts should cite the relevant source label."""
+Return this exact JSON shape:
+{{
+  "answer_status": "answered",
+  "answer": "clear learning-focused answer with inline references like [S1]",
+  "claims": [
+    {{
+      "claim": "one factual claim from the answer",
+      "source_chunk_ids": [123],
+      "support_level": "fully_supported",
+      "evidence_quote": "short evidence quote from the source"
+    }}
+  ]
+}}
+
+If evidence is insufficient, do not invent an answer. Use answer_status
+"refused_no_evidence", "partially_answered", or "needs_more_material"."""
 
 
 def _format_context(chunks: list[RetrievedChunk]) -> str:
@@ -114,3 +193,72 @@ def _format_context(chunks: list[RetrievedChunk]) -> str:
         remaining_chars -= len(content)
 
     return "\n\n".join(formatted_chunks)
+
+
+def _parse_evidence_answer(text: str) -> EvidenceAnswerPayload:
+    cleaned = _strip_markdown_fence(text)
+    try:
+        raw = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise LLMProviderError("The model did not return valid evidence JSON") from exc
+
+    try:
+        return EvidenceAnswerPayload.model_validate(raw)
+    except ValidationError as exc:
+        raise LLMProviderError("The evidence answer JSON failed validation") from exc
+
+
+def _strip_markdown_fence(text: str) -> str:
+    cleaned = text.strip()
+    match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", cleaned, flags=re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return cleaned
+
+
+def _sanitize_claims(
+    claims: list[EvidenceClaimPayload],
+    *,
+    valid_chunk_ids: set[int],
+) -> list[RagClaim]:
+    sanitized: list[RagClaim] = []
+    for claim in claims:
+        source_chunk_ids = [
+            chunk_id
+            for chunk_id in claim.source_chunk_ids
+            if chunk_id in valid_chunk_ids
+        ]
+        support_level = claim.support_level
+        if not source_chunk_ids and support_level in {
+            "fully_supported",
+            "partially_supported",
+        }:
+            support_level = "unsupported"
+
+        sanitized.append(
+            RagClaim(
+                claim=claim.claim,
+                source_chunk_ids=source_chunk_ids,
+                support_level=support_level,
+                evidence_quote=claim.evidence_quote,
+            )
+        )
+
+    return sanitized
+
+
+def _calculate_groundedness(claims: list[RagClaim]) -> float:
+    if not claims:
+        return 0.0
+
+    support_scores = {
+        "fully_supported": 1.0,
+        "partially_supported": 0.5,
+        "unsupported": 0.0,
+        "contradicted": 0.0,
+        "not_enough_information": 0.0,
+    }
+    return round(
+        sum(support_scores[claim.support_level] for claim in claims) / len(claims),
+        3,
+    )
