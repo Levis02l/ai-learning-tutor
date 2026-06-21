@@ -57,6 +57,12 @@ class RagAnswer:
     sources: list[RagSource]
 
 
+@dataclass(frozen=True)
+class RagComparison:
+    grounded: RagAnswer
+    ungrounded: RagAnswer
+
+
 class EvidenceClaimPayload(BaseModel):
     claim: str = Field(..., min_length=1)
     source_chunk_ids: list[int] = Field(default_factory=list)
@@ -81,6 +87,16 @@ SYSTEM_PROMPT = (
     "unsupported, contradicted, not_enough_information.\n"
     "If the sources do not contain enough evidence, set answer_status to "
     "refused_no_evidence or needs_more_material and explain the limitation."
+)
+
+UNGROUNDED_SYSTEM_PROMPT = (
+    "You are an AI learning tutor answering from general model knowledge.\n"
+    "Do not use uploaded course material or citations.\n"
+    "Return valid JSON only. Do not include markdown fences or commentary.\n"
+    "Use the same language as the student's question when possible.\n"
+    "For each factual claim, include the claim text. Since no source evidence "
+    "is provided, use an empty source_chunk_ids list and support_level "
+    '"unsupported".'
 )
 
 
@@ -130,6 +146,51 @@ def answer_question(
     )
 
 
+def answer_question_ungrounded(
+    query: str,
+    llm_provider: LLMProvider | None = None,
+) -> RagAnswer:
+    provider = llm_provider or OpenAIProvider()
+    response = provider.generate(
+        system_prompt=UNGROUNDED_SYSTEM_PROMPT,
+        user_prompt=_build_ungrounded_prompt(query=query),
+        max_tokens=1000,
+        temperature=0.2,
+    )
+    payload = _parse_evidence_answer(response.text)
+    claims = _sanitize_claims(payload.claims, valid_chunk_ids=set())
+
+    return RagAnswer(
+        mode="ungrounded",
+        answer_status=payload.answer_status,
+        answer=payload.answer,
+        claims=claims,
+        overall_groundedness=_calculate_groundedness(claims),
+        sources=[],
+    )
+
+
+def compare_answers(
+    db: Session,
+    *,
+    query: str,
+    user_id: str = "demo-user",
+    top_k: int = 5,
+    llm_provider: LLMProvider | None = None,
+) -> RagComparison:
+    provider = llm_provider or OpenAIProvider()
+    grounded = answer_question(
+        db=db,
+        query=query,
+        user_id=user_id,
+        top_k=top_k,
+        llm_provider=provider,
+    )
+    ungrounded = answer_question_ungrounded(query=query, llm_provider=provider)
+
+    return RagComparison(grounded=grounded, ungrounded=ungrounded)
+
+
 def _to_rag_source(chunk: RetrievedChunk) -> RagSource:
     return RagSource(
         chunk_id=chunk.chunk_id,
@@ -166,6 +227,25 @@ Return this exact JSON shape:
 
 If evidence is insufficient, do not invent an answer. Use answer_status
 "refused_no_evidence", "partially_answered", or "needs_more_material"."""
+
+
+def _build_ungrounded_prompt(query: str) -> str:
+    return f"""Student question:
+{query}
+
+Return this exact JSON shape:
+{{
+  "answer_status": "answered",
+  "answer": "clear learning-focused answer without citations",
+  "claims": [
+    {{
+      "claim": "one factual claim from the answer",
+      "source_chunk_ids": [],
+      "support_level": "unsupported",
+      "evidence_quote": ""
+    }}
+  ]
+}}"""
 
 
 def _format_context(chunks: list[RetrievedChunk]) -> str:

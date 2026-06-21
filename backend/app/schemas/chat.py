@@ -50,3 +50,10 @@ class ChatResponse(BaseModel):
     claims: list[ChatClaim]
     overall_groundedness: float
     sources: list[ChatSource]
+
+
+class ChatCompareResponse(BaseModel):
+    query: str
+    user_id: str
+    grounded: ChatResponse
+    ungrounded: ChatResponse
