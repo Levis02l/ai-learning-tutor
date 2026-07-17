@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.provider import LLMProvider
+from app.models.document import Chunk, Document
 from app.models.quiz import QuizItem
 from app.schemas.quiz import Difficulty, QuestionType, TraceabilityLabel
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
@@ -44,7 +45,7 @@ SYSTEM_PROMPT = (
 def generate_quiz_items(
     db: Session,
     *,
-    topic: str,
+    topic: str | None = None,
     user_id: str = "demo-user",
     course_id: int | None = None,
     count: int = 5,
@@ -52,21 +53,22 @@ def generate_quiz_items(
     top_k: int = 5,
     llm_provider: LLMProvider | None = None,
 ) -> list[QuizItem]:
-    chunks = retrieve_relevant_chunks(
+    focus = topic.strip() if topic else ""
+    chunks = _retrieve_quiz_chunks(
         db=db,
-        query=topic,
+        focus=focus,
         user_id=user_id,
         top_k=top_k,
         course_id=course_id,
     )
     if not chunks:
-        raise QuizGenerationError("No relevant uploaded materials found for this topic")
+        raise QuizGenerationError("No uploaded materials found in this scope")
 
     provider = llm_provider or OpenAIProvider()
     response = provider.generate(
         system_prompt=SYSTEM_PROMPT,
         user_prompt=_build_quiz_prompt(
-            topic=topic,
+            topic=focus or "current course materials",
             count=count,
             difficulty=difficulty,
             chunks=chunks,
@@ -115,6 +117,50 @@ def list_quiz_items(
             query.order_by(QuizItem.created_at.desc()).limit(limit)
         )
     )
+
+
+def _retrieve_quiz_chunks(
+    *,
+    db: Session,
+    focus: str,
+    user_id: str,
+    top_k: int,
+    course_id: int | None,
+) -> list[RetrievedChunk]:
+    if focus:
+        return retrieve_relevant_chunks(
+            db=db,
+            query=focus,
+            user_id=user_id,
+            top_k=top_k,
+            course_id=course_id,
+        )
+
+    query = (
+        select(Chunk, Document)
+        .join(Document, Document.id == Chunk.document_id)
+        .where(Document.user_id == user_id)
+    )
+    if course_id is not None:
+        query = query.where(Document.course_id == course_id)
+
+    rows = db.execute(
+        query.order_by(Document.created_at.desc(), Chunk.id.asc()).limit(top_k)
+    ).all()
+
+    return [
+        RetrievedChunk(
+            chunk_id=chunk.id,
+            document_id=document.id,
+            course_id=document.course_id,
+            filename=document.filename,
+            content=chunk.content,
+            metadata=chunk.chunk_metadata,
+            distance=0.0,
+            similarity=1.0,
+        )
+        for chunk, document in rows
+    ]
 
 
 def _build_quiz_prompt(

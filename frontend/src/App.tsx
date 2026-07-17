@@ -297,6 +297,7 @@ function App() {
           <QuizView
             courseId={selectedCourseId}
             items={quizItems}
+            materialCount={documents.length}
             userId={userId}
             onGenerated={refreshCoreData}
           />
@@ -845,15 +846,17 @@ function EvidenceInspector({ response }: { response: ChatResponse | null }) {
 function QuizView({
   courseId,
   items,
+  materialCount,
   userId,
   onGenerated,
 }: {
   courseId: number | null
   items: QuizItem[]
+  materialCount: number
   userId: string
   onGenerated: () => Promise<void>
 }) {
-  const [topic, setTopic] = useState('artificial intelligence')
+  const [focus, setFocus] = useState('')
   const [count, setCount] = useState(3)
   const [difficulty, setDifficulty] = useState('medium')
   const [busy, setBusy] = useState(false)
@@ -865,7 +868,7 @@ function QuizView({
     setBusy(true)
     setError('')
     try {
-      const response = await generateQuiz(userId, topic, count, difficulty, 5, courseId)
+      const response = await generateQuiz(userId, focus, count, difficulty, 5, courseId)
       setGenerated(response.items)
       await onGenerated()
     } catch (quizError) {
@@ -885,15 +888,17 @@ function QuizView({
             <ClipboardList size={18} aria-hidden="true" />
             Generate
           </h3>
+          <span className="badge info">{materialCount} source files</span>
         </div>
         <div className="panel-body stack">
           <form className="stack" onSubmit={handleGenerate}>
             <label>
-              <span className="field-label">Topic</span>
+              <span className="field-label">Focus</span>
               <input
                 className="input"
-                onChange={(event) => setTopic(event.target.value)}
-                value={topic}
+                onChange={(event) => setFocus(event.target.value)}
+                placeholder="Whole course"
+                value={focus}
               />
             </label>
             <div className="form-row">
@@ -920,7 +925,7 @@ function QuizView({
                   <option value="hard">hard</option>
                 </select>
               </label>
-              <button className="button" disabled={busy || !topic.trim()} type="submit">
+              <button className="button" disabled={busy || materialCount === 0} type="submit">
                 {busy ? <Loader2 size={16} aria-hidden="true" /> : <CheckCircle2 size={16} />}
                 Generate
               </button>

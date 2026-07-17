@@ -14,7 +14,7 @@ TraceabilityLabel = Literal[
 
 
 class QuizGenerateRequest(BaseModel):
-    topic: str = Field(..., min_length=1)
+    topic: str = Field(default="", max_length=200)
     user_id: str = "demo-user"
     course_id: int | None = None
     count: int = Field(default=5, ge=1, le=10)

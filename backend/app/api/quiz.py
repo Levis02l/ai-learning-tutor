@@ -53,7 +53,7 @@ def generate_quiz(
         )
 
     return QuizGenerateResponse(
-        topic=request.topic,
+        topic=request.topic.strip() or "current course materials",
         user_id=request.user_id,
         course_id=request.course_id,
         items=[_to_response(item) for item in items],
