@@ -28,6 +28,7 @@ import {
   evaluateAnswer,
   generateQuiz,
   getHealth,
+  getLearnerState,
   getMastery,
   listCourses,
   listDocuments,
@@ -43,6 +44,7 @@ import type {
   Course,
   DocumentItem,
   DueReviewItem,
+  LearnerState,
   MasteryResponse,
   QuizItem,
 } from './types'
@@ -64,6 +66,7 @@ function App() {
   const [quizItems, setQuizItems] = useState<QuizItem[]>([])
   const [dueReviews, setDueReviews] = useState<DueReviewItem[]>([])
   const [mastery, setMastery] = useState<MasteryResponse | null>(null)
+  const [learnerState, setLearnerState] = useState<LearnerState | null>(null)
   const [globalError, setGlobalError] = useState('')
 
   const selectedCourse = useMemo(
@@ -84,12 +87,13 @@ function App() {
   const refreshCoreData = useCallback(async () => {
     setGlobalError('')
     try {
-      const [courseList, docs, quizzes, due, masterySnapshot] = await Promise.all([
+      const [courseList, docs, quizzes, due, masterySnapshot, state] = await Promise.all([
         listCourses(userId),
         listDocuments(userId, scopedCourseId),
         listQuizItems(userId, scopedCourseId),
         listDueReviews(userId, scopedCourseId),
         getMastery(userId, scopedCourseId),
+        getLearnerState(userId, scopedCourseId),
       ])
       setCourses(courseList)
       if (
@@ -102,6 +106,7 @@ function App() {
       setQuizItems(quizzes)
       setDueReviews(due)
       setMastery(masterySnapshot)
+      setLearnerState(state)
     } catch (error) {
       setGlobalError(getErrorMessage(error))
     }
@@ -306,6 +311,7 @@ function App() {
           <ReviewView
             courseId={selectedCourseId}
             dueReviews={dueReviews}
+            learnerState={learnerState}
             mastery={mastery}
             userId={userId}
             onReviewed={refreshCoreData}
@@ -980,12 +986,14 @@ function QuizView({
 function ReviewView({
   courseId,
   dueReviews,
+  learnerState,
   mastery,
   userId,
   onReviewed,
 }: {
   courseId: number | null
   dueReviews: DueReviewItem[]
+  learnerState: LearnerState | null
   mastery: MasteryResponse | null
   userId: string
   onReviewed: () => Promise<void>
@@ -1014,12 +1022,24 @@ function ReviewView({
   return (
     <div className="grid">
       <div className="metric-strip">
+        <Metric
+          label="Learner state"
+          value={`${Math.round((learnerState?.mastery_score ?? 0) * 100)}%`}
+        />
+        <Metric
+          label="Recent accuracy"
+          value={`${Math.round((learnerState?.recent_accuracy ?? 0) * 100)}%`}
+        />
+        <Metric label="Attempts" value={learnerState?.attempt_count ?? 0} />
+        <Metric label="Errors" value={learnerState?.consecutive_errors ?? 0} />
+      </div>
+      <div className="metric-strip compact">
         <Metric label="Items" value={summary?.total_items ?? 0} />
         <Metric label="Reviewed" value={summary?.reviewed_items ?? 0} />
         <Metric label="Due" value={summary?.due_items ?? 0} />
         <Metric
-          label="Mastery"
-          value={`${Math.round((summary?.average_mastery ?? 0) * 100)}%`}
+          label="Review due"
+          value={learnerState?.review_due ? 'yes' : 'no'}
         />
       </div>
 

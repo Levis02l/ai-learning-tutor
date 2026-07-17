@@ -533,6 +533,15 @@ button {
   gap: 10px;
 }
 
+.metric-strip.compact .metric {
+  padding: 12px;
+  box-shadow: none;
+}
+
+.metric-strip.compact .metric-value {
+  font-size: 18px;
+}
+
 .metric {
   padding: 14px;
   border: 1px solid rgba(224, 233, 236, 0.95);

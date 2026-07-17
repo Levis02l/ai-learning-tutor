@@ -5,6 +5,7 @@ import type {
   Course,
   DocumentItem,
   DueReviewItem,
+  LearnerState,
   MasteryResponse,
   QuizGenerateResponse,
   QuizItem,
@@ -185,6 +186,13 @@ export async function getMastery(
   courseId?: number | null,
 ): Promise<MasteryResponse> {
   return request(`/mastery?${scopedQuery(userId, courseId)}`)
+}
+
+export async function getLearnerState(
+  userId: string,
+  courseId?: number | null,
+): Promise<LearnerState> {
+  return request(`/learner-state?${scopedQuery(userId, courseId)}`)
 }
 
 export async function evaluateAnswer(

@@ -125,6 +125,17 @@ export type MasteryResponse = {
   }>
 }
 
+export type LearnerState = {
+  user_id: string
+  course_id: number | null
+  mastery_score: number
+  recent_accuracy: number
+  attempt_count: number
+  consecutive_errors: number
+  last_reviewed_at: string | null
+  review_due: boolean
+}
+
 export type AnswerEvaluation = {
   user_id: string
   course_id: number | null

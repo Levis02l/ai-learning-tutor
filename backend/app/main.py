@@ -6,6 +6,7 @@ from app.api.courses import router as courses_router
 from app.api.documents import router as documents_router
 from app.api.evaluation import router as evaluation_router
 from app.api.health import router as health_router
+from app.api.learner_state import router as learner_state_router
 from app.api.mastery import router as mastery_router
 from app.api.quiz import router as quiz_router
 from app.api.reviews import router as reviews_router
@@ -29,4 +30,5 @@ app.include_router(chat_router)
 app.include_router(quiz_router)
 app.include_router(reviews_router)
 app.include_router(mastery_router)
+app.include_router(learner_state_router)
 app.include_router(evaluation_router)
