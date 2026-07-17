@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileText,
   FileUp,
+  FolderPlus,
   Gauge,
   Library,
   Loader2,
@@ -21,11 +22,14 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import {
   chat,
   compareChat,
+  createCourse,
+  deleteCourse,
   deleteDocument,
   evaluateAnswer,
   generateQuiz,
   getHealth,
   getMastery,
+  listCourses,
   listDocuments,
   listDueReviews,
   listQuizItems,
@@ -36,6 +40,7 @@ import type {
   AnswerEvaluation,
   ChatCompareResponse,
   ChatResponse,
+  Course,
   DocumentItem,
   DueReviewItem,
   MasteryResponse,
@@ -51,11 +56,21 @@ function App() {
   const [activeView, setActiveView] = useState<View>('documents')
   const [userId, setUserId] = useState(userIdDefault)
   const [health, setHealth] = useState<HealthStatus>('checking')
+  const [courses, setCourses] = useState<Course[]>([])
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
+  const [newCourseName, setNewCourseName] = useState('')
+  const [courseBusy, setCourseBusy] = useState(false)
   const [documents, setDocuments] = useState<DocumentItem[]>([])
   const [quizItems, setQuizItems] = useState<QuizItem[]>([])
   const [dueReviews, setDueReviews] = useState<DueReviewItem[]>([])
   const [mastery, setMastery] = useState<MasteryResponse | null>(null)
   const [globalError, setGlobalError] = useState('')
+
+  const selectedCourse = useMemo(
+    () => courses.find((course) => course.id === selectedCourseId) ?? null,
+    [courses, selectedCourseId],
+  )
+  const scopedCourseId = selectedCourseId ?? undefined
 
   const refreshHealth = useCallback(async () => {
     try {
@@ -69,12 +84,20 @@ function App() {
   const refreshCoreData = useCallback(async () => {
     setGlobalError('')
     try {
-      const [docs, quizzes, due, masterySnapshot] = await Promise.all([
-        listDocuments(userId),
-        listQuizItems(userId),
-        listDueReviews(userId),
-        getMastery(userId),
+      const [courseList, docs, quizzes, due, masterySnapshot] = await Promise.all([
+        listCourses(userId),
+        listDocuments(userId, scopedCourseId),
+        listQuizItems(userId, scopedCourseId),
+        listDueReviews(userId, scopedCourseId),
+        getMastery(userId, scopedCourseId),
       ])
+      setCourses(courseList)
+      if (
+        selectedCourseId !== null &&
+        !courseList.some((course) => course.id === selectedCourseId)
+      ) {
+        setSelectedCourseId(null)
+      }
       setDocuments(docs)
       setQuizItems(quizzes)
       setDueReviews(due)
@@ -82,7 +105,48 @@ function App() {
     } catch (error) {
       setGlobalError(getErrorMessage(error))
     }
-  }, [userId])
+  }, [scopedCourseId, selectedCourseId, userId])
+
+  async function handleCreateCourse(event: FormEvent) {
+    event.preventDefault()
+    const name = newCourseName.trim()
+    if (!name) return
+
+    setCourseBusy(true)
+    setGlobalError('')
+    try {
+      const course = await createCourse(userId, name)
+      setCourses((current) => [course, ...current])
+      setSelectedCourseId(course.id)
+      setNewCourseName('')
+    } catch (error) {
+      setGlobalError(getErrorMessage(error))
+    } finally {
+      setCourseBusy(false)
+    }
+  }
+
+  async function handleDeleteSelectedCourse() {
+    if (!selectedCourse) return
+    const confirmed = window.confirm(
+      `Delete course "${selectedCourse.name}" and all its materials?`,
+    )
+    if (!confirmed) return
+
+    setCourseBusy(true)
+    setGlobalError('')
+    try {
+      await deleteCourse(userId, selectedCourse.id)
+      setCourses((current) =>
+        current.filter((course) => course.id !== selectedCourse.id),
+      )
+      setSelectedCourseId(null)
+    } catch (error) {
+      setGlobalError(getErrorMessage(error))
+    } finally {
+      setCourseBusy(false)
+    }
+  }
 
   useEffect(() => {
     void refreshHealth()
@@ -122,6 +186,61 @@ function App() {
           />
         </label>
 
+        <section className="course-block" aria-label="Course workspace">
+          <div className="course-block-header">
+            <span className="field-label">Course Workspace</span>
+            <span className="badge info">{courses.length}</span>
+          </div>
+          <select
+            className="select"
+            value={selectedCourseId ?? 'all'}
+            onChange={(event) => {
+              const value = event.target.value
+              setSelectedCourseId(value === 'all' ? null : Number(value))
+            }}
+          >
+            <option value="all">All materials</option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.name}
+              </option>
+            ))}
+          </select>
+          <form className="course-create" onSubmit={handleCreateCourse}>
+            <input
+              className="input"
+              maxLength={120}
+              onChange={(event) => setNewCourseName(event.target.value)}
+              placeholder="New course name"
+              value={newCourseName}
+            />
+            <button
+              aria-label="Create course"
+              className="icon-button"
+              disabled={courseBusy || !newCourseName.trim()}
+              title="Create course"
+              type="submit"
+            >
+              {courseBusy ? (
+                <Loader2 className="spin" size={16} aria-hidden="true" />
+              ) : (
+                <FolderPlus size={16} aria-hidden="true" />
+              )}
+            </button>
+          </form>
+          {selectedCourse && (
+            <button
+              className="button ghost full"
+              disabled={courseBusy}
+              onClick={() => void handleDeleteSelectedCourse()}
+              type="button"
+            >
+              <Trash2 size={15} aria-hidden="true" />
+              Delete course
+            </button>
+          )}
+        </section>
+
         <nav className="nav" aria-label="Primary navigation">
           {navItems.map((item) => {
             const Icon = item.icon
@@ -152,6 +271,9 @@ function App() {
             <p className="page-kicker">{pageKicker(activeView)}</p>
           </div>
           <div className="toolbar">
+            <span className="scope-pill">
+              {selectedCourse ? selectedCourse.name : 'All materials'}
+            </span>
             <button className="button secondary" onClick={refreshCoreData} type="button">
               <RefreshCw size={16} aria-hidden="true" />
               Refresh
@@ -163,14 +285,17 @@ function App() {
 
         {activeView === 'documents' && (
           <DocumentsView
+            courseId={selectedCourseId}
+            courseName={selectedCourse?.name ?? null}
             documents={documents}
             userId={userId}
             onUploaded={refreshCoreData}
           />
         )}
-        {activeView === 'chat' && <ChatView userId={userId} />}
+        {activeView === 'chat' && <ChatView courseId={selectedCourseId} userId={userId} />}
         {activeView === 'quiz' && (
           <QuizView
+            courseId={selectedCourseId}
             items={quizItems}
             userId={userId}
             onGenerated={refreshCoreData}
@@ -178,41 +303,48 @@ function App() {
         )}
         {activeView === 'review' && (
           <ReviewView
+            courseId={selectedCourseId}
             dueReviews={dueReviews}
             mastery={mastery}
             userId={userId}
             onReviewed={refreshCoreData}
           />
         )}
-        {activeView === 'evaluation' && <EvaluationView userId={userId} />}
+        {activeView === 'evaluation' && <EvaluationView courseId={selectedCourseId} userId={userId} />}
       </main>
     </div>
   )
 }
 
 function DocumentsView({
+  courseId,
+  courseName,
   documents,
   userId,
   onUploaded,
 }: {
+  courseId: number | null
+  courseName: string | null
   documents: DocumentItem[]
   userId: string
   onUploaded: () => Promise<void>
 }) {
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [error, setError] = useState('')
 
   async function handleUpload(event: FormEvent) {
     event.preventDefault()
-    if (!file) return
+    if (files.length === 0) return
 
     setBusy(true)
     setError('')
     try {
-      await uploadDocument(userId, file)
-      setFile(null)
+      for (const file of files) {
+        await uploadDocument(userId, file, courseId)
+      }
+      setFiles([])
       await onUploaded()
     } catch (uploadError) {
       setError(getErrorMessage(uploadError))
@@ -245,25 +377,34 @@ function DocumentsView({
             <FileUp size={18} aria-hidden="true" />
             Upload
           </h3>
+          <span className="badge info">{courseName ?? 'All materials'}</span>
         </div>
         <div className="panel-body">
           <form className="stack" onSubmit={handleUpload}>
             <label className="file-input">
-              <span className="field-label">Course material</span>
+              <span className="field-label">Course materials</span>
               <input
                 accept=".pdf,.pptx,.docx,.txt,.md"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                multiple
+                onChange={(event) =>
+                  setFiles(Array.from(event.target.files ?? []))
+                }
                 type="file"
               />
+              {files.length > 0 && (
+                <span className="muted small">
+                  {files.length} file{files.length === 1 ? '' : 's'} selected
+                </span>
+              )}
             </label>
             {error && <div className="error">{error}</div>}
-            <button className="button" disabled={!file || busy} type="submit">
+            <button className="button" disabled={files.length === 0 || busy} type="submit">
               {busy ? (
                 <Loader2 className="spin" size={16} aria-hidden="true" />
               ) : (
                 <Upload size={16} aria-hidden="true" />
               )}
-              Upload
+              Upload {files.length > 1 ? `${files.length} files` : 'files'}
             </button>
           </form>
         </div>
@@ -311,6 +452,9 @@ function DocumentsView({
                   <div className="badge-row">
                     <span className="badge">{document.file_type}</span>
                     <span className="badge">{document.chunk_count} chunks</span>
+                    {document.course_id && (
+                      <span className="badge">course {document.course_id}</span>
+                    )}
                     <span className="badge">{formatDate(document.created_at)}</span>
                   </div>
                 </div>
@@ -323,7 +467,7 @@ function DocumentsView({
   )
 }
 
-function ChatView({ userId }: { userId: string }) {
+function ChatView({ courseId, userId }: { courseId: number | null; userId: string }) {
   const [query, setQuery] = useState('What is artificial intelligence?')
   const [topK, setTopK] = useState(5)
   const [mode, setMode] = useState<'grounded' | 'compare'>('grounded')
@@ -344,13 +488,13 @@ function ChatView({ userId }: { userId: string }) {
     setEvaluation(null)
     try {
       if (mode === 'compare') {
-        const result = await compareChat(userId, query, topK)
+        const result = await compareChat(userId, query, topK, courseId)
         setComparison(result)
-        setEvaluation(await evaluateAnswer(result.grounded, true))
+        setEvaluation(await evaluateAnswer(result.grounded, true, userId, courseId))
       } else {
-        const result = await chat(userId, query, topK)
+        const result = await chat(userId, query, topK, courseId)
         setAnswer(result)
-        setEvaluation(await evaluateAnswer(result, true))
+        setEvaluation(await evaluateAnswer(result, true, userId, courseId))
       }
     } catch (chatError) {
       setError(getErrorMessage(chatError))
@@ -424,7 +568,13 @@ function ChatView({ userId }: { userId: string }) {
   )
 }
 
-function EvaluationView({ userId }: { userId: string }) {
+function EvaluationView({
+  courseId,
+  userId,
+}: {
+  courseId: number | null
+  userId: string
+}) {
   const [query, setQuery] = useState('What is artificial intelligence?')
   const [expectedAnswerable, setExpectedAnswerable] = useState(true)
   const [topK, setTopK] = useState(5)
@@ -446,10 +596,10 @@ function EvaluationView({ userId }: { userId: string }) {
     setGroundedEvaluation(null)
     setUngroundedEvaluation(null)
     try {
-      const result = await compareChat(userId, query, topK)
+      const result = await compareChat(userId, query, topK, courseId)
       const [grounded, ungrounded] = await Promise.all([
-        evaluateAnswer(result.grounded, expectedAnswerable),
-        evaluateAnswer(result.ungrounded, expectedAnswerable),
+        evaluateAnswer(result.grounded, expectedAnswerable, userId, courseId),
+        evaluateAnswer(result.ungrounded, expectedAnswerable, userId, courseId),
       ])
       setComparison(result)
       setGroundedEvaluation(grounded)
@@ -693,10 +843,12 @@ function EvidenceInspector({ response }: { response: ChatResponse | null }) {
 }
 
 function QuizView({
+  courseId,
   items,
   userId,
   onGenerated,
 }: {
+  courseId: number | null
   items: QuizItem[]
   userId: string
   onGenerated: () => Promise<void>
@@ -713,7 +865,7 @@ function QuizView({
     setBusy(true)
     setError('')
     try {
-      const response = await generateQuiz(userId, topic, count, difficulty, 5)
+      const response = await generateQuiz(userId, topic, count, difficulty, 5, courseId)
       setGenerated(response.items)
       await onGenerated()
     } catch (quizError) {
@@ -821,11 +973,13 @@ function QuizView({
 }
 
 function ReviewView({
+  courseId,
   dueReviews,
   mastery,
   userId,
   onReviewed,
 }: {
+  courseId: number | null
   dueReviews: DueReviewItem[]
   mastery: MasteryResponse | null
   userId: string
@@ -843,7 +997,7 @@ function ReviewView({
     setBusyItemId(itemId)
     setError('')
     try {
-      await submitReview(userId, itemId, rating, isCorrect)
+      await submitReview(userId, itemId, rating, isCorrect, courseId)
       await onReviewed()
     } catch (reviewError) {
       setError(getErrorMessage(reviewError))

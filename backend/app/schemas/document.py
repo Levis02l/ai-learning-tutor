@@ -8,6 +8,7 @@ class DocumentResponse(BaseModel):
 
     id: int
     user_id: str
+    course_id: int | None = None
     filename: str
     file_type: str
     status: str

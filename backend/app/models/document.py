@@ -12,6 +12,12 @@ class Document(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[str] = mapped_column(String, index=True)
+    course_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("courses.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     filename: Mapped[str] = mapped_column(String)
     file_type: Mapped[str] = mapped_column(String)  # pdf, pptx, docx, audio
     storage_path: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -22,6 +28,7 @@ class Document(Base):
     chunks: Mapped[list["Chunk"]] = relationship(
         "Chunk", back_populates="document", cascade="all, delete-orphan"
     )
+    course = relationship("Course", back_populates="documents")
 
 
 class Chunk(Base):

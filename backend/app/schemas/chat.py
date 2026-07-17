@@ -21,12 +21,14 @@ SupportLevel = Literal[
 class ChatRequest(BaseModel):
     query: str = Field(..., min_length=1)
     user_id: str = "demo-user"
+    course_id: int | None = None
     top_k: int = Field(default=5, ge=1, le=10)
 
 
 class ChatSource(BaseModel):
     chunk_id: int
     document_id: int
+    course_id: int | None = None
     filename: str
     content: str
     metadata: dict
@@ -44,6 +46,7 @@ class ChatClaim(BaseModel):
 class ChatResponse(BaseModel):
     query: str
     user_id: str
+    course_id: int | None = None
     mode: str
     answer_status: AnswerStatus
     answer: str
@@ -55,5 +58,6 @@ class ChatResponse(BaseModel):
 class ChatCompareResponse(BaseModel):
     query: str
     user_id: str
+    course_id: int | None = None
     grounded: ChatResponse
     ungrounded: ChatResponse

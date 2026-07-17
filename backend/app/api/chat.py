@@ -10,6 +10,7 @@ from app.schemas.chat import (
     ChatResponse,
     ChatSource,
 )
+from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.embeddings import EmbeddingConfigurationError
 from app.services.rag import RagAnswer, answer_question, compare_answers
 
@@ -22,12 +23,18 @@ def chat_with_documents(
     db: Session = Depends(get_db),
 ) -> ChatResponse:
     try:
+        validate_course_scope(
+            db=db, user_id=request.user_id, course_id=request.course_id
+        )
         result = answer_question(
             db=db,
             query=request.query,
             user_id=request.user_id,
+            course_id=request.course_id,
             top_k=request.top_k,
         )
+    except CourseNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except (EmbeddingConfigurationError, LLMConfigurationError) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -42,6 +49,7 @@ def chat_with_documents(
     return ChatResponse(
         query=request.query,
         user_id=request.user_id,
+        course_id=request.course_id,
         **_to_chat_payload(result),
     )
 
@@ -52,12 +60,18 @@ def compare_chat_modes(
     db: Session = Depends(get_db),
 ) -> ChatCompareResponse:
     try:
+        validate_course_scope(
+            db=db, user_id=request.user_id, course_id=request.course_id
+        )
         result = compare_answers(
             db=db,
             query=request.query,
             user_id=request.user_id,
+            course_id=request.course_id,
             top_k=request.top_k,
         )
+    except CourseNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except (EmbeddingConfigurationError, LLMConfigurationError) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -72,14 +86,17 @@ def compare_chat_modes(
     return ChatCompareResponse(
         query=request.query,
         user_id=request.user_id,
+        course_id=request.course_id,
         grounded=ChatResponse(
             query=request.query,
             user_id=request.user_id,
+            course_id=request.course_id,
             **_to_chat_payload(result.grounded),
         ),
         ungrounded=ChatResponse(
             query=request.query,
             user_id=request.user_id,
+            course_id=request.course_id,
             **_to_chat_payload(result.ungrounded),
         ),
     )
@@ -104,6 +121,7 @@ def _to_chat_payload(result: RagAnswer) -> dict:
             ChatSource(
                 chunk_id=source.chunk_id,
                 document_id=source.document_id,
+                course_id=source.course_id,
                 filename=source.filename,
                 content=source.content,
                 metadata=source.metadata,

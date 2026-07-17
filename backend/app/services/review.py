@@ -26,10 +26,15 @@ def submit_review(
     item_id: int,
     rating: int,
     is_correct: bool,
+    course_id: int | None = None,
 ) -> ReviewRecord:
-    item = db.scalar(
-        select(QuizItem).where(QuizItem.id == item_id, QuizItem.user_id == user_id)
+    item_query = select(QuizItem).where(
+        QuizItem.id == item_id, QuizItem.user_id == user_id
     )
+    if course_id is not None:
+        item_query = item_query.where(QuizItem.course_id == course_id)
+
+    item = db.scalar(item_query)
     if item is None:
         raise ReviewError("Quiz item not found for this user")
 
@@ -43,6 +48,7 @@ def submit_review(
     )
     review = ReviewRecord(
         user_id=user_id,
+        course_id=item.course_id,
         item_id=item_id,
         rating=rating,
         is_correct=is_correct,
@@ -61,18 +67,22 @@ def get_due_review_items(
     db: Session,
     *,
     user_id: str = "demo-user",
+    course_id: int | None = None,
     limit: int = 20,
     now: datetime | None = None,
 ) -> list[tuple[QuizItem, ReviewRecord | None]]:
     current_time = now or datetime.utcnow()
-    latest_review_ids = (
-        select(func.max(ReviewRecord.id).label("latest_id"))
-        .where(ReviewRecord.user_id == user_id)
-        .group_by(ReviewRecord.item_id)
-        .subquery()
+    latest_review_query = select(func.max(ReviewRecord.id).label("latest_id")).where(
+        ReviewRecord.user_id == user_id
     )
+    if course_id is not None:
+        latest_review_query = latest_review_query.where(
+            ReviewRecord.course_id == course_id
+        )
 
-    rows = db.execute(
+    latest_review_ids = latest_review_query.group_by(ReviewRecord.item_id).subquery()
+
+    query = (
         select(QuizItem, ReviewRecord)
         .outerjoin(
             ReviewRecord,
@@ -83,7 +93,15 @@ def get_due_review_items(
         )
         .where(QuizItem.user_id == user_id)
         .where(or_(ReviewRecord.id.is_(None), ReviewRecord.due_at <= current_time))
-        .order_by(ReviewRecord.due_at.asc().nullsfirst(), QuizItem.created_at.asc())
+    )
+    if course_id is not None:
+        query = query.where(QuizItem.course_id == course_id)
+
+    rows = db.execute(
+        query.order_by(
+            ReviewRecord.due_at.asc().nullsfirst(),
+            QuizItem.created_at.asc(),
+        )
         .limit(limit)
     ).all()
 

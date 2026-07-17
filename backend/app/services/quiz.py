@@ -46,12 +46,19 @@ def generate_quiz_items(
     *,
     topic: str,
     user_id: str = "demo-user",
+    course_id: int | None = None,
     count: int = 5,
     difficulty: Difficulty = "medium",
     top_k: int = 5,
     llm_provider: LLMProvider | None = None,
 ) -> list[QuizItem]:
-    chunks = retrieve_relevant_chunks(db=db, query=topic, user_id=user_id, top_k=top_k)
+    chunks = retrieve_relevant_chunks(
+        db=db,
+        query=topic,
+        user_id=user_id,
+        top_k=top_k,
+        course_id=course_id,
+    )
     if not chunks:
         raise QuizGenerationError("No relevant uploaded materials found for this topic")
 
@@ -74,6 +81,7 @@ def generate_quiz_items(
         _to_quiz_item(
             item=item,
             user_id=user_id,
+            course_id=course_id,
             difficulty=difficulty,
             valid_source_ids=source_ids,
         )
@@ -95,14 +103,16 @@ def list_quiz_items(
     db: Session,
     *,
     user_id: str = "demo-user",
+    course_id: int | None = None,
     limit: int = 50,
 ) -> list[QuizItem]:
+    query = select(QuizItem).where(QuizItem.user_id == user_id)
+    if course_id is not None:
+        query = query.where(QuizItem.course_id == course_id)
+
     return list(
         db.scalars(
-            select(QuizItem)
-            .where(QuizItem.user_id == user_id)
-            .order_by(QuizItem.created_at.desc())
-            .limit(limit)
+            query.order_by(QuizItem.created_at.desc()).limit(limit)
         )
     )
 
@@ -171,6 +181,7 @@ def _to_quiz_item(
     user_id: str,
     difficulty: Difficulty,
     valid_source_ids: set[int],
+    course_id: int | None = None,
 ) -> QuizItem:
     source_chunk_ids = [
         chunk_id for chunk_id in item.source_chunk_ids if chunk_id in valid_source_ids
@@ -183,6 +194,7 @@ def _to_quiz_item(
 
     return QuizItem(
         user_id=user_id,
+        course_id=course_id,
         question=item.question,
         answer=item.answer,
         difficulty=difficulty,

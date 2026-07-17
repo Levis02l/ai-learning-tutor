@@ -8,6 +8,7 @@ from app.schemas.quiz import QuizItemResponse
 class ReviewSubmitRequest(BaseModel):
     item_id: int
     user_id: str = "demo-user"
+    course_id: int | None = None
     rating: int = Field(..., ge=1, le=4)
     is_correct: bool
 
@@ -16,6 +17,7 @@ class ReviewRecordResponse(BaseModel):
     id: int
     user_id: str
     item_id: int
+    course_id: int | None = None
     rating: int
     is_correct: bool
     reviewed_at: datetime

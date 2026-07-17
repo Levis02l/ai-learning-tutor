@@ -12,6 +12,12 @@ class ReviewRecord(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[str] = mapped_column(String, index=True)
+    course_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("courses.id", ondelete="CASCADE"),
+        index=True,
+        nullable=True,
+    )
     item_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("quiz_items.id", ondelete="CASCADE"), index=True
     )

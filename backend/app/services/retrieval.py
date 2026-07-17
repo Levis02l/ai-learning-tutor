@@ -11,6 +11,7 @@ from app.services.embeddings import embed_texts
 class RetrievedChunk:
     chunk_id: int
     document_id: int
+    course_id: int | None
     filename: str
     content: str
     metadata: dict
@@ -23,6 +24,7 @@ def retrieve_relevant_chunks(
     query: str,
     user_id: str = "demo-user",
     top_k: int = 5,
+    course_id: int | None = None,
 ) -> list[RetrievedChunk]:
     query_embedding = embed_texts([query])[0]
     return retrieve_relevant_chunks_by_embedding(
@@ -30,6 +32,7 @@ def retrieve_relevant_chunks(
         query_embedding=query_embedding,
         user_id=user_id,
         top_k=top_k,
+        course_id=course_id,
     )
 
 
@@ -38,22 +41,26 @@ def retrieve_relevant_chunks_by_embedding(
     query_embedding: list[float],
     user_id: str = "demo-user",
     top_k: int = 5,
+    course_id: int | None = None,
 ) -> list[RetrievedChunk]:
     distance = Chunk.embedding.cosine_distance(query_embedding).label("distance")
 
-    rows = db.execute(
+    query = (
         select(Chunk, Document, distance)
         .join(Document, Document.id == Chunk.document_id)
         .where(Document.user_id == user_id)
         .where(Chunk.embedding.is_not(None))
-        .order_by(distance)
-        .limit(top_k)
-    ).all()
+    )
+    if course_id is not None:
+        query = query.where(Document.course_id == course_id)
+
+    rows = db.execute(query.order_by(distance).limit(top_k)).all()
 
     return [
         RetrievedChunk(
             chunk_id=chunk.id,
             document_id=document.id,
+            course_id=document.course_id,
             filename=document.filename,
             content=chunk.content,
             metadata=chunk.chunk_metadata,

@@ -5,11 +5,15 @@ from app.schemas.quiz import QuizItemResponse
 
 
 class AnswerEvaluationRequest(BaseModel):
+    user_id: str = "demo-user"
+    course_id: int | None = None
     expected_answerable: bool
     response: ChatResponse
 
 
 class AnswerEvaluationResponse(BaseModel):
+    user_id: str = "demo-user"
+    course_id: int | None = None
     claim_count: int
     supported_claim_count: int
     unsupported_claim_count: int
@@ -21,10 +25,14 @@ class AnswerEvaluationResponse(BaseModel):
 
 
 class QuizEvaluationRequest(BaseModel):
+    user_id: str = "demo-user"
+    course_id: int | None = None
     items: list[QuizItemResponse]
 
 
 class QuizEvaluationResponse(BaseModel):
+    user_id: str = "demo-user"
+    course_id: int | None = None
     total_items: int
     fully_traceable_count: int
     partially_traceable_count: int

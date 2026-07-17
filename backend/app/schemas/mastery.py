@@ -24,5 +24,6 @@ class MasteryItemResponse(BaseModel):
 
 class MasteryResponse(BaseModel):
     user_id: str
+    course_id: int | None = None
     summary: MasterySummaryResponse
     items: list[MasteryItemResponse]

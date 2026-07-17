@@ -40,17 +40,22 @@ def get_mastery_snapshot(
     db: Session,
     *,
     user_id: str = "demo-user",
+    course_id: int | None = None,
     now: datetime | None = None,
 ) -> MasterySnapshot:
     current_time = now or datetime.utcnow()
+    quiz_query = select(QuizItem).where(QuizItem.user_id == user_id)
+    if course_id is not None:
+        quiz_query = quiz_query.where(QuizItem.course_id == course_id)
+
     quiz_items = list(
         db.scalars(
-            select(QuizItem)
-            .where(QuizItem.user_id == user_id)
-            .order_by(QuizItem.created_at.asc())
+            quiz_query.order_by(QuizItem.created_at.asc())
         )
     )
-    review_stats = _load_review_stats(db=db, user_id=user_id)
+    review_stats = _load_review_stats(
+        db=db, user_id=user_id, course_id=course_id
+    )
 
     items = [
         _build_mastery_item(
@@ -85,22 +90,22 @@ def _load_review_stats(
     db: Session,
     *,
     user_id: str,
+    course_id: int | None = None,
 ) -> dict[int, tuple[int, ReviewRecord]]:
-    latest_ids = (
-        select(func.max(ReviewRecord.id).label("latest_id"))
-        .where(ReviewRecord.user_id == user_id)
-        .group_by(ReviewRecord.item_id)
-        .subquery()
+    latest_query = select(func.max(ReviewRecord.id).label("latest_id")).where(
+        ReviewRecord.user_id == user_id
     )
-    review_counts = (
-        select(
-            ReviewRecord.item_id.label("item_id"),
-            func.count(ReviewRecord.id).label("review_count"),
-        )
-        .where(ReviewRecord.user_id == user_id)
-        .group_by(ReviewRecord.item_id)
-        .subquery()
-    )
+    count_query = select(
+        ReviewRecord.item_id.label("item_id"),
+        func.count(ReviewRecord.id).label("review_count"),
+    ).where(ReviewRecord.user_id == user_id)
+
+    if course_id is not None:
+        latest_query = latest_query.where(ReviewRecord.course_id == course_id)
+        count_query = count_query.where(ReviewRecord.course_id == course_id)
+
+    latest_ids = latest_query.group_by(ReviewRecord.item_id).subquery()
+    review_counts = count_query.group_by(ReviewRecord.item_id).subquery()
 
     rows = db.execute(
         select(ReviewRecord, review_counts.c.review_count)

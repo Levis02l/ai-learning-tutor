@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.document import Chunk, Document
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
+from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.documents import DocumentNotFoundError, delete_document
 from app.services.embeddings import EmbeddingConfigurationError, embed_texts
 from app.services.ingestion import (
@@ -29,9 +30,11 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 async def upload_document(
     file: UploadFile = File(...),
     user_id: str = Form("demo-user"),
+    course_id: int | None = Form(None),
     db: Session = Depends(get_db),
 ) -> DocumentUploadResponse:
     try:
+        validate_course_scope(db=db, user_id=user_id, course_id=course_id)
         file_type = get_file_type(file.filename or "")
         text = await extract_text_from_upload(file)
         chunks = chunk_text(text)
@@ -49,10 +52,13 @@ async def upload_document(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         )
+    except CourseNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
     filename = Path(file.filename or "untitled").name
     document = Document(
         user_id=user_id,
+        course_id=course_id,
         filename=filename,
         file_type=file_type,
         storage_path=str(stored_path),
@@ -80,6 +86,7 @@ async def upload_document(
     return DocumentUploadResponse(
         id=document.id,
         user_id=document.user_id,
+        course_id=document.course_id,
         filename=document.filename,
         file_type=document.file_type,
         status=document.status,
@@ -91,21 +98,32 @@ async def upload_document(
 @router.get("", response_model=list[DocumentResponse])
 def list_documents(
     user_id: str = "demo-user",
+    course_id: int | None = None,
     db: Session = Depends(get_db),
 ) -> list[DocumentResponse]:
+    try:
+        validate_course_scope(db=db, user_id=user_id, course_id=course_id)
+    except CourseNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
     chunk_count = func.count(Chunk.id).label("chunk_count")
-    rows = db.execute(
+    query = (
         select(Document, chunk_count)
         .outerjoin(Chunk)
         .where(Document.user_id == user_id)
-        .group_by(Document.id)
-        .order_by(Document.created_at.desc())
+    )
+    if course_id is not None:
+        query = query.where(Document.course_id == course_id)
+
+    rows = db.execute(
+        query.group_by(Document.id).order_by(Document.created_at.desc())
     ).all()
 
     return [
         DocumentResponse(
             id=document.id,
             user_id=document.user_id,
+            course_id=document.course_id,
             filename=document.filename,
             file_type=document.file_type,
             status=document.status,

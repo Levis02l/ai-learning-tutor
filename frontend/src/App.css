@@ -720,3 +720,46 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.course-block {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(217, 228, 232, 0.9);
+  border-radius: 8px;
+  background: rgba(248, 251, 252, 0.78);
+}
+
+.course-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.course-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 8px;
+}
+
+.button.full {
+  width: 100%;
+}
+
+.scope-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  max-width: 260px;
+  padding: 0 12px;
+  border: 1px solid #cfe0e5;
+  border-radius: 8px;
+  color: #214c5a;
+  background: #eef8fa;
+  font-size: 13px;
+  font-weight: 720;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

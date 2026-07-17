@@ -21,6 +21,7 @@ class RagSource:
     metadata: dict
     distance: float
     similarity: float
+    course_id: int | None = None
 
 
 AnswerStatus = Literal[
@@ -105,9 +106,16 @@ def answer_question(
     query: str,
     user_id: str = "demo-user",
     top_k: int = 5,
+    course_id: int | None = None,
     llm_provider: LLMProvider | None = None,
 ) -> RagAnswer:
-    chunks = retrieve_relevant_chunks(db=db, query=query, user_id=user_id, top_k=top_k)
+    chunks = retrieve_relevant_chunks(
+        db=db,
+        query=query,
+        user_id=user_id,
+        top_k=top_k,
+        course_id=course_id,
+    )
     sources = [_to_rag_source(chunk) for chunk in chunks]
 
     if not chunks:
@@ -176,6 +184,7 @@ def compare_answers(
     query: str,
     user_id: str = "demo-user",
     top_k: int = 5,
+    course_id: int | None = None,
     llm_provider: LLMProvider | None = None,
 ) -> RagComparison:
     provider = llm_provider or OpenAIProvider()
@@ -184,6 +193,7 @@ def compare_answers(
         query=query,
         user_id=user_id,
         top_k=top_k,
+        course_id=course_id,
         llm_provider=provider,
     )
     ungrounded = answer_question_ungrounded(query=query, llm_provider=provider)
@@ -195,6 +205,7 @@ def _to_rag_source(chunk: RetrievedChunk) -> RagSource:
     return RagSource(
         chunk_id=chunk.chunk_id,
         document_id=chunk.document_id,
+        course_id=chunk.course_id,
         filename=chunk.filename,
         content=chunk.content,
         metadata=chunk.metadata,

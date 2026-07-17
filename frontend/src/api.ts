@@ -2,6 +2,7 @@ import type {
   AnswerEvaluation,
   ChatCompareResponse,
   ChatResponse,
+  Course,
   DocumentItem,
   DueReviewItem,
   MasteryResponse,
@@ -27,20 +28,58 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T
 }
 
+function scopedQuery(userId: string, courseId?: number | null, extra = '') {
+  const params = new URLSearchParams({ user_id: userId })
+  if (courseId != null) params.set('course_id', String(courseId))
+  if (extra) {
+    for (const [key, value] of new URLSearchParams(extra)) {
+      params.set(key, value)
+    }
+  }
+  return params.toString()
+}
+
+function scopedBody(userId: string, courseId?: number | null) {
+  return courseId == null ? { user_id: userId } : { user_id: userId, course_id: courseId }
+}
+
 export async function getHealth(): Promise<{ status: string }> {
   return request('/health/live')
 }
 
-export async function listDocuments(userId: string): Promise<DocumentItem[]> {
-  return request(`/documents?user_id=${encodeURIComponent(userId)}`)
+export async function listCourses(userId: string): Promise<Course[]> {
+  return request(`/courses?user_id=${encodeURIComponent(userId)}`)
+}
+
+export async function createCourse(userId: string, name: string): Promise<Course> {
+  return request('/courses', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, name }),
+  })
+}
+
+export async function deleteCourse(userId: string, courseId: number): Promise<void> {
+  await request<void>(`/courses/${courseId}?user_id=${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function listDocuments(
+  userId: string,
+  courseId?: number | null,
+): Promise<DocumentItem[]> {
+  return request(`/documents?${scopedQuery(userId, courseId)}`)
 }
 
 export async function uploadDocument(
   userId: string,
   file: File,
+  courseId?: number | null,
 ): Promise<DocumentItem> {
   const formData = new FormData()
   formData.append('user_id', userId)
+  if (courseId != null) formData.append('course_id', String(courseId))
   formData.append('file', file)
 
   return request('/documents', {
@@ -65,11 +104,12 @@ export async function chat(
   userId: string,
   query: string,
   topK: number,
+  courseId?: number | null,
 ): Promise<ChatResponse> {
   return request('/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: userId, query, top_k: topK }),
+    body: JSON.stringify({ ...scopedBody(userId, courseId), query, top_k: topK }),
   })
 }
 
@@ -77,11 +117,12 @@ export async function compareChat(
   userId: string,
   query: string,
   topK: number,
+  courseId?: number | null,
 ): Promise<ChatCompareResponse> {
   return request('/chat/compare', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: userId, query, top_k: topK }),
+    body: JSON.stringify({ ...scopedBody(userId, courseId), query, top_k: topK }),
   })
 }
 
@@ -91,12 +132,13 @@ export async function generateQuiz(
   count: number,
   difficulty: string,
   topK: number,
+  courseId?: number | null,
 ): Promise<QuizGenerateResponse> {
   return request('/quiz/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      user_id: userId,
+      ...scopedBody(userId, courseId),
       topic,
       count,
       difficulty,
@@ -105,12 +147,18 @@ export async function generateQuiz(
   })
 }
 
-export async function listQuizItems(userId: string): Promise<QuizItem[]> {
-  return request(`/quiz/items?user_id=${encodeURIComponent(userId)}&limit=50`)
+export async function listQuizItems(
+  userId: string,
+  courseId?: number | null,
+): Promise<QuizItem[]> {
+  return request(`/quiz/items?${scopedQuery(userId, courseId, 'limit=50')}`)
 }
 
-export async function listDueReviews(userId: string): Promise<DueReviewItem[]> {
-  return request(`/reviews/due?user_id=${encodeURIComponent(userId)}&limit=20`)
+export async function listDueReviews(
+  userId: string,
+  courseId?: number | null,
+): Promise<DueReviewItem[]> {
+  return request(`/reviews/due?${scopedQuery(userId, courseId, 'limit=20')}`)
 }
 
 export async function submitReview(
@@ -118,12 +166,13 @@ export async function submitReview(
   itemId: number,
   rating: number,
   isCorrect: boolean,
+  courseId?: number | null,
 ): Promise<ReviewRecord> {
   return request('/reviews', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      user_id: userId,
+      ...scopedBody(userId, courseId),
       item_id: itemId,
       rating,
       is_correct: isCorrect,
@@ -131,18 +180,24 @@ export async function submitReview(
   })
 }
 
-export async function getMastery(userId: string): Promise<MasteryResponse> {
-  return request(`/mastery?user_id=${encodeURIComponent(userId)}`)
+export async function getMastery(
+  userId: string,
+  courseId?: number | null,
+): Promise<MasteryResponse> {
+  return request(`/mastery?${scopedQuery(userId, courseId)}`)
 }
 
 export async function evaluateAnswer(
   response: ChatResponse,
   expectedAnswerable: boolean,
+  userId: string,
+  courseId?: number | null,
 ): Promise<AnswerEvaluation> {
   return request('/evaluation/answer', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      ...scopedBody(userId, courseId),
       expected_answerable: expectedAnswerable,
       response,
     }),

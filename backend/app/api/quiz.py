@@ -9,6 +9,7 @@ from app.schemas.quiz import (
     QuizGenerateResponse,
     QuizItemResponse,
 )
+from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.embeddings import EmbeddingConfigurationError
 from app.services.quiz import QuizGenerationError, generate_quiz_items, list_quiz_items
 
@@ -21,14 +22,20 @@ def generate_quiz(
     db: Session = Depends(get_db),
 ) -> QuizGenerateResponse:
     try:
+        validate_course_scope(
+            db=db, user_id=request.user_id, course_id=request.course_id
+        )
         items = generate_quiz_items(
             db=db,
             topic=request.topic,
             user_id=request.user_id,
+            course_id=request.course_id,
             count=request.count,
             difficulty=request.difficulty,
             top_k=request.top_k,
         )
+    except CourseNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except QuizGenerationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -48,6 +55,7 @@ def generate_quiz(
     return QuizGenerateResponse(
         topic=request.topic,
         user_id=request.user_id,
+        course_id=request.course_id,
         items=[_to_response(item) for item in items],
     )
 
@@ -55,10 +63,16 @@ def generate_quiz(
 @router.get("/items", response_model=list[QuizItemResponse])
 def get_quiz_items(
     user_id: str = "demo-user",
+    course_id: int | None = None,
     limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[QuizItemResponse]:
-    items = list_quiz_items(db, user_id=user_id, limit=limit)
+    try:
+        validate_course_scope(db=db, user_id=user_id, course_id=course_id)
+    except CourseNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+    items = list_quiz_items(db, user_id=user_id, course_id=course_id, limit=limit)
     return [_to_response(item) for item in items]
 
 
@@ -66,6 +80,7 @@ def _to_response(item: QuizItem) -> QuizItemResponse:
     return QuizItemResponse(
         id=item.id,
         user_id=item.user_id,
+        course_id=item.course_id,
         question=item.question,
         answer=item.answer,
         difficulty=item.difficulty,

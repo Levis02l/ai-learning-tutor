@@ -16,6 +16,7 @@ TraceabilityLabel = Literal[
 class QuizGenerateRequest(BaseModel):
     topic: str = Field(..., min_length=1)
     user_id: str = "demo-user"
+    course_id: int | None = None
     count: int = Field(default=5, ge=1, le=10)
     difficulty: Difficulty = "medium"
     top_k: int = Field(default=5, ge=1, le=10)
@@ -24,6 +25,7 @@ class QuizGenerateRequest(BaseModel):
 class QuizItemResponse(BaseModel):
     id: int
     user_id: str
+    course_id: int | None = None
     question: str
     answer: str
     difficulty: str
@@ -37,4 +39,5 @@ class QuizItemResponse(BaseModel):
 class QuizGenerateResponse(BaseModel):
     topic: str
     user_id: str
+    course_id: int | None = None
     items: list[QuizItemResponse]

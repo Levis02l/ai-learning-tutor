@@ -9,6 +9,7 @@ from app.schemas.review import (
     ReviewRecordResponse,
     ReviewSubmitRequest,
 )
+from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.review import ReviewError, get_due_review_items, submit_review
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -20,12 +21,21 @@ def create_review(
     db: Session = Depends(get_db),
 ) -> ReviewRecordResponse:
     try:
+        validate_course_scope(
+            db=db, user_id=request.user_id, course_id=request.course_id
+        )
         review = submit_review(
             db=db,
             user_id=request.user_id,
             item_id=request.item_id,
             rating=request.rating,
             is_correct=request.is_correct,
+            course_id=request.course_id,
+        )
+    except CourseNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
         )
     except ReviewError as exc:
         raise HTTPException(
@@ -39,10 +49,24 @@ def create_review(
 @router.get("/due", response_model=list[DueReviewItemResponse])
 def get_due_reviews(
     user_id: str = "demo-user",
+    course_id: int | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[DueReviewItemResponse]:
-    rows = get_due_review_items(db=db, user_id=user_id, limit=limit)
+    try:
+        validate_course_scope(db=db, user_id=user_id, course_id=course_id)
+    except CourseNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
+
+    rows = get_due_review_items(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        limit=limit,
+    )
     return [
         DueReviewItemResponse(
             item=quiz_to_response(item),
@@ -57,6 +81,7 @@ def _review_to_response(review: ReviewRecord) -> ReviewRecordResponse:
         id=review.id,
         user_id=review.user_id,
         item_id=review.item_id,
+        course_id=review.course_id,
         rating=review.rating,
         is_correct=review.is_correct,
         reviewed_at=review.reviewed_at,

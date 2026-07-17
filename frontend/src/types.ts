@@ -1,6 +1,14 @@
+export type Course = {
+  id: number
+  user_id: string
+  name: string
+  created_at: string
+}
+
 export type DocumentItem = {
   id: number
   user_id: string
+  course_id: number | null
   filename: string
   file_type: string
   status: string
@@ -11,6 +19,7 @@ export type DocumentItem = {
 export type ChatSource = {
   chunk_id: number
   document_id: number
+  course_id: number | null
   filename: string
   content: string
   metadata: Record<string, unknown>
@@ -33,6 +42,7 @@ export type ChatClaim = {
 export type ChatResponse = {
   query: string
   user_id: string
+  course_id: number | null
   mode: string
   answer_status:
     | 'answered'
@@ -49,6 +59,7 @@ export type ChatResponse = {
 export type ChatCompareResponse = {
   query: string
   user_id: string
+  course_id: number | null
   grounded: ChatResponse
   ungrounded: ChatResponse
 }
@@ -56,6 +67,7 @@ export type ChatCompareResponse = {
 export type QuizItem = {
   id: number
   user_id: string
+  course_id: number | null
   question: string
   answer: string
   difficulty: string
@@ -69,6 +81,7 @@ export type QuizItem = {
 export type QuizGenerateResponse = {
   topic: string
   user_id: string
+  course_id: number | null
   items: QuizItem[]
 }
 
@@ -76,6 +89,7 @@ export type ReviewRecord = {
   id: number
   user_id: string
   item_id: number
+  course_id: number | null
   rating: number
   is_correct: boolean
   reviewed_at: string
@@ -91,6 +105,7 @@ export type DueReviewItem = {
 
 export type MasteryResponse = {
   user_id: string
+  course_id: number | null
   summary: {
     total_items: number
     reviewed_items: number
@@ -111,6 +126,8 @@ export type MasteryResponse = {
 }
 
 export type AnswerEvaluation = {
+  user_id: string
+  course_id: number | null
   claim_count: number
   supported_claim_count: number
   unsupported_claim_count: number
