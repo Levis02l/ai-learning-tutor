@@ -34,6 +34,7 @@ import {
   listDocuments,
   listDueReviews,
   listQuizItems,
+  submitQuizAttempt,
   submitReview,
   uploadDocument,
 } from './api'
@@ -46,6 +47,7 @@ import type {
   DueReviewItem,
   LearnerState,
   MasteryResponse,
+  QuizAttemptResponse,
   QuizItem,
 } from './types'
 
@@ -894,6 +896,11 @@ function QuizView({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [generated, setGenerated] = useState<QuizItem[]>([])
+  const [selectedOptions, setSelectedOptions] = useState<Record<number, string>>({})
+  const [attemptFeedback, setAttemptFeedback] = useState<Record<number, QuizAttemptResponse>>(
+    {},
+  )
+  const [attemptBusyId, setAttemptBusyId] = useState<number | null>(null)
 
   async function handleGenerate(event: FormEvent) {
     event.preventDefault()
@@ -902,6 +909,8 @@ function QuizView({
     try {
       const response = await generateQuiz(userId, focus, count, difficulty, 5, courseId)
       setGenerated(response.items)
+      setSelectedOptions({})
+      setAttemptFeedback({})
       await onGenerated()
     } catch (quizError) {
       setError(getErrorMessage(quizError))
@@ -911,6 +920,28 @@ function QuizView({
   }
 
   const visibleItems = generated.length > 0 ? generated : items
+
+  async function handleSubmitAttempt(item: QuizItem) {
+    const selectedOptionId = selectedOptions[item.id]
+    if (!selectedOptionId) return
+
+    setAttemptBusyId(item.id)
+    setError('')
+    try {
+      const feedback = await submitQuizAttempt(
+        userId,
+        item.id,
+        selectedOptionId,
+        courseId,
+      )
+      setAttemptFeedback((current) => ({ ...current, [item.id]: feedback }))
+      await onGenerated()
+    } catch (attemptError) {
+      setError(getErrorMessage(attemptError))
+    } finally {
+      setAttemptBusyId(null)
+    }
+  }
 
   return (
     <div className="grid two">
@@ -980,27 +1011,109 @@ function QuizView({
             <EmptyState label="No quiz items" />
           ) : (
             <div className="list">
-              {visibleItems.map((item) => (
-                <div className="item-row" key={item.id}>
-                  <div className="item-topline">
-                    <h4 className="item-title">{item.question}</h4>
-                    <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
-                      {item.traceability_label}
-                    </span>
-                  </div>
-                  <p className="answer">{item.answer}</p>
-                  <div className="badge-row">
-                    <span className="badge">{item.difficulty}</span>
-                    <span className="badge">{item.question_type}</span>
-                    {item.source_chunk_ids.map((id) => (
-                      <span className="badge" key={id}>
-                        chunk {id}
+              {visibleItems.map((item) => {
+                const selectedOptionId = selectedOptions[item.id]
+                const feedback = attemptFeedback[item.id]
+                const hasOptions = item.options.length > 0
+                return (
+                  <div className="item-row quiz-card" key={item.id}>
+                    <div className="item-topline">
+                      <h4 className="item-title">{item.question}</h4>
+                      <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
+                        {item.traceability_label}
                       </span>
-                    ))}
+                    </div>
+
+                    {hasOptions ? (
+                      <div className="option-list" role="group" aria-label="Answer options">
+                        {item.options.map((option) => {
+                          const isSelected = selectedOptionId === option.id
+                          const isCorrect =
+                            feedback && feedback.correct_option_id === option.id
+                          const isIncorrectSelection =
+                            feedback &&
+                            feedback.selected_option_id === option.id &&
+                            !feedback.is_correct
+                          return (
+                            <button
+                              className={[
+                                'option-button',
+                                isSelected ? 'selected' : '',
+                                isCorrect ? 'correct' : '',
+                                isIncorrectSelection ? 'incorrect' : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              disabled={Boolean(feedback)}
+                              key={option.id}
+                              onClick={() =>
+                                setSelectedOptions((current) => ({
+                                  ...current,
+                                  [item.id]: option.id,
+                                }))
+                              }
+                              type="button"
+                            >
+                              <span className="option-letter">{option.id}</span>
+                              <span>{option.text}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="answer">{item.answer}</p>
+                    )}
+
+                    {hasOptions && (
+                      <div className="quiz-actions">
+                        <button
+                          className="button secondary"
+                          disabled={
+                            !selectedOptionId ||
+                            Boolean(feedback) ||
+                            attemptBusyId === item.id
+                          }
+                          onClick={() => void handleSubmitAttempt(item)}
+                          type="button"
+                        >
+                          {attemptBusyId === item.id ? (
+                            <Loader2 size={16} aria-hidden="true" />
+                          ) : (
+                            <CheckCircle2 size={16} aria-hidden="true" />
+                          )}
+                          {feedback ? 'Recorded' : 'Submit answer'}
+                        </button>
+                      </div>
+                    )}
+
+                    {feedback && (
+                      <div
+                        className={`attempt-feedback ${
+                          feedback.is_correct ? 'correct' : 'incorrect'
+                        }`}
+                      >
+                        <strong>{feedback.is_correct ? 'Correct' : 'Not quite'}</strong>
+                        <span>
+                          Correct answer: {feedback.correct_option_id}.{' '}
+                          {feedback.correct_option_text}
+                        </span>
+                        <p>{feedback.explanation}</p>
+                      </div>
+                    )}
+
+                    <div className="badge-row">
+                      <span className="badge">{item.difficulty}</span>
+                      <span className="badge">{item.question_type}</span>
+                      {item.source_chunk_ids.map((id) => (
+                        <span className="badge" key={id}>
+                          chunk {id}
+                        </span>
+                      ))}
+                    </div>
+                    {item.evidence_quote && <p className="quote">{item.evidence_quote}</p>}
                   </div>
-                  {item.evidence_quote && <p className="quote">{item.evidence_quote}</p>}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

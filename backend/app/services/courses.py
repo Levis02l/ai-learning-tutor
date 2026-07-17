@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.course import Course
 from app.models.document import Document
-from app.models.quiz import QuizItem
+from app.models.quiz import QuizAttempt, QuizItem
 from app.models.review import ReviewRecord
 from app.services.ingestion import UPLOAD_DIR
 
@@ -66,6 +66,12 @@ def delete_course(db: Session, *, user_id: str, course_id: int) -> None:
         )
     )
 
+    db.execute(
+        delete(QuizAttempt).where(
+            QuizAttempt.user_id == user_id,
+            QuizAttempt.course_id == course_id,
+        )
+    )
     db.execute(
         delete(ReviewRecord).where(
             ReviewRecord.user_id == user_id,

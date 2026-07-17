@@ -7,6 +7,7 @@ import type {
   DueReviewItem,
   LearnerState,
   MasteryResponse,
+  QuizAttemptResponse,
   QuizGenerateResponse,
   QuizItem,
   ReviewRecord,
@@ -153,6 +154,23 @@ export async function listQuizItems(
   courseId?: number | null,
 ): Promise<QuizItem[]> {
   return request(`/quiz/items?${scopedQuery(userId, courseId, 'limit=50')}`)
+}
+
+export async function submitQuizAttempt(
+  userId: string,
+  quizItemId: number,
+  selectedOptionId: string,
+  courseId?: number | null,
+): Promise<QuizAttemptResponse> {
+  return request('/quiz/attempts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...scopedBody(userId, courseId),
+      quiz_item_id: quizItemId,
+      selected_option_id: selectedOptionId,
+    }),
+  })
 }
 
 export async function listDueReviews(

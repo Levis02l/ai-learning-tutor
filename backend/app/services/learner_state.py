@@ -4,10 +4,11 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.quiz import QuizItem
+from app.models.quiz import QuizAttempt, QuizItem
 from app.models.review import ReviewRecord
 
 RECENT_REVIEW_LIMIT = 10
+RECENT_ATTEMPT_LIMIT = 10
 
 
 @dataclass(frozen=True)
@@ -48,11 +49,24 @@ def compute_learner_state(
             )
         )
     )
+    attempt_query = select(QuizAttempt).where(QuizAttempt.user_id == user_id)
+    if course_id is not None:
+        attempt_query = attempt_query.where(QuizAttempt.course_id == course_id)
+
+    attempts = list(
+        db.scalars(
+            attempt_query.order_by(
+                QuizAttempt.attempted_at.desc(),
+                QuizAttempt.id.desc(),
+            )
+        )
+    )
 
     return _build_learner_state(
         user_id=user_id,
         course_id=course_id,
         quiz_items=quiz_items,
+        attempts=attempts,
         reviews=reviews,
         now=current_time,
     )
@@ -63,9 +77,21 @@ def _build_learner_state(
     user_id: str,
     course_id: int | None,
     quiz_items: list[QuizItem],
-    reviews: list[ReviewRecord],
-    now: datetime,
+    attempts: list[QuizAttempt] | None = None,
+    reviews: list[ReviewRecord] | None = None,
+    now: datetime | None = None,
 ) -> LearnerState:
+    current_time = now or datetime.utcnow()
+    attempts = attempts or []
+    reviews = reviews or []
+    if attempts:
+        return _build_learner_state_from_attempts(
+            user_id=user_id,
+            course_id=course_id,
+            quiz_items=quiz_items,
+            attempts=attempts,
+        )
+
     recent_reviews = reviews[:RECENT_REVIEW_LIMIT]
     attempt_count = len(reviews)
     recent_accuracy = _calculate_recent_accuracy(recent_reviews)
@@ -74,7 +100,7 @@ def _build_learner_state(
     review_due = _has_due_review(
         quiz_items=quiz_items,
         reviews=reviews,
-        now=now,
+        now=current_time,
     )
     mastery_score = _estimate_mastery_score(
         quiz_items=quiz_items,
@@ -94,6 +120,93 @@ def _build_learner_state(
         last_reviewed_at=last_reviewed_at,
         review_due=review_due,
     )
+
+
+def _build_learner_state_from_attempts(
+    *,
+    user_id: str,
+    course_id: int | None,
+    quiz_items: list[QuizItem],
+    attempts: list[QuizAttempt],
+) -> LearnerState:
+    recent_attempts = attempts[:RECENT_ATTEMPT_LIMIT]
+    attempt_count = len(attempts)
+    recent_accuracy = _calculate_attempt_accuracy(recent_attempts)
+    consecutive_errors = _count_consecutive_attempt_errors(attempts)
+    review_due = _has_due_attempt(
+        quiz_items=quiz_items,
+        attempts=attempts,
+        recent_accuracy=recent_accuracy,
+        consecutive_errors=consecutive_errors,
+    )
+    mastery_score = _estimate_attempt_mastery_score(
+        quiz_items=quiz_items,
+        recent_attempts=recent_attempts,
+        recent_accuracy=recent_accuracy,
+        review_due=review_due,
+        consecutive_errors=consecutive_errors,
+    )
+
+    return LearnerState(
+        user_id=user_id,
+        course_id=course_id,
+        mastery_score=mastery_score,
+        recent_accuracy=recent_accuracy,
+        attempt_count=attempt_count,
+        consecutive_errors=consecutive_errors,
+        last_reviewed_at=attempts[0].attempted_at,
+        review_due=review_due,
+    )
+
+
+def _calculate_attempt_accuracy(attempts: list[QuizAttempt]) -> float:
+    if not attempts:
+        return 0.0
+    correct = sum(1 for attempt in attempts if attempt.is_correct)
+    return round(correct / len(attempts), 3)
+
+
+def _count_consecutive_attempt_errors(attempts: list[QuizAttempt]) -> int:
+    count = 0
+    for attempt in attempts:
+        if attempt.is_correct:
+            break
+        count += 1
+    return count
+
+
+def _has_due_attempt(
+    *,
+    quiz_items: list[QuizItem],
+    attempts: list[QuizAttempt],
+    recent_accuracy: float,
+    consecutive_errors: int,
+) -> bool:
+    if not quiz_items:
+        return False
+    attempted_item_ids = {attempt.quiz_item_id for attempt in attempts}
+    has_unattempted_item = any(item.id not in attempted_item_ids for item in quiz_items)
+    return has_unattempted_item or recent_accuracy < 0.5 or consecutive_errors >= 2
+
+
+def _estimate_attempt_mastery_score(
+    *,
+    quiz_items: list[QuizItem],
+    recent_attempts: list[QuizAttempt],
+    recent_accuracy: float,
+    review_due: bool,
+    consecutive_errors: int,
+) -> float:
+    if not quiz_items or not recent_attempts:
+        return 0.0
+
+    attempted_item_ids = {attempt.quiz_item_id for attempt in recent_attempts}
+    coverage = min(len(attempted_item_ids) / len(quiz_items), 1.0)
+    due_penalty = 0.1 if review_due else 0.0
+    error_penalty = min(consecutive_errors / 10, 0.2)
+
+    score = recent_accuracy * 0.65 + coverage * 0.35 - due_penalty - error_penalty
+    return round(max(0.0, min(score, 1.0)), 3)
 
 
 def _calculate_recent_accuracy(reviews: list[ReviewRecord]) -> float:
@@ -159,4 +272,3 @@ def _estimate_mastery_score(
         - error_penalty
     )
     return round(max(0.0, min(score, 1.0)), 3)
-

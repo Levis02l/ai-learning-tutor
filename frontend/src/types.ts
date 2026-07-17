@@ -76,6 +76,11 @@ export type ChatCompareResponse = {
   ungrounded: ChatResponse
 }
 
+export type QuizOption = {
+  id: string
+  text: string
+}
+
 export type QuizItem = {
   id: number
   user_id: string
@@ -85,6 +90,8 @@ export type QuizItem = {
   difficulty: string
   source_chunk_ids: number[]
   evidence_quote: string
+  options: QuizOption[]
+  explanation: string
   question_type: string
   traceability_label: string
   created_at: string
@@ -95,6 +102,21 @@ export type QuizGenerateResponse = {
   user_id: string
   course_id: number | null
   items: QuizItem[]
+}
+
+export type QuizAttemptResponse = {
+  id: number
+  user_id: string
+  course_id: number | null
+  quiz_item_id: number
+  selected_option_id: string
+  selected_option_text: string
+  correct_option_id: string
+  correct_option_text: string
+  is_correct: boolean
+  explanation: string
+  source_chunk_ids: number[]
+  attempted_at: string
 }
 
 export type ReviewRecord = {

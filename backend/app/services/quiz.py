@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.provider import LLMProvider
 from app.models.document import Chunk, Document
-from app.models.quiz import QuizItem
+from app.models.quiz import QuizAttempt, QuizItem
 from app.schemas.quiz import Difficulty, QuestionType, TraceabilityLabel
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 
@@ -17,9 +17,21 @@ class QuizGenerationError(RuntimeError):
     pass
 
 
+class QuizAttemptError(RuntimeError):
+    pass
+
+
+class GeneratedQuizOption(BaseModel):
+    id: str = Field(..., min_length=1, max_length=8)
+    text: str = Field(..., min_length=1)
+
+
 class GeneratedQuizItem(BaseModel):
     question: str = Field(..., min_length=1)
     answer: str = Field(..., min_length=1)
+    options: list[GeneratedQuizOption] = Field(default_factory=list)
+    correct_option_id: str = ""
+    explanation: str = ""
     source_chunk_ids: list[int] = Field(default_factory=list)
     evidence_quote: str = ""
     question_type: QuestionType = "conceptual"
@@ -34,8 +46,10 @@ SYSTEM_PROMPT = (
     "You generate study quiz questions for a student's uploaded course materials.\n"
     "Use only the provided source excerpts.\n"
     "Return valid JSON only. Do not include markdown fences or commentary.\n"
-    "Every item must include question, answer, source_chunk_ids, evidence_quote, "
-    "question_type, and traceability_label.\n"
+    "Generate multiple-choice questions with exactly four options: A, B, C, D.\n"
+    "Every item must include question, options, correct_option_id, answer, "
+    "explanation, source_chunk_ids, evidence_quote, question_type, and "
+    "traceability_label.\n"
     "Allowed question_type values: definition, conceptual, application, comparison.\n"
     "Allowed traceability_label values: fully_traceable, partially_traceable, "
     "weakly_traceable, not_traceable."
@@ -73,7 +87,7 @@ def generate_quiz_items(
             difficulty=difficulty,
             chunks=chunks,
         ),
-        max_tokens=1200,
+        max_tokens=2200,
         temperature=0.3,
     )
     payload = _parse_generated_quiz(response.text)
@@ -117,6 +131,69 @@ def list_quiz_items(
             query.order_by(QuizItem.created_at.desc()).limit(limit)
         )
     )
+
+
+def submit_quiz_attempt(
+    db: Session,
+    *,
+    user_id: str,
+    quiz_item_id: int,
+    selected_option_id: str,
+    course_id: int | None = None,
+) -> QuizAttempt:
+    query = select(QuizItem).where(
+        QuizItem.id == quiz_item_id,
+        QuizItem.user_id == user_id,
+    )
+    if course_id is not None:
+        query = query.where(QuizItem.course_id == course_id)
+
+    item = db.scalar(query)
+    if item is None:
+        raise QuizAttemptError("Quiz item not found for this user")
+
+    graded = _grade_quiz_attempt(item=item, selected_option_id=selected_option_id)
+    attempt = QuizAttempt(
+        user_id=user_id,
+        course_id=item.course_id,
+        quiz_item_id=item.id,
+        selected_option_id=graded["selected_option_id"],
+        selected_option_text=graded["selected_option_text"],
+        correct_option_id=graded["correct_option_id"],
+        correct_option_text=graded["correct_option_text"],
+        is_correct=graded["is_correct"],
+    )
+    db.add(attempt)
+    db.commit()
+    db.refresh(attempt)
+    return attempt
+
+
+def _grade_quiz_attempt(
+    *,
+    item: QuizItem,
+    selected_option_id: str,
+) -> dict:
+    options = _normalize_options(item.options or [])
+    correct_option_id = (item.correct_option_id or "").strip().upper()
+    selected_id = selected_option_id.strip().upper()
+
+    if not options or not correct_option_id:
+        raise QuizAttemptError("Quiz item is not auto-gradable")
+
+    option_by_id = {option["id"]: option["text"] for option in options}
+    if correct_option_id not in option_by_id:
+        raise QuizAttemptError("Quiz item has an invalid correct option")
+    if selected_id not in option_by_id:
+        raise QuizAttemptError("Selected option is not valid for this quiz item")
+
+    return {
+        "selected_option_id": selected_id,
+        "selected_option_text": option_by_id[selected_id],
+        "correct_option_id": correct_option_id,
+        "correct_option_text": option_by_id[correct_option_id],
+        "is_correct": selected_id == correct_option_id,
+    }
 
 
 def _retrieve_quiz_chunks(
@@ -190,7 +267,15 @@ Return this exact JSON shape:
   "items": [
     {{
       "question": "question text",
-      "answer": "answer text",
+      "options": [
+        {{"id": "A", "text": "first option"}},
+        {{"id": "B", "text": "second option"}},
+        {{"id": "C", "text": "third option"}},
+        {{"id": "D", "text": "fourth option"}}
+      ],
+      "correct_option_id": "B",
+      "answer": "short final answer",
+      "explanation": "why the correct option is right, grounded in the source",
       "source_chunk_ids": [123],
       "evidence_quote": "short quote or close paraphrase from the source",
       "question_type": "conceptual",
@@ -238,6 +323,16 @@ def _to_quiz_item(
     elif traceability_label == "not_traceable":
         traceability_label = "weakly_traceable"
 
+    options = _normalize_options([option.model_dump() for option in item.options])
+    correct_option_id = item.correct_option_id.strip().upper()
+    option_ids = {option["id"] for option in options}
+    if len(options) != 4:
+        raise QuizGenerationError("Generated quiz item must contain four options")
+    if len(option_ids) != 4:
+        raise QuizGenerationError("Generated quiz item must contain unique options")
+    if correct_option_id not in option_ids:
+        raise QuizGenerationError("Generated quiz item has invalid correct option")
+
     return QuizItem(
         user_id=user_id,
         course_id=course_id,
@@ -246,6 +341,19 @@ def _to_quiz_item(
         difficulty=difficulty,
         source_chunk_ids=source_chunk_ids,
         evidence_quote=item.evidence_quote,
+        options=options,
+        correct_option_id=correct_option_id,
+        explanation=item.explanation or item.answer,
         question_type=item.question_type,
         traceability_label=traceability_label,
     )
+
+
+def _normalize_options(options: list[dict]) -> list[dict[str, str]]:
+    normalized: list[dict[str, str]] = []
+    for option in options:
+        option_id = str(option.get("id", "")).strip().upper()
+        text = str(option.get("text", "")).strip()
+        if option_id and text:
+            normalized.append({"id": option_id, "text": text})
+    return normalized

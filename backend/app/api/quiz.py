@@ -3,15 +3,24 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.llm.provider import LLMConfigurationError, LLMProviderError
-from app.models.quiz import QuizItem
+from app.models.quiz import QuizAttempt, QuizItem
 from app.schemas.quiz import (
+    QuizAttemptRequest,
+    QuizAttemptResponse,
     QuizGenerateRequest,
     QuizGenerateResponse,
     QuizItemResponse,
+    QuizOptionResponse,
 )
 from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.embeddings import EmbeddingConfigurationError
-from app.services.quiz import QuizGenerationError, generate_quiz_items, list_quiz_items
+from app.services.quiz import (
+    QuizAttemptError,
+    QuizGenerationError,
+    generate_quiz_items,
+    list_quiz_items,
+    submit_quiz_attempt,
+)
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
@@ -76,6 +85,34 @@ def get_quiz_items(
     return [_to_response(item) for item in items]
 
 
+@router.post("/attempts", response_model=QuizAttemptResponse)
+def create_quiz_attempt(
+    request: QuizAttemptRequest,
+    db: Session = Depends(get_db),
+) -> QuizAttemptResponse:
+    try:
+        validate_course_scope(
+            db=db, user_id=request.user_id, course_id=request.course_id
+        )
+        attempt = submit_quiz_attempt(
+            db=db,
+            user_id=request.user_id,
+            course_id=request.course_id,
+            quiz_item_id=request.quiz_item_id,
+            selected_option_id=request.selected_option_id,
+        )
+    except CourseNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except QuizAttemptError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        )
+
+    item = attempt.quiz_item
+    return _attempt_to_response(attempt=attempt, item=item)
+
+
 def _to_response(item: QuizItem) -> QuizItemResponse:
     return QuizItemResponse(
         id=item.id,
@@ -86,7 +123,30 @@ def _to_response(item: QuizItem) -> QuizItemResponse:
         difficulty=item.difficulty,
         source_chunk_ids=item.source_chunk_ids,
         evidence_quote=item.evidence_quote,
+        options=[QuizOptionResponse(**option) for option in item.options or []],
+        explanation=item.explanation or item.answer,
         question_type=item.question_type,
         traceability_label=item.traceability_label,
         created_at=item.created_at,
+    )
+
+
+def _attempt_to_response(
+    *,
+    attempt: QuizAttempt,
+    item: QuizItem,
+) -> QuizAttemptResponse:
+    return QuizAttemptResponse(
+        id=attempt.id,
+        user_id=attempt.user_id,
+        course_id=attempt.course_id,
+        quiz_item_id=attempt.quiz_item_id,
+        selected_option_id=attempt.selected_option_id,
+        selected_option_text=attempt.selected_option_text,
+        correct_option_id=attempt.correct_option_id,
+        correct_option_text=attempt.correct_option_text,
+        is_correct=attempt.is_correct,
+        explanation=item.explanation or item.answer,
+        source_chunk_ids=item.source_chunk_ids,
+        attempted_at=attempt.attempted_at,
     )
