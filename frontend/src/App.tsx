@@ -781,6 +781,9 @@ function AnswerPanel({ title, response }: { title: string; response: ChatRespons
       <div className="panel-body stack">
         <div className="badge-row">
           <span className="badge info">{response.mode}</span>
+          <span className={`badge ${evidenceBadgeClass(response.evidence_state.evidence_strength)}`}>
+            evidence {response.evidence_state.evidence_strength}
+          </span>
           <span className="badge">{Math.round(response.overall_groundedness * 100)}%</span>
           <span className="badge">{response.claims.length} claims</span>
         </div>
@@ -798,7 +801,11 @@ function EvidenceInspector({ response }: { response: ChatResponse | null }) {
           <Gauge size={18} aria-hidden="true" />
           Evidence
         </h3>
-        {response && <span className="badge info">{response.sources.length} sources</span>}
+        {response && (
+          <span className={`badge ${evidenceBadgeClass(response.evidence_state.evidence_strength)}`}>
+            {response.evidence_state.evidence_strength}
+          </span>
+        )}
       </div>
       <div className="panel-body stack">
         {!response ? (
@@ -810,6 +817,25 @@ function EvidenceInspector({ response }: { response: ChatResponse | null }) {
                 className="progress-fill"
                 style={{ width: `${Math.round(response.overall_groundedness * 100)}%` }}
               />
+            </div>
+            <div className="badge-row">
+              <span className="badge info">{response.sources.length} sources</span>
+              <span className="badge">
+                {Math.round(response.evidence_state.source_coverage * 100)}% coverage
+              </span>
+              <span className="badge good">
+                {response.evidence_state.supported_claim_count} supported
+              </span>
+              {response.evidence_state.unsupported_claim_count > 0 && (
+                <span className="badge warn">
+                  {response.evidence_state.unsupported_claim_count} unsupported
+                </span>
+              )}
+              {response.evidence_state.contradicted_claim_count > 0 && (
+                <span className="badge bad">
+                  {response.evidence_state.contradicted_claim_count} contradicted
+                </span>
+              )}
             </div>
             <div className="list">
               {response.claims.map((claim, index) => (
@@ -1205,6 +1231,13 @@ function supportBadgeClass(label: string) {
 function traceBadgeClass(label: string) {
   if (label === 'fully_traceable') return 'good'
   if (label === 'partially_traceable' || label === 'weakly_traceable') return 'warn'
+  return 'bad'
+}
+
+function evidenceBadgeClass(label: string) {
+  if (label === 'high') return 'good'
+  if (label === 'medium') return 'info'
+  if (label === 'low') return 'warn'
   return 'bad'
 }
 

@@ -60,6 +60,8 @@ def test_chat_returns_grounded_answer(monkeypatch) -> None:
     assert body["answer_status"] == "answered"
     assert body["claims"][0]["support_level"] == "fully_supported"
     assert body["overall_groundedness"] == 1.0
+    assert body["evidence_state"]["evidence_strength"] == "high"
+    assert body["evidence_state"]["supported_claim_count"] == 1
     assert body["sources"][0]["chunk_id"] == 82
 
 
@@ -134,6 +136,8 @@ def test_chat_compare_returns_grounded_and_ungrounded(monkeypatch) -> None:
     assert body["ungrounded"]["mode"] == "ungrounded"
     assert body["ungrounded"]["sources"] == []
     assert body["ungrounded"]["overall_groundedness"] == 0.0
+    assert body["grounded"]["evidence_state"]["evidence_strength"] == "high"
+    assert body["ungrounded"]["evidence_state"]["evidence_strength"] == "none"
 
 
 def test_chat_returns_502_when_llm_generation_fails(monkeypatch) -> None:

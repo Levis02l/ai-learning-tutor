@@ -12,6 +12,7 @@ from app.schemas.chat import (
 )
 from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.embeddings import EmbeddingConfigurationError
+from app.services.evidence_state import EvidenceState, build_evidence_state
 from app.services.rag import RagAnswer, answer_question, compare_answers
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -103,6 +104,7 @@ def compare_chat_modes(
 
 
 def _to_chat_payload(result: RagAnswer) -> dict:
+    evidence_state = build_evidence_state(result)
     return {
         "mode": result.mode,
         "answer_status": result.answer_status,
@@ -117,6 +119,7 @@ def _to_chat_payload(result: RagAnswer) -> dict:
             for claim in result.claims
         ],
         "overall_groundedness": result.overall_groundedness,
+        "evidence_state": _to_evidence_state_payload(evidence_state),
         "sources": [
             ChatSource(
                 chunk_id=source.chunk_id,
@@ -130,4 +133,15 @@ def _to_chat_payload(result: RagAnswer) -> dict:
             )
             for source in result.sources
         ],
+    }
+
+
+def _to_evidence_state_payload(state: EvidenceState) -> dict:
+    return {
+        "evidence_strength": state.evidence_strength,
+        "source_coverage": state.source_coverage,
+        "supported_claim_count": state.supported_claim_count,
+        "unsupported_claim_count": state.unsupported_claim_count,
+        "contradicted_claim_count": state.contradicted_claim_count,
+        "answer_status": state.answer_status,
     }

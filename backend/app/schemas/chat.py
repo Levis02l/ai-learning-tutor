@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.evidence_state import EvidenceStateResponse
+
 AnswerStatus = Literal[
     "answered",
     "partially_answered",
@@ -52,6 +54,7 @@ class ChatResponse(BaseModel):
     answer: str
     claims: list[ChatClaim]
     overall_groundedness: float
+    evidence_state: EvidenceStateResponse
     sources: list[ChatSource]
 
 

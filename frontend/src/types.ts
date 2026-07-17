@@ -39,20 +39,32 @@ export type ChatClaim = {
   evidence_quote: string
 }
 
+export type AnswerStatus =
+  | 'answered'
+  | 'partially_answered'
+  | 'refused_no_evidence'
+  | 'refused_ambiguous_material'
+  | 'needs_more_material'
+
+export type EvidenceStrength = 'none' | 'low' | 'medium' | 'high' | 'conflicting'
+
 export type ChatResponse = {
   query: string
   user_id: string
   course_id: number | null
   mode: string
-  answer_status:
-    | 'answered'
-    | 'partially_answered'
-    | 'refused_no_evidence'
-    | 'refused_ambiguous_material'
-    | 'needs_more_material'
+  answer_status: AnswerStatus
   answer: string
   claims: ChatClaim[]
   overall_groundedness: number
+  evidence_state: {
+    evidence_strength: EvidenceStrength
+    source_coverage: number
+    supported_claim_count: number
+    unsupported_claim_count: number
+    contradicted_claim_count: number
+    answer_status: AnswerStatus
+  }
   sources: ChatSource[]
 }
 

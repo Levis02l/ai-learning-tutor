@@ -27,6 +27,14 @@ def test_evaluation_answer_endpoint() -> None:
                     }
                 ],
                 "overall_groundedness": 1.0,
+                "evidence_state": {
+                    "evidence_strength": "high",
+                    "source_coverage": 1.0,
+                    "supported_claim_count": 1,
+                    "unsupported_claim_count": 0,
+                    "contradicted_claim_count": 0,
+                    "answer_status": "answered",
+                },
                 "sources": [],
             },
         },
