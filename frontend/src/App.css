@@ -562,6 +562,58 @@ button {
   font-size: 12px;
 }
 
+.section-title {
+  margin: 0;
+  color: #26363d;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.decision-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.decision-summary > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(224, 233, 236, 0.95);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.decision-summary strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.snapshot-grid .metric {
+  padding: 10px;
+  box-shadow: none;
+}
+
+.snapshot-grid .metric-value {
+  font-size: 17px;
+}
+
+.evidence-snapshot {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(224, 233, 236, 0.95);
+  border-radius: 8px;
+  background: rgba(248, 251, 252, 0.82);
+}
+
 .claim-card {
   display: grid;
   gap: 8px;
@@ -699,6 +751,16 @@ button {
   cursor: default;
 }
 
+.option-button.static {
+  cursor: default;
+}
+
+.option-button.static:hover {
+  border-color: #d8e5e9;
+  background: #ffffff;
+  box-shadow: none;
+}
+
 .option-letter {
   display: inline-grid;
   width: 28px;
@@ -830,7 +892,9 @@ button {
 
   .form-row,
   .metric-strip,
-  .grid.three {
+  .grid.three,
+  .decision-summary,
+  .snapshot-grid {
     grid-template-columns: 1fr;
   }
 }

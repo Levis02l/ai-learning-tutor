@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bot,
   BookOpen,
   Brain,
   CheckCircle2,
@@ -37,6 +38,7 @@ import {
   listQuizItems,
   submitQuizAttempt,
   submitReview,
+  tutorRespond,
   uploadDocument,
 } from './api'
 import type {
@@ -50,9 +52,10 @@ import type {
   MasteryResponse,
   QuizAttemptResponse,
   QuizItem,
+  TutorResponse,
 } from './types'
 
-type View = 'documents' | 'chat' | 'quiz' | 'review' | 'evaluation'
+type View = 'documents' | 'tutor' | 'chat' | 'quiz' | 'review' | 'evaluation'
 type HealthStatus = 'checking' | 'connected' | 'unreachable'
 
 const userIdDefault = 'demo-user'
@@ -166,6 +169,7 @@ function App() {
 
   const navItems = [
     { id: 'documents' as const, label: 'Documents', icon: Library },
+    { id: 'tutor' as const, label: 'Adaptive Tutor', icon: Bot },
     { id: 'chat' as const, label: 'Evidence Chat', icon: MessageSquareText },
     { id: 'quiz' as const, label: 'Quiz Lab', icon: ClipboardList },
     { id: 'review' as const, label: 'Review', icon: Brain },
@@ -300,6 +304,13 @@ function App() {
             onUploaded={refreshCoreData}
           />
         )}
+        {activeView === 'tutor' && (
+          <TutorView
+            courseId={selectedCourseId}
+            userId={userId}
+            onResponded={refreshCoreData}
+          />
+        )}
         {activeView === 'chat' && <ChatView courseId={selectedCourseId} userId={userId} />}
         {activeView === 'quiz' && (
           <QuizView
@@ -322,6 +333,316 @@ function App() {
         )}
         {activeView === 'evaluation' && <EvaluationView courseId={selectedCourseId} userId={userId} />}
       </main>
+    </div>
+  )
+}
+
+function TutorView({
+  courseId,
+  userId,
+  onResponded,
+}: {
+  courseId: number | null
+  userId: string
+  onResponded: () => Promise<void>
+}) {
+  const [query, setQuery] = useState('Explain artificial intelligence')
+  const [topK, setTopK] = useState(5)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [response, setResponse] = useState<TutorResponse | null>(null)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (!query.trim()) return
+
+    setBusy(true)
+    setError('')
+    setResponse(null)
+    try {
+      const result = await tutorRespond(userId, query, topK, courseId)
+      setResponse(result)
+      await onResponded()
+    } catch (tutorError) {
+      setError(getErrorMessage(tutorError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="grid two">
+      <section className="panel">
+        <div className="panel-header">
+          <h3 className="panel-title">
+            <Bot size={18} aria-hidden="true" />
+            Tutor
+          </h3>
+          <span className="badge info">policy-aware</span>
+        </div>
+        <div className="panel-body stack">
+          <form className="stack" onSubmit={handleSubmit}>
+            <textarea
+              className="textarea"
+              onChange={(event) => setQuery(event.target.value)}
+              value={query}
+            />
+            <div className="form-row">
+              <label>
+                <span className="field-label">Top K</span>
+                <input
+                  className="input"
+                  max={10}
+                  min={1}
+                  onChange={(event) => setTopK(Number(event.target.value))}
+                  type="number"
+                  value={topK}
+                />
+              </label>
+              <div />
+              <button className="button" disabled={busy || !query.trim()} type="submit">
+                {busy ? (
+                  <Loader2 className="spin" size={16} aria-hidden="true" />
+                ) : (
+                  <Send size={16} aria-hidden="true" />
+                )}
+                Respond
+              </button>
+            </div>
+          </form>
+
+          {error && <div className="error">{error}</div>}
+
+          {!response ? (
+            <EmptyState label="Ask the tutor to trigger policy-aware teaching." />
+          ) : (
+            <>
+              <TutorAnswerCard response={response} />
+              {response.quiz_items.length > 0 && (
+                <TutorQuizItems items={response.quiz_items} />
+              )}
+              {response.review_items.length > 0 && (
+                <TutorReviewItems items={response.review_items} />
+              )}
+              {response.claims.length > 0 && <TutorClaims response={response} />}
+            </>
+          )}
+        </div>
+      </section>
+
+      <TutorDecisionPanel response={response} />
+    </div>
+  )
+}
+
+function TutorAnswerCard({ response }: { response: TutorResponse }) {
+  return (
+    <div className="answer-card">
+      <div className="panel-header">
+        <h3 className="panel-title">
+          <MessageSquareText size={18} aria-hidden="true" />
+          Response
+        </h3>
+        <span className={`badge ${tutorStatusBadgeClass(response.answer_status)}`}>
+          {response.answer_status}
+        </span>
+      </div>
+      <div className="panel-body stack">
+        <div className="badge-row">
+          <span className="badge info">{response.decision.selected_action}</span>
+          <span className="badge">{response.decision.response_strategy}</span>
+          <span className="badge">{response.decision.detected_intent}</span>
+        </div>
+        <p className="answer">{response.answer}</p>
+        <div className="notice">{response.suggested_next_step}</div>
+      </div>
+    </div>
+  )
+}
+
+function TutorDecisionPanel({ response }: { response: TutorResponse | null }) {
+  return (
+    <aside className="panel">
+      <div className="panel-header">
+        <h3 className="panel-title">
+          <Gauge size={18} aria-hidden="true" />
+          Decision
+        </h3>
+        {response && (
+          <span className="badge info">{response.decision.policy_version}</span>
+        )}
+      </div>
+      <div className="panel-body stack">
+        {!response ? (
+          <EmptyState label="No tutor decision yet" />
+        ) : (
+          <>
+            <div className="decision-summary">
+              <div>
+                <span className="field-label">Action</span>
+                <strong>{response.decision.selected_action}</strong>
+              </div>
+              <div>
+                <span className="field-label">Strategy</span>
+                <strong>{response.decision.response_strategy}</strong>
+              </div>
+              <div>
+                <span className="field-label">Intent</span>
+                <strong>{response.decision.detected_intent}</strong>
+              </div>
+              <div>
+                <span className="field-label">Reason</span>
+                <strong>{response.decision.primary_reason}</strong>
+              </div>
+            </div>
+            <p className="quote">{response.decision.teaching_reason}</p>
+            <TutorLearnerSnapshot response={response} />
+            <TutorEvidenceSnapshot response={response} />
+            {response.sources.length > 0 && (
+              <div className="source-box list">
+                {response.sources.map((source) => (
+                  <div className="item-row compact" key={source.chunk_id}>
+                    <div className="item-topline">
+                      <h4 className="item-title">{source.filename}</h4>
+                      <span className="badge">
+                        {Math.round(source.similarity * 100)}%
+                      </span>
+                    </div>
+                    <p className="muted small">{source.content.slice(0, 320)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </aside>
+  )
+}
+
+function TutorLearnerSnapshot({ response }: { response: TutorResponse }) {
+  const state = response.decision.learner_state_snapshot
+  return (
+    <div className="snapshot-grid">
+      <Metric label="Mastery" value={`${Math.round(state.mastery_score * 100)}%`} />
+      <Metric label="Accuracy" value={`${Math.round(state.recent_accuracy * 100)}%`} />
+      <Metric label="Attempts" value={state.attempt_count} />
+      <Metric label="Errors" value={state.consecutive_errors} />
+    </div>
+  )
+}
+
+function TutorEvidenceSnapshot({ response }: { response: TutorResponse }) {
+  const evidence = response.decision.evidence_state_snapshot
+  return (
+    <div className="evidence-snapshot">
+      <div className="badge-row">
+        <span className={`badge ${evidenceBadgeClass(evidence.evidence_strength)}`}>
+          evidence {evidence.evidence_strength}
+        </span>
+        <span className="badge">
+          coverage {Math.round(evidence.source_coverage * 100)}%
+        </span>
+        <span className="badge">
+          top {Math.round(evidence.top_similarity * 100)}%
+        </span>
+        <span className="badge">{evidence.retrieved_chunk_count} chunks</span>
+      </div>
+      <p className="muted small">{evidence.reason}</p>
+    </div>
+  )
+}
+
+function TutorQuizItems({ items }: { items: QuizItem[] }) {
+  return (
+    <div className="stack">
+      <h3 className="section-title">Generated Practice</h3>
+      <div className="list">
+        {items.map((item) => (
+          <div className="item-row quiz-card" key={item.id}>
+            <div className="item-topline">
+              <h4 className="item-title">{item.question}</h4>
+              <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
+                {item.traceability_label}
+              </span>
+            </div>
+            {item.options.length > 0 && (
+              <div className="option-list">
+                {item.options.map((option) => (
+                  <div className="option-button static" key={option.id}>
+                    <span className="option-letter">{option.id}</span>
+                    <span>{option.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="badge-row">
+              <span className="badge">{item.difficulty}</span>
+              <span className="badge">{item.question_type}</span>
+              {item.source_chunk_ids.map((id) => (
+                <span className="badge" key={id}>
+                  chunk {id}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TutorReviewItems({ items }: { items: DueReviewItem[] }) {
+  return (
+    <div className="stack">
+      <h3 className="section-title">Due Review</h3>
+      <div className="list">
+        {items.map(({ item, latest_review }) => (
+          <div className="item-row compact" key={item.id}>
+            <div className="item-topline">
+              <h4 className="item-title">{item.question}</h4>
+              <span className="badge warn">due</span>
+            </div>
+            <div className="badge-row">
+              <span className="badge">{item.difficulty}</span>
+              {latest_review && (
+                <span className="badge">rating {latest_review.rating}</span>
+              )}
+              {latest_review?.due_at && (
+                <span className="badge">{formatDate(latest_review.due_at)}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TutorClaims({ response }: { response: TutorResponse }) {
+  return (
+    <div className="stack">
+      <h3 className="section-title">Claims</h3>
+      <div className="list">
+        {response.claims.map((claim, index) => (
+          <div className={`claim-card ${claim.support_level}`} key={`${claim.claim}-${index}`}>
+            <div className="item-topline">
+              <h4 className="item-title">{claim.claim}</h4>
+              <span className={`badge ${supportBadgeClass(claim.support_level)}`}>
+                {claim.support_level}
+              </span>
+            </div>
+            <div className="badge-row">
+              {claim.source_chunk_ids.map((id) => (
+                <span className="badge" key={id}>
+                  chunk {id}
+                </span>
+              ))}
+            </div>
+            {claim.evidence_quote && <p className="quote">{claim.evidence_quote}</p>}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1378,6 +1699,7 @@ function statusDotClass(status: HealthStatus) {
 function pageTitle(view: View) {
   const titles = {
     documents: 'Documents',
+    tutor: 'Adaptive Tutor',
     chat: 'Evidence Chat',
     quiz: 'Quiz Lab',
     review: 'Review & Mastery',
@@ -1389,6 +1711,7 @@ function pageTitle(view: View) {
 function pageKicker(view: View) {
   const subtitles = {
     documents: 'Course material ingestion and vector knowledge base',
+    tutor: 'Policy-aware tutoring actions driven by evidence and learner state',
     chat: 'Claim-level evidence, citations and grounded comparison',
     quiz: 'Traceable practice items linked to source chunks',
     review: 'Due items, ratings and mastery indicators',
@@ -1418,8 +1741,16 @@ function traceBadgeClass(label: string) {
 
 function evidenceBadgeClass(label: string) {
   if (label === 'high') return 'good'
-  if (label === 'medium') return 'info'
+  if (label === 'medium' || label === 'not_required') return 'info'
   if (label === 'low') return 'warn'
+  return 'bad'
+}
+
+function tutorStatusBadgeClass(label: string) {
+  if (label === 'answered' || label === 'quiz_ready' || label === 'review_ready') {
+    return 'good'
+  }
+  if (label === 'partially_answered' || label === 'needs_more_material') return 'warn'
   return 'bad'
 }
 

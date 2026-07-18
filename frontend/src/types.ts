@@ -47,6 +47,12 @@ export type AnswerStatus =
   | 'needs_more_material'
 
 export type EvidenceStrength = 'none' | 'low' | 'medium' | 'high' | 'conflicting'
+export type TutorEvidenceStrength =
+  | 'high'
+  | 'medium'
+  | 'low'
+  | 'insufficient'
+  | 'not_required'
 
 export type ChatResponse = {
   query: string
@@ -175,6 +181,53 @@ export type LearnerState = {
   consecutive_errors: number
   last_reviewed_at: string | null
   review_due: boolean
+}
+
+export type TutorDecision = {
+  decision_id: number
+  user_id: string
+  course_id: number | null
+  query: string
+  detected_intent: 'explain' | 'hint' | 'practice' | 'review' | 'unknown'
+  selected_action: 'explain' | 'hint' | 'quiz' | 'review' | 'refuse'
+  response_strategy:
+    | 'scaffolded'
+    | 'guided'
+    | 'concise'
+    | 'challenging'
+    | 'refusal'
+    | 'review_drill'
+  primary_reason: string
+  teaching_reason: string
+  suggested_next_step: string
+  policy_version: string
+  learner_state_snapshot: LearnerState
+  evidence_state_snapshot: {
+    evidence_strength: TutorEvidenceStrength
+    source_coverage: number
+    retrieved_chunk_count: number
+    top_similarity: number
+    requires_evidence: boolean
+    reason: string
+  }
+}
+
+export type TutorResponse = {
+  decision: TutorDecision
+  answer_status:
+    | 'answered'
+    | 'partially_answered'
+    | 'refused_no_evidence'
+    | 'refused_ambiguous_material'
+    | 'needs_more_material'
+    | 'review_ready'
+    | 'quiz_ready'
+  answer: string
+  claims: ChatClaim[]
+  sources: ChatSource[]
+  quiz_items: QuizItem[]
+  review_items: DueReviewItem[]
+  suggested_next_step: string
 }
 
 export type AnswerEvaluation = {

@@ -12,6 +12,7 @@ import type {
   QuizItem,
   QuizItemRemovalResponse,
   ReviewRecord,
+  TutorResponse,
 } from './types'
 
 const API_BASE = '/api'
@@ -123,6 +124,19 @@ export async function compareChat(
   courseId?: number | null,
 ): Promise<ChatCompareResponse> {
   return request('/chat/compare', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...scopedBody(userId, courseId), query, top_k: topK }),
+  })
+}
+
+export async function tutorRespond(
+  userId: string,
+  query: string,
+  topK: number,
+  courseId?: number | null,
+): Promise<TutorResponse> {
+  return request('/tutor/respond', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...scopedBody(userId, courseId), query, top_k: topK }),
