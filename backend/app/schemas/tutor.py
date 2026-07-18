@@ -2,6 +2,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.chat import ChatClaim, ChatSource
+from app.schemas.quiz import QuizItemResponse
+from app.schemas.review import DueReviewItemResponse
+
 DetectedIntent = Literal["explain", "hint", "practice", "review", "unknown"]
 TeachingAction = Literal["explain", "hint", "quiz", "review", "refuse"]
 ResponseStrategy = Literal[
@@ -62,3 +66,29 @@ class TutorDecisionResponse(BaseModel):
     policy_version: str
     learner_state_snapshot: TutorLearnerStateSnapshot
     evidence_state_snapshot: TutorEvidenceStateSnapshot
+
+
+TutorAnswerStatus = Literal[
+    "answered",
+    "partially_answered",
+    "refused_no_evidence",
+    "refused_ambiguous_material",
+    "needs_more_material",
+    "review_ready",
+    "quiz_ready",
+]
+
+
+class TutorResponseRequest(TutorDecisionRequest):
+    pass
+
+
+class TutorResponseResponse(BaseModel):
+    decision: TutorDecisionResponse
+    answer_status: TutorAnswerStatus
+    answer: str
+    claims: list[ChatClaim] = Field(default_factory=list)
+    sources: list[ChatSource] = Field(default_factory=list)
+    quiz_items: list[QuizItemResponse] = Field(default_factory=list)
+    review_items: list[DueReviewItemResponse] = Field(default_factory=list)
+    suggested_next_step: str
