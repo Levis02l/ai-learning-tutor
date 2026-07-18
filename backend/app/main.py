@@ -11,6 +11,7 @@ from app.api.mastery import router as mastery_router
 from app.api.quiz import router as quiz_router
 from app.api.reviews import router as reviews_router
 from app.api.search import router as search_router
+from app.api.tutor import router as tutor_router
 
 app = FastAPI(title="AI 学习导师", version="0.1.0")
 
@@ -32,3 +33,4 @@ app.include_router(reviews_router)
 app.include_router(mastery_router)
 app.include_router(learner_state_router)
 app.include_router(evaluation_router)
+app.include_router(tutor_router)

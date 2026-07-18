@@ -1,0 +1,73 @@
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.services.policy import POLICY_VERSION, PolicyDecision
+
+
+def test_tutor_decide_returns_policy_decision(monkeypatch) -> None:
+    captured: dict[str, int | str | None] = {}
+
+    def fake_validate(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["validated_course_id"] = kwargs["course_id"]
+
+    def fake_create_decision(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["query"] = kwargs["query"]
+        captured["course_id"] = kwargs["course_id"]
+        return PolicyDecision(
+            decision_id=12,
+            user_id="demo-user",
+            course_id=4,
+            query=kwargs["query"],
+            detected_intent="explain",
+            selected_action="explain",
+            response_strategy="scaffolded",
+            primary_reason="explicit_explanation_request",
+            teaching_reason="The learner asked for an explanation.",
+            suggested_next_step="Explain, then ask one diagnostic question.",
+            policy_version=POLICY_VERSION,
+            learner_state_snapshot={
+                "user_id": "demo-user",
+                "course_id": 4,
+                "mastery_score": 0.3,
+                "recent_accuracy": 0.25,
+                "attempt_count": 4,
+                "consecutive_errors": 2,
+                "last_reviewed_at": None,
+                "review_due": False,
+            },
+            evidence_state_snapshot={
+                "evidence_strength": "high",
+                "source_coverage": 1.0,
+                "retrieved_chunk_count": 3,
+                "top_similarity": 0.72,
+                "requires_evidence": True,
+                "reason": "test evidence",
+            },
+        )
+
+    monkeypatch.setattr("app.api.tutor.validate_course_scope", fake_validate)
+    monkeypatch.setattr("app.api.tutor.create_policy_decision", fake_create_decision)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tutor/decide",
+        json={
+            "query": "Explain congestion control",
+            "user_id": "demo-user",
+            "course_id": 4,
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "validated_course_id": 4,
+        "query": "Explain congestion control",
+        "course_id": 4,
+    }
+    body = response.json()
+    assert body["decision_id"] == 12
+    assert body["detected_intent"] == "explain"
+    assert body["selected_action"] == "explain"
+    assert body["response_strategy"] == "scaffolded"
+    assert body["learner_state_snapshot"]["mastery_score"] == 0.3
+    assert body["evidence_state_snapshot"]["evidence_strength"] == "high"
