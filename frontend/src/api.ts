@@ -10,6 +10,7 @@ import type {
   QuizAttemptResponse,
   QuizGenerateResponse,
   QuizItem,
+  QuizItemRemovalResponse,
   ReviewRecord,
 } from './types'
 
@@ -171,6 +172,17 @@ export async function submitQuizAttempt(
       selected_option_id: selectedOptionId,
     }),
   })
+}
+
+export async function deleteQuizItem(
+  userId: string,
+  quizItemId: number,
+  courseId?: number | null,
+): Promise<QuizItemRemovalResponse> {
+  return request(
+    `/quiz/items/${quizItemId}?${scopedQuery(userId, courseId)}`,
+    { method: 'DELETE' },
+  )
 }
 
 export async function listDueReviews(

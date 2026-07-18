@@ -9,6 +9,7 @@ from app.schemas.quiz import (
     QuizAttemptResponse,
     QuizGenerateRequest,
     QuizGenerateResponse,
+    QuizItemRemovalResponse,
     QuizItemResponse,
     QuizOptionResponse,
 )
@@ -17,8 +18,10 @@ from app.services.embeddings import EmbeddingConfigurationError
 from app.services.quiz import (
     QuizAttemptError,
     QuizGenerationError,
+    QuizItemRemovalError,
     generate_quiz_items,
     list_quiz_items,
+    remove_quiz_item,
     submit_quiz_attempt,
 )
 
@@ -113,6 +116,33 @@ def create_quiz_attempt(
     return _attempt_to_response(attempt=attempt, item=item)
 
 
+@router.delete("/items/{item_id}", response_model=QuizItemRemovalResponse)
+def delete_quiz_item(
+    item_id: int,
+    user_id: str = "demo-user",
+    course_id: int | None = None,
+    db: Session = Depends(get_db),
+) -> QuizItemRemovalResponse:
+    try:
+        validate_course_scope(db=db, user_id=user_id, course_id=course_id)
+        result = remove_quiz_item(
+            db=db,
+            user_id=user_id,
+            item_id=item_id,
+            course_id=course_id,
+        )
+    except CourseNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except QuizItemRemovalError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+    return QuizItemRemovalResponse(
+        item_id=result.item_id,
+        action=result.action,
+        archived_at=result.archived_at,
+    )
+
+
 def _to_response(item: QuizItem) -> QuizItemResponse:
     return QuizItemResponse(
         id=item.id,
@@ -128,6 +158,7 @@ def _to_response(item: QuizItem) -> QuizItemResponse:
         question_type=item.question_type,
         traceability_label=item.traceability_label,
         created_at=item.created_at,
+        archived_at=item.archived_at,
     )
 
 

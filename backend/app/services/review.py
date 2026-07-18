@@ -29,7 +29,9 @@ def submit_review(
     course_id: int | None = None,
 ) -> ReviewRecord:
     item_query = select(QuizItem).where(
-        QuizItem.id == item_id, QuizItem.user_id == user_id
+        QuizItem.id == item_id,
+        QuizItem.user_id == user_id,
+        QuizItem.archived_at.is_(None),
     )
     if course_id is not None:
         item_query = item_query.where(QuizItem.course_id == course_id)
@@ -92,6 +94,7 @@ def get_due_review_items(
             ),
         )
         .where(QuizItem.user_id == user_id)
+        .where(QuizItem.archived_at.is_(None))
         .where(or_(ReviewRecord.id.is_(None), ReviewRecord.due_at <= current_time))
     )
     if course_id is not None:

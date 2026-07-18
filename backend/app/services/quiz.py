@@ -1,14 +1,18 @@
 import json
 import re
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.provider import LLMProvider
 from app.models.document import Chunk, Document
 from app.models.quiz import QuizAttempt, QuizItem
+from app.models.review import ReviewRecord
 from app.schemas.quiz import Difficulty, QuestionType, TraceabilityLabel
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 
@@ -19,6 +23,17 @@ class QuizGenerationError(RuntimeError):
 
 class QuizAttemptError(RuntimeError):
     pass
+
+
+class QuizItemRemovalError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class QuizItemRemovalResult:
+    item_id: int
+    action: Literal["deleted", "archived"]
+    archived_at: datetime | None
 
 
 class GeneratedQuizOption(BaseModel):
@@ -122,7 +137,10 @@ def list_quiz_items(
     course_id: int | None = None,
     limit: int = 50,
 ) -> list[QuizItem]:
-    query = select(QuizItem).where(QuizItem.user_id == user_id)
+    query = select(QuizItem).where(
+        QuizItem.user_id == user_id,
+        QuizItem.archived_at.is_(None),
+    )
     if course_id is not None:
         query = query.where(QuizItem.course_id == course_id)
 
@@ -144,6 +162,7 @@ def submit_quiz_attempt(
     query = select(QuizItem).where(
         QuizItem.id == quiz_item_id,
         QuizItem.user_id == user_id,
+        QuizItem.archived_at.is_(None),
     )
     if course_id is not None:
         query = query.where(QuizItem.course_id == course_id)
@@ -167,6 +186,52 @@ def submit_quiz_attempt(
     db.commit()
     db.refresh(attempt)
     return attempt
+
+
+def remove_quiz_item(
+    db: Session,
+    *,
+    user_id: str,
+    item_id: int,
+    course_id: int | None = None,
+) -> QuizItemRemovalResult:
+    query = select(QuizItem).where(
+        QuizItem.id == item_id,
+        QuizItem.user_id == user_id,
+    )
+    if course_id is not None:
+        query = query.where(QuizItem.course_id == course_id)
+
+    item = db.scalar(query)
+    if item is None:
+        raise QuizItemRemovalError("Quiz item not found for this user")
+
+    if item.archived_at is not None:
+        return QuizItemRemovalResult(
+            item_id=item.id,
+            action="archived",
+            archived_at=item.archived_at,
+        )
+
+    has_learning_history = _has_learning_history(
+        db=db,
+        user_id=user_id,
+        item_id=item.id,
+    )
+    if has_learning_history:
+        item.archived_at = datetime.utcnow()
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+        return QuizItemRemovalResult(
+            item_id=item.id,
+            action="archived",
+            archived_at=item.archived_at,
+        )
+
+    db.delete(item)
+    db.commit()
+    return QuizItemRemovalResult(item_id=item_id, action="deleted", archived_at=None)
 
 
 def _grade_quiz_attempt(
@@ -194,6 +259,22 @@ def _grade_quiz_attempt(
         "correct_option_text": option_by_id[correct_option_id],
         "is_correct": selected_id == correct_option_id,
     }
+
+
+def _has_learning_history(*, db: Session, user_id: str, item_id: int) -> bool:
+    attempt_count = db.scalar(
+        select(func.count(QuizAttempt.id)).where(
+            QuizAttempt.user_id == user_id,
+            QuizAttempt.quiz_item_id == item_id,
+        )
+    )
+    review_count = db.scalar(
+        select(func.count(ReviewRecord.id)).where(
+            ReviewRecord.user_id == user_id,
+            ReviewRecord.item_id == item_id,
+        )
+    )
+    return int(attempt_count or 0) > 0 or int(review_count or 0) > 0
 
 
 def _retrieve_quiz_chunks(

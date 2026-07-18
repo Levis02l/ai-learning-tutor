@@ -41,6 +41,7 @@ class QuizItemResponse(BaseModel):
     question_type: str
     traceability_label: str
     created_at: datetime
+    archived_at: datetime | None = None
 
 
 class QuizGenerateResponse(BaseModel):
@@ -70,3 +71,9 @@ class QuizAttemptResponse(BaseModel):
     explanation: str
     source_chunk_ids: list[int]
     attempted_at: datetime
+
+
+class QuizItemRemovalResponse(BaseModel):
+    item_id: int
+    action: Literal["deleted", "archived"]
+    archived_at: datetime | None = None

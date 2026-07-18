@@ -782,6 +782,14 @@ button {
   background: #fff1f1;
 }
 
+.notice {
+  padding: 12px 14px;
+  border: 1px solid #b9ddcb;
+  border-radius: 8px;
+  color: #155c3c;
+  background: #edf8f2;
+}
+
 @media (max-width: 1120px) {
   .grid.two,
   .compare-grid {

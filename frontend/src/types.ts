@@ -95,6 +95,7 @@ export type QuizItem = {
   question_type: string
   traceability_label: string
   created_at: string
+  archived_at: string | null
 }
 
 export type QuizGenerateResponse = {
@@ -117,6 +118,12 @@ export type QuizAttemptResponse = {
   explanation: string
   source_chunk_ids: number[]
   attempted_at: string
+}
+
+export type QuizItemRemovalResponse = {
+  item_id: number
+  action: 'deleted' | 'archived'
+  archived_at: string | null
 }
 
 export type ReviewRecord = {

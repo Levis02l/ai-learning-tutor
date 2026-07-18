@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.quiz import QuizAttempt, QuizItem
-from app.services.quiz import QuizGenerationError
+from app.services.quiz import QuizGenerationError, QuizItemRemovalResult
 
 
 def test_quiz_generate_allows_empty_focus(monkeypatch) -> None:
@@ -161,6 +161,40 @@ def test_quiz_attempt_returns_grading_feedback(monkeypatch) -> None:
     assert body["is_correct"] is False
     assert body["correct_option_id"] == "B"
     assert body["source_chunk_ids"] == [82]
+
+
+def test_quiz_item_delete_returns_removal_action(monkeypatch) -> None:
+    archived_at = datetime(2026, 6, 17, 13, 0, 0)
+    captured: dict[str, int | str | None] = {}
+
+    def fake_validate(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["validated_course_id"] = kwargs["course_id"]
+
+    def fake_remove_item(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["removed_course_id"] = kwargs["course_id"]
+        captured["item_id"] = kwargs["item_id"]
+        return QuizItemRemovalResult(
+            item_id=3,
+            action="archived",
+            archived_at=archived_at,
+        )
+
+    monkeypatch.setattr("app.api.quiz.validate_course_scope", fake_validate)
+    monkeypatch.setattr("app.api.quiz.remove_quiz_item", fake_remove_item)
+    client = TestClient(app)
+
+    response = client.delete("/quiz/items/3?user_id=demo-user&course_id=4")
+
+    assert response.status_code == 200
+    assert captured == {
+        "validated_course_id": 4,
+        "removed_course_id": 4,
+        "item_id": 3,
+    }
+    body = response.json()
+    assert body["item_id"] == 3
+    assert body["action"] == "archived"
+    assert body["archived_at"] == "2026-06-17T13:00:00"
 
 
 def _options() -> list[dict[str, str]]:

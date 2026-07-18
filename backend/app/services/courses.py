@@ -120,6 +120,11 @@ def assign_existing_uncoursed_data(
         .where(ReviewRecord.user_id == user_id, ReviewRecord.course_id.is_(None))
         .values(course_id=course_id)
     )
+    db.execute(
+        update(QuizAttempt)
+        .where(QuizAttempt.user_id == user_id, QuizAttempt.course_id.is_(None))
+        .values(course_id=course_id)
+    )
     db.commit()
 
 

@@ -28,6 +28,11 @@ class QuizItem(Base):
     question_type: Mapped[str] = mapped_column(String, default="conceptual")
     traceability_label: Mapped[str] = mapped_column(String, default="not_traceable")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        index=True,
+        nullable=True,
+    )
 
     course = relationship("Course", back_populates="quiz_items")
 

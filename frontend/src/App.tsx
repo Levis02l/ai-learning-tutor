@@ -25,6 +25,7 @@ import {
   createCourse,
   deleteCourse,
   deleteDocument,
+  deleteQuizItem,
   evaluateAnswer,
   generateQuiz,
   getHealth,
@@ -901,6 +902,18 @@ function QuizView({
     {},
   )
   const [attemptBusyId, setAttemptBusyId] = useState<number | null>(null)
+  const [removalBusyId, setRemovalBusyId] = useState<number | null>(null)
+  const [removalMessage, setRemovalMessage] = useState('')
+  const [showGenerated, setShowGenerated] = useState(false)
+
+  useEffect(() => {
+    setGenerated([])
+    setSelectedOptions({})
+    setAttemptFeedback({})
+    setRemovalMessage('')
+    setError('')
+    setShowGenerated(false)
+  }, [courseId, userId])
 
   async function handleGenerate(event: FormEvent) {
     event.preventDefault()
@@ -911,6 +924,8 @@ function QuizView({
       setGenerated(response.items)
       setSelectedOptions({})
       setAttemptFeedback({})
+      setRemovalMessage('')
+      setShowGenerated(true)
       await onGenerated()
     } catch (quizError) {
       setError(getErrorMessage(quizError))
@@ -919,7 +934,7 @@ function QuizView({
     }
   }
 
-  const visibleItems = generated.length > 0 ? generated : items
+  const visibleItems = showGenerated ? generated : items
 
   async function handleSubmitAttempt(item: QuizItem) {
     const selectedOptionId = selectedOptions[item.id]
@@ -940,6 +955,43 @@ function QuizView({
       setError(getErrorMessage(attemptError))
     } finally {
       setAttemptBusyId(null)
+    }
+  }
+
+  async function handleRemoveItem(item: QuizItem) {
+    const confirmed = window.confirm(
+      'Remove this question from practice? Answered questions are archived so learning history is kept.',
+    )
+    if (!confirmed) return
+
+    setRemovalBusyId(item.id)
+    setError('')
+    setRemovalMessage('')
+    try {
+      const result = await deleteQuizItem(userId, item.id, courseId)
+      setGenerated((current) =>
+        current.filter((quizItem) => quizItem.id !== result.item_id),
+      )
+      setSelectedOptions((current) => {
+        const next = { ...current }
+        delete next[result.item_id]
+        return next
+      })
+      setAttemptFeedback((current) => {
+        const next = { ...current }
+        delete next[result.item_id]
+        return next
+      })
+      setRemovalMessage(
+        result.action === 'deleted'
+          ? 'Question deleted.'
+          : 'Question archived and removed from practice.',
+      )
+      await onGenerated()
+    } catch (removeError) {
+      setError(getErrorMessage(removeError))
+    } finally {
+      setRemovalBusyId(null)
     }
   }
 
@@ -995,6 +1047,7 @@ function QuizView({
             </div>
           </form>
           {error && <div className="error">{error}</div>}
+          {removalMessage && <div className="notice">{removalMessage}</div>}
         </div>
       </section>
 
@@ -1019,9 +1072,25 @@ function QuizView({
                   <div className="item-row quiz-card" key={item.id}>
                     <div className="item-topline">
                       <h4 className="item-title">{item.question}</h4>
-                      <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
-                        {item.traceability_label}
-                      </span>
+                      <div className="item-actions">
+                        <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
+                          {item.traceability_label}
+                        </span>
+                        <button
+                          aria-label="Remove quiz item"
+                          className="icon-button danger"
+                          disabled={removalBusyId === item.id}
+                          onClick={() => void handleRemoveItem(item)}
+                          title="Remove from practice"
+                          type="button"
+                        >
+                          {removalBusyId === item.id ? (
+                            <Loader2 size={15} aria-hidden="true" />
+                          ) : (
+                            <Trash2 size={15} aria-hidden="true" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     {hasOptions ? (

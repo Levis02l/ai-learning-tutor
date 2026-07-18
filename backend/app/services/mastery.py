@@ -44,7 +44,10 @@ def get_mastery_snapshot(
     now: datetime | None = None,
 ) -> MasterySnapshot:
     current_time = now or datetime.utcnow()
-    quiz_query = select(QuizItem).where(QuizItem.user_id == user_id)
+    quiz_query = select(QuizItem).where(
+        QuizItem.user_id == user_id,
+        QuizItem.archived_at.is_(None),
+    )
     if course_id is not None:
         quiz_query = quiz_query.where(QuizItem.course_id == course_id)
 
