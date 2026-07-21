@@ -18,6 +18,7 @@ from app.services.concepts import (
     get_concept_quiz_chunks,
     resolve_concept_for_focus,
 )
+from app.services.misconceptions import try_detect_misconception_for_attempt
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 
 
@@ -263,6 +264,8 @@ def submit_quiz_attempt(
     db.add(attempt)
     db.commit()
     db.refresh(attempt)
+    if not attempt.is_correct and item.concept_id is not None:
+        try_detect_misconception_for_attempt(db=db, attempt=attempt, item=item)
     return attempt
 
 

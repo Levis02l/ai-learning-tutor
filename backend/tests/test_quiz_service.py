@@ -1,6 +1,6 @@
 import pytest
 
-from app.models.quiz import QuizItem
+from app.models.quiz import QuizAttempt, QuizItem
 from app.services.quiz import (
     GeneratedQuizItem,
     GeneratedQuizOption,
@@ -10,6 +10,7 @@ from app.services.quiz import (
     _parse_generated_quiz,
     _retrieve_quiz_chunks,
     _to_quiz_item,
+    submit_quiz_attempt,
 )
 from app.services.retrieval import RetrievedChunk
 
@@ -227,6 +228,91 @@ def test_grade_quiz_attempt_rejects_invalid_selection() -> None:
         _grade_quiz_attempt(item=item, selected_option_id="Z")
 
 
+def test_submit_quiz_attempt_detects_misconception_for_wrong_concept_answer(
+    monkeypatch,
+) -> None:
+    item = _quiz_item()
+    item.course_id = 4
+    item.concept_id = 7
+    captured: dict[str, object] = {}
+
+    def fake_detect(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["attempt"] = kwargs["attempt"]
+        captured["item"] = kwargs["item"]
+
+    monkeypatch.setattr(
+        "app.services.quiz.try_detect_misconception_for_attempt",
+        fake_detect,
+    )
+    db = _SubmitAttemptSession(item=item)
+
+    attempt = submit_quiz_attempt(
+        db=db,  # type: ignore[arg-type]
+        user_id="demo-user",
+        course_id=4,
+        quiz_item_id=1,
+        selected_option_id="A",
+    )
+
+    assert attempt.is_correct is False
+    assert captured["attempt"] is attempt
+    assert captured["item"] is item
+
+
+def test_submit_quiz_attempt_skips_misconception_for_correct_answer(
+    monkeypatch,
+) -> None:
+    item = _quiz_item()
+    item.course_id = 4
+    item.concept_id = 7
+
+    def fail_detect(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("misconception detection should not run")
+
+    monkeypatch.setattr(
+        "app.services.quiz.try_detect_misconception_for_attempt",
+        fail_detect,
+    )
+    db = _SubmitAttemptSession(item=item)
+
+    attempt = submit_quiz_attempt(
+        db=db,  # type: ignore[arg-type]
+        user_id="demo-user",
+        course_id=4,
+        quiz_item_id=1,
+        selected_option_id="B",
+    )
+
+    assert attempt.is_correct is True
+
+
+def test_submit_quiz_attempt_skips_misconception_without_concept(
+    monkeypatch,
+) -> None:
+    item = _quiz_item()
+    item.course_id = 4
+    item.concept_id = None
+
+    def fail_detect(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("misconception detection should not run")
+
+    monkeypatch.setattr(
+        "app.services.quiz.try_detect_misconception_for_attempt",
+        fail_detect,
+    )
+    db = _SubmitAttemptSession(item=item)
+
+    attempt = submit_quiz_attempt(
+        db=db,  # type: ignore[arg-type]
+        user_id="demo-user",
+        course_id=4,
+        quiz_item_id=1,
+        selected_option_id="A",
+    )
+
+    assert attempt.is_correct is False
+
+
 def _options() -> list[GeneratedQuizOption]:
     return [
         GeneratedQuizOption(id="A", text="Wrong answer A"),
@@ -251,3 +337,23 @@ def _quiz_item() -> QuizItem:
         question_type="conceptual",
         traceability_label="fully_traceable",
     )
+
+
+class _SubmitAttemptSession:
+    def __init__(self, *, item: QuizItem) -> None:
+        self.item = item
+        self.added: list[object] = []
+
+    def scalar(self, query):  # type: ignore[no-untyped-def]
+        return self.item
+
+    def add(self, obj: object) -> None:
+        self.added.append(obj)
+        if isinstance(obj, QuizAttempt):
+            obj.id = 9
+
+    def commit(self) -> None:
+        return None
+
+    def refresh(self, obj: object) -> None:
+        return None
