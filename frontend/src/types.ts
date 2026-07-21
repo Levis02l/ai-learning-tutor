@@ -202,7 +202,20 @@ export type TutorDecision = {
   teaching_reason: string
   suggested_next_step: string
   policy_version: string
+  learner_state_scope: 'course' | 'concept'
   learner_state_snapshot: LearnerState
+  concept_state_snapshot: {
+    concept_id: number
+    concept_name: string
+    state_status: 'observed' | 'unobserved'
+    mastery_score: number | null
+    recent_accuracy: number | null
+    attempt_count: number
+    consecutive_errors: number
+    last_attempted_at: string | null
+    review_due: boolean
+    needs_attention: boolean
+  } | null
   evidence_state_snapshot: {
     evidence_strength: TutorEvidenceStrength
     source_coverage: number

@@ -20,6 +20,12 @@ class PolicyDecisionRecord(Base):
     query: Mapped[str] = mapped_column(Text)
     detected_intent: Mapped[str] = mapped_column(String)
     learner_state_snapshot: Mapped[dict] = mapped_column(JSON)
+    learner_state_scope: Mapped[str] = mapped_column(
+        String,
+        default="course",
+        server_default="course",
+    )
+    concept_state_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     evidence_state_snapshot: Mapped[dict] = mapped_column(JSON)
     selected_action: Mapped[str] = mapped_column(String)
     response_strategy: Mapped[str] = mapped_column(String)

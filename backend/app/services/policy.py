@@ -5,6 +5,11 @@ from typing import Any, Literal
 from sqlalchemy.orm import Session
 
 from app.models.policy import PolicyDecisionRecord
+from app.services.concepts import (
+    ConceptLearnerState,
+    get_concept_learner_state,
+    resolve_concept_for_focus,
+)
 from app.services.learner_state import LearnerState, compute_learner_state
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 from app.services.review import get_due_review_items
@@ -13,6 +18,7 @@ POLICY_VERSION = "rule_v1"
 
 DetectedIntent = Literal["explain", "hint", "practice", "review", "unknown"]
 TeachingAction = Literal["explain", "hint", "quiz", "review", "refuse"]
+LearnerStateScope = Literal["course", "concept"]
 ResponseStrategy = Literal[
     "scaffolded",
     "guided",
@@ -55,6 +61,15 @@ class PolicyDecision:
     policy_version: str
     learner_state_snapshot: dict[str, Any]
     evidence_state_snapshot: dict[str, Any]
+    learner_state_scope: LearnerStateScope = "course"
+    concept_state_snapshot: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class _PolicyLearnerContext:
+    state: LearnerState
+    scope: LearnerStateScope
+    concept_state: ConceptLearnerState | None
 
 
 def create_policy_decision(
@@ -65,12 +80,19 @@ def create_policy_decision(
     course_id: int | None = None,
     top_k: int = 5,
 ) -> PolicyDecision:
-    learner_state = compute_learner_state(
+    course_learner_state = compute_learner_state(
         db=db,
         user_id=user_id,
         course_id=course_id,
     )
     detected_intent = detect_intent(query)
+    learner_context = _resolve_policy_learner_context(
+        db=db,
+        query=query,
+        user_id=user_id,
+        course_id=course_id,
+        course_learner_state=course_learner_state,
+    )
     has_due_review_item = bool(
         get_due_review_items(
             db=db,
@@ -86,16 +108,18 @@ def create_policy_decision(
         course_id=course_id,
         top_k=top_k,
         detected_intent=detected_intent,
-        learner_state=learner_state,
+        learner_state=learner_context.state,
         has_due_review_item=has_due_review_item,
     )
     decision = decide_teaching_action(
         query=query,
         user_id=user_id,
         course_id=course_id,
-        learner_state=learner_state,
+        learner_state=learner_context.state,
         evidence_state=evidence_state,
         detected_intent=detected_intent,
+        learner_state_scope=learner_context.scope,
+        concept_state=learner_context.concept_state,
     )
     record = PolicyDecisionRecord(
         user_id=user_id,
@@ -103,6 +127,8 @@ def create_policy_decision(
         query=query,
         detected_intent=decision.detected_intent,
         learner_state_snapshot=decision.learner_state_snapshot,
+        learner_state_scope=decision.learner_state_scope,
+        concept_state_snapshot=decision.concept_state_snapshot,
         evidence_state_snapshot=decision.evidence_state_snapshot,
         selected_action=decision.selected_action,
         response_strategy=decision.response_strategy,
@@ -130,6 +156,8 @@ def create_policy_decision(
         policy_version=decision.policy_version,
         learner_state_snapshot=decision.learner_state_snapshot,
         evidence_state_snapshot=decision.evidence_state_snapshot,
+        learner_state_scope=decision.learner_state_scope,
+        concept_state_snapshot=decision.concept_state_snapshot,
     )
 
 
@@ -188,10 +216,15 @@ def decide_teaching_action(
     learner_state: LearnerState,
     evidence_state: PolicyEvidenceState,
     detected_intent: DetectedIntent | None = None,
+    learner_state_scope: LearnerStateScope = "course",
+    concept_state: ConceptLearnerState | None = None,
 ) -> PolicyDecision:
     intent = detected_intent or detect_intent(query)
     learner_snapshot = _learner_state_snapshot(learner_state)
     evidence_snapshot = _evidence_state_snapshot(evidence_state)
+    concept_snapshot = (
+        _concept_state_snapshot(concept_state) if concept_state is not None else None
+    )
 
     if _is_evidence_insufficient(evidence_state):
         return _build_decision(
@@ -212,6 +245,8 @@ def decide_teaching_action(
             ),
             learner_state_snapshot=learner_snapshot,
             evidence_state_snapshot=evidence_snapshot,
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
         )
 
     if intent == "explain":
@@ -225,6 +260,8 @@ def decide_teaching_action(
             detected_intent=intent,
             selected_action="explain",
             primary_reason="explicit_explanation_request",
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
         )
     if intent == "hint":
         return _explicit_decision(
@@ -237,6 +274,8 @@ def decide_teaching_action(
             detected_intent=intent,
             selected_action="hint",
             primary_reason="explicit_hint_request",
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
         )
     if intent == "practice":
         return _explicit_decision(
@@ -249,6 +288,8 @@ def decide_teaching_action(
             detected_intent=intent,
             selected_action="quiz",
             primary_reason="explicit_practice_request",
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
         )
     if intent == "review":
         return _explicit_decision(
@@ -261,6 +302,32 @@ def decide_teaching_action(
             detected_intent=intent,
             selected_action="review",
             primary_reason="explicit_review_request",
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
+        )
+
+    if _is_unobserved_concept(concept_snapshot):
+        assert concept_snapshot is not None
+        concept_name = concept_snapshot["concept_name"]
+        return _implicit_decision(
+            query=query,
+            user_id=user_id,
+            course_id=course_id,
+            learner_snapshot=learner_snapshot,
+            evidence_snapshot=evidence_snapshot,
+            selected_action="quiz",
+            response_strategy="guided",
+            primary_reason="unobserved_concept",
+            teaching_reason=(
+                f"The query maps to {concept_name}, but there are no observed "
+                "attempts for this concept yet. A traceable diagnostic question "
+                "is the most useful next step."
+            ),
+            suggested_next_step=(
+                "Generate one diagnostic practice question for this concept."
+            ),
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
         )
 
     if learner_state.review_due:
@@ -278,6 +345,8 @@ def decide_teaching_action(
                 "should be prioritised before introducing more new content."
             ),
             suggested_next_step="Open the review queue and work through due questions.",
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
         )
 
     if learner_state.mastery_score < 0.4 or learner_state.consecutive_errors >= 2:
@@ -298,6 +367,8 @@ def decide_teaching_action(
                 "Give a step-by-step explanation, then ask one short diagnostic "
                 "question."
             ),
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
         )
 
     if learner_state.mastery_score < 0.75:
@@ -317,6 +388,8 @@ def decide_teaching_action(
             suggested_next_step=(
                 "Offer one targeted hint and invite the learner to try."
             ),
+            learner_state_scope=learner_state_scope,
+            concept_state_snapshot=concept_snapshot,
         )
 
     return _implicit_decision(
@@ -333,6 +406,8 @@ def decide_teaching_action(
             "challenge question is appropriate."
         ),
         suggested_next_step="Generate a higher-challenge practice question.",
+        learner_state_scope=learner_state_scope,
+        concept_state_snapshot=concept_snapshot,
     )
 
 
@@ -387,6 +462,79 @@ def _resolve_evidence_state(
         user_id=user_id,
         course_id=course_id,
         top_k=top_k,
+    )
+
+
+def _resolve_policy_learner_context(
+    *,
+    db: Session,
+    query: str,
+    user_id: str,
+    course_id: int | None,
+    course_learner_state: LearnerState,
+) -> _PolicyLearnerContext:
+    if course_id is None:
+        return _PolicyLearnerContext(
+            state=course_learner_state,
+            scope="course",
+            concept_state=None,
+        )
+
+    resolved = resolve_concept_for_focus(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        focus=query,
+    )
+    if resolved is None:
+        return _PolicyLearnerContext(
+            state=course_learner_state,
+            scope="course",
+            concept_state=None,
+        )
+
+    concept_state = get_concept_learner_state(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        concept_id=resolved.concept.id,
+    )
+    return _PolicyLearnerContext(
+        state=_learner_state_from_concept_state(
+            course_learner_state=course_learner_state,
+            concept_state=concept_state,
+        ),
+        scope="concept",
+        concept_state=concept_state,
+    )
+
+
+def _learner_state_from_concept_state(
+    *,
+    course_learner_state: LearnerState,
+    concept_state: ConceptLearnerState,
+) -> LearnerState:
+    if concept_state.state_status == "unobserved":
+        return LearnerState(
+            user_id=course_learner_state.user_id,
+            course_id=course_learner_state.course_id,
+            mastery_score=0.5,
+            recent_accuracy=0.5,
+            attempt_count=0,
+            consecutive_errors=0,
+            last_reviewed_at=None,
+            review_due=False,
+        )
+
+    return LearnerState(
+        user_id=course_learner_state.user_id,
+        course_id=course_learner_state.course_id,
+        mastery_score=concept_state.mastery_score or 0.0,
+        recent_accuracy=concept_state.recent_accuracy or 0.0,
+        attempt_count=concept_state.attempt_count,
+        consecutive_errors=concept_state.consecutive_errors,
+        last_reviewed_at=concept_state.last_attempted_at,
+        review_due=concept_state.review_due,
     )
 
 
@@ -447,6 +595,8 @@ def _explicit_decision(
     detected_intent: DetectedIntent,
     selected_action: TeachingAction,
     primary_reason: str,
+    learner_state_scope: LearnerStateScope,
+    concept_state_snapshot: dict[str, Any] | None,
 ) -> PolicyDecision:
     response_strategy = _strategy_for_action(
         selected_action=selected_action,
@@ -471,6 +621,8 @@ def _explicit_decision(
         ),
         learner_state_snapshot=learner_snapshot,
         evidence_state_snapshot=evidence_snapshot,
+        learner_state_scope=learner_state_scope,
+        concept_state_snapshot=concept_state_snapshot,
     )
 
 
@@ -486,6 +638,8 @@ def _implicit_decision(
     primary_reason: str,
     teaching_reason: str,
     suggested_next_step: str,
+    learner_state_scope: LearnerStateScope,
+    concept_state_snapshot: dict[str, Any] | None,
 ) -> PolicyDecision:
     return _build_decision(
         query=query,
@@ -499,6 +653,8 @@ def _implicit_decision(
         suggested_next_step=suggested_next_step,
         learner_state_snapshot=learner_snapshot,
         evidence_state_snapshot=evidence_snapshot,
+        learner_state_scope=learner_state_scope,
+        concept_state_snapshot=concept_state_snapshot,
     )
 
 
@@ -515,6 +671,8 @@ def _build_decision(
     suggested_next_step: str,
     learner_state_snapshot: dict[str, Any],
     evidence_state_snapshot: dict[str, Any],
+    learner_state_scope: LearnerStateScope = "course",
+    concept_state_snapshot: dict[str, Any] | None = None,
 ) -> PolicyDecision:
     return PolicyDecision(
         decision_id=None,
@@ -530,6 +688,8 @@ def _build_decision(
         policy_version=POLICY_VERSION,
         learner_state_snapshot=learner_state_snapshot,
         evidence_state_snapshot=evidence_state_snapshot,
+        learner_state_scope=learner_state_scope,
+        concept_state_snapshot=concept_state_snapshot,
     )
 
 
@@ -618,6 +778,25 @@ def _evidence_state_snapshot(state: PolicyEvidenceState) -> dict[str, Any]:
         "requires_evidence": state.requires_evidence,
         "reason": state.reason,
     }
+
+
+def _concept_state_snapshot(state: ConceptLearnerState) -> dict[str, Any]:
+    return {
+        "concept_id": state.concept_id,
+        "concept_name": state.concept_name,
+        "state_status": state.state_status,
+        "mastery_score": state.mastery_score,
+        "recent_accuracy": state.recent_accuracy,
+        "attempt_count": state.attempt_count,
+        "consecutive_errors": state.consecutive_errors,
+        "last_attempted_at": _serialize_datetime(state.last_attempted_at),
+        "review_due": state.review_due,
+        "needs_attention": state.needs_attention,
+    }
+
+
+def _is_unobserved_concept(snapshot: dict[str, Any] | None) -> bool:
+    return snapshot is not None and snapshot.get("state_status") == "unobserved"
 
 
 def _serialize_datetime(value: datetime | None) -> str | None:

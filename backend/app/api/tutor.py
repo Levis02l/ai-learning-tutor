@@ -8,6 +8,7 @@ from app.llm.provider import LLMConfigurationError, LLMProviderError
 from app.schemas.chat import ChatClaim, ChatSource
 from app.schemas.review import DueReviewItemResponse
 from app.schemas.tutor import (
+    TutorConceptLearnerStateSnapshot,
     TutorDecisionRequest,
     TutorDecisionResponse,
     TutorEvidenceStateSnapshot,
@@ -139,8 +140,14 @@ def _to_response(decision: PolicyDecision) -> TutorDecisionResponse:
         teaching_reason=decision.teaching_reason,
         suggested_next_step=decision.suggested_next_step,
         policy_version=decision.policy_version,
+        learner_state_scope=decision.learner_state_scope,
         learner_state_snapshot=TutorLearnerStateSnapshot(
             **decision.learner_state_snapshot
+        ),
+        concept_state_snapshot=(
+            TutorConceptLearnerStateSnapshot(**decision.concept_state_snapshot)
+            if decision.concept_state_snapshot
+            else None
         ),
         evidence_state_snapshot=TutorEvidenceStateSnapshot(
             **decision.evidence_state_snapshot

@@ -507,9 +507,14 @@ function TutorDecisionPanel({ response }: { response: TutorResponse | null }) {
                 <span className="field-label">Reason</span>
                 <strong>{response.decision.primary_reason}</strong>
               </div>
+              <div>
+                <span className="field-label">Scope</span>
+                <strong>{response.decision.learner_state_scope}</strong>
+              </div>
             </div>
             <p className="quote">{response.decision.teaching_reason}</p>
             <TutorLearnerSnapshot response={response} />
+            <TutorConceptSnapshot response={response} />
             <TutorEvidenceSnapshot response={response} />
             {response.sources.length > 0 && (
               <div className="source-box list">
@@ -530,6 +535,45 @@ function TutorDecisionPanel({ response }: { response: TutorResponse | null }) {
         )}
       </div>
     </aside>
+  )
+}
+
+function TutorConceptSnapshot({ response }: { response: TutorResponse }) {
+  const state = response.decision.concept_state_snapshot
+  if (!state) return null
+
+  return (
+    <div className="concept-snapshot">
+      <div className="item-topline">
+        <div>
+          <span className="field-label">Concept</span>
+          <h4 className="item-title">{state.concept_name}</h4>
+        </div>
+        <span className={`badge ${state.state_status === 'observed' ? 'good' : 'info'}`}>
+          {state.state_status}
+        </span>
+      </div>
+      <div className="snapshot-grid compact">
+        <Metric
+          label="Mastery"
+          value={
+            state.mastery_score == null
+              ? 'Unknown'
+              : `${Math.round(state.mastery_score * 100)}%`
+          }
+        />
+        <Metric
+          label="Accuracy"
+          value={
+            state.recent_accuracy == null
+              ? 'Unknown'
+              : `${Math.round(state.recent_accuracy * 100)}%`
+          }
+        />
+        <Metric label="Attempts" value={state.attempt_count} />
+        <Metric label="Attention" value={state.needs_attention ? 'Yes' : 'No'} />
+      </div>
+    </div>
   )
 }
 

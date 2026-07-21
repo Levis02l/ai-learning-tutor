@@ -287,6 +287,12 @@ Policy reason:
 Learner state snapshot:
 {json.dumps(decision.learner_state_snapshot, ensure_ascii=False)}
 
+Learner state scope:
+{decision.learner_state_scope}
+
+Concept learner state snapshot:
+{json.dumps(decision.concept_state_snapshot, ensure_ascii=False)}
+
 Evidence state snapshot:
 {json.dumps(decision.evidence_state_snapshot, ensure_ascii=False)}
 

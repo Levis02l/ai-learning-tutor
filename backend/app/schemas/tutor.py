@@ -8,6 +8,7 @@ from app.schemas.review import DueReviewItemResponse
 
 DetectedIntent = Literal["explain", "hint", "practice", "review", "unknown"]
 TeachingAction = Literal["explain", "hint", "quiz", "review", "refuse"]
+LearnerStateScope = Literal["course", "concept"]
 ResponseStrategy = Literal[
     "scaffolded",
     "guided",
@@ -52,6 +53,19 @@ class TutorEvidenceStateSnapshot(BaseModel):
     reason: str
 
 
+class TutorConceptLearnerStateSnapshot(BaseModel):
+    concept_id: int
+    concept_name: str
+    state_status: Literal["observed", "unobserved"]
+    mastery_score: float | None = None
+    recent_accuracy: float | None = None
+    attempt_count: int
+    consecutive_errors: int
+    last_attempted_at: str | None = None
+    review_due: bool
+    needs_attention: bool
+
+
 class TutorDecisionResponse(BaseModel):
     decision_id: int
     user_id: str
@@ -64,7 +78,9 @@ class TutorDecisionResponse(BaseModel):
     teaching_reason: str
     suggested_next_step: str
     policy_version: str
+    learner_state_scope: LearnerStateScope = "course"
     learner_state_snapshot: TutorLearnerStateSnapshot
+    concept_state_snapshot: TutorConceptLearnerStateSnapshot | None = None
     evidence_state_snapshot: TutorEvidenceStateSnapshot
 
 

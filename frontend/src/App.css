@@ -605,6 +605,23 @@ button {
   font-size: 17px;
 }
 
+.concept-snapshot {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(224, 233, 236, 0.95);
+  border-radius: 8px;
+  background: rgba(248, 251, 252, 0.82);
+}
+
+.snapshot-grid.compact .metric {
+  padding: 8px;
+}
+
+.snapshot-grid.compact .metric-value {
+  font-size: 15px;
+}
+
 .evidence-snapshot {
   display: grid;
   gap: 8px;

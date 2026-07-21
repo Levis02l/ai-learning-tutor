@@ -308,6 +308,55 @@ def list_concept_learner_states(
     return states
 
 
+def get_concept_learner_state(
+    db: Session,
+    *,
+    user_id: str,
+    course_id: int,
+    concept_id: int,
+    now: datetime | None = None,
+) -> ConceptLearnerState:
+    _require_course(db=db, user_id=user_id, course_id=course_id)
+    current_time = now or datetime.utcnow()
+    concept = db.scalar(
+        select(Concept)
+        .join(Course, Course.id == Concept.course_id)
+        .where(
+            Concept.id == concept_id,
+            Concept.course_id == course_id,
+            Course.user_id == user_id,
+        )
+    )
+    if concept is None:
+        raise ConceptNotFoundError("Concept not found for this course")
+
+    quiz_items_by_concept = _load_quiz_items_by_concept(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        concept_ids=[concept_id],
+    )
+    attempts_by_concept = _load_attempts_by_concept(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        concept_ids=[concept_id],
+    )
+    reviews_by_concept = _load_reviews_by_concept(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        concept_ids=[concept_id],
+    )
+    return _build_concept_learner_state(
+        concept=concept,
+        quiz_items=quiz_items_by_concept.get(concept_id, []),
+        attempts=attempts_by_concept.get(concept_id, []),
+        reviews=reviews_by_concept.get(concept_id, []),
+        now=current_time,
+    )
+
+
 def resolve_concept_for_focus(
     db: Session,
     *,

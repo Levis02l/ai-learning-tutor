@@ -1,8 +1,12 @@
 from datetime import datetime
 
+from app.models.concept import Concept
+from app.models.policy import PolicyDecisionRecord
+from app.services.concepts import ConceptLearnerState, ResolvedConcept
 from app.services.learner_state import LearnerState
 from app.services.policy import (
     PolicyEvidenceState,
+    create_policy_decision,
     decide_teaching_action,
     detect_intent,
 )
@@ -125,6 +129,124 @@ def test_explicit_review_can_use_not_required_evidence() -> None:
     assert decision.primary_reason == "explicit_review_request"
 
 
+def test_unknown_unobserved_concept_returns_diagnostic_quiz() -> None:
+    decision = decide_teaching_action(
+        query="I want to study K-means clustering",
+        user_id="demo-user",
+        course_id=7,
+        learner_state=_learner_state(mastery_score=0.5),
+        evidence_state=_evidence("high"),
+        detected_intent="unknown",
+        learner_state_scope="concept",
+        concept_state=ConceptLearnerState(
+            concept_id=3,
+            concept_name="K-means Clustering",
+            state_status="unobserved",
+            mastery_score=None,
+            recent_accuracy=None,
+            attempt_count=0,
+            consecutive_errors=0,
+            last_attempted_at=None,
+            review_due=False,
+            needs_attention=False,
+        ),
+    )
+
+    assert decision.learner_state_scope == "concept"
+    assert decision.concept_state_snapshot is not None
+    assert decision.concept_state_snapshot["state_status"] == "unobserved"
+    assert decision.selected_action == "quiz"
+    assert decision.response_strategy == "guided"
+    assert decision.primary_reason == "unobserved_concept"
+
+
+def test_create_policy_decision_uses_observed_concept_state(monkeypatch) -> None:
+    db = _PolicySession()
+
+    monkeypatch.setattr(
+        "app.services.policy.compute_learner_state",
+        lambda **kwargs: _learner_state(mastery_score=0.2, consecutive_errors=2),
+    )
+    monkeypatch.setattr("app.services.policy.get_due_review_items", lambda **kwargs: [])
+    monkeypatch.setattr(
+        "app.services.policy.build_retrieval_evidence_state",
+        lambda **kwargs: _evidence("high"),
+    )
+    monkeypatch.setattr(
+        "app.services.policy.resolve_concept_for_focus",
+        lambda **kwargs: ResolvedConcept(
+            concept=_concept(concept_id=9, name="K-means Clustering"),
+            confidence=0.94,
+            reason="exact normalized match",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.policy.get_concept_learner_state",
+        lambda **kwargs: ConceptLearnerState(
+            concept_id=9,
+            concept_name="K-means Clustering",
+            state_status="observed",
+            mastery_score=0.88,
+            recent_accuracy=0.9,
+            attempt_count=5,
+            consecutive_errors=0,
+            last_attempted_at=datetime(2026, 7, 21, 11, 30, 0),
+            review_due=False,
+            needs_attention=False,
+        ),
+    )
+
+    decision = create_policy_decision(
+        db=db,  # type: ignore[arg-type]
+        query="Explain K-means clustering",
+        user_id="demo-user",
+        course_id=7,
+    )
+
+    assert decision.learner_state_scope == "concept"
+    assert decision.learner_state_snapshot["mastery_score"] == 0.88
+    assert decision.concept_state_snapshot is not None
+    assert decision.concept_state_snapshot["concept_id"] == 9
+    assert decision.selected_action == "explain"
+    assert decision.response_strategy == "concise"
+    assert db.record is not None
+    assert db.record.learner_state_scope == "concept"
+    assert db.record.concept_state_snapshot["concept_name"] == "K-means Clustering"
+
+
+def test_create_policy_decision_falls_back_to_course_state(monkeypatch) -> None:
+    db = _PolicySession()
+
+    monkeypatch.setattr(
+        "app.services.policy.compute_learner_state",
+        lambda **kwargs: _learner_state(mastery_score=0.84),
+    )
+    monkeypatch.setattr("app.services.policy.get_due_review_items", lambda **kwargs: [])
+    monkeypatch.setattr(
+        "app.services.policy.build_retrieval_evidence_state",
+        lambda **kwargs: _evidence("high"),
+    )
+    monkeypatch.setattr(
+        "app.services.policy.resolve_concept_for_focus",
+        lambda **kwargs: None,
+    )
+
+    decision = create_policy_decision(
+        db=db,  # type: ignore[arg-type]
+        query="Next",
+        user_id="demo-user",
+        course_id=7,
+    )
+
+    assert decision.learner_state_scope == "course"
+    assert decision.concept_state_snapshot is None
+    assert decision.selected_action == "quiz"
+    assert decision.response_strategy == "challenging"
+    assert db.record is not None
+    assert db.record.learner_state_scope == "course"
+    assert db.record.concept_state_snapshot is None
+
+
 def _decision(
     *,
     query: str,
@@ -138,6 +260,33 @@ def _decision(
         learner_state=learner_state,
         evidence_state=evidence_state,
     )
+
+
+def _concept(*, concept_id: int, name: str) -> Concept:
+    return Concept(
+        id=concept_id,
+        course_id=7,
+        name=name,
+        normalized_name=name.lower(),
+        description=f"{name} description.",
+        extraction_confidence=0.9,
+    )
+
+
+class _PolicySession:
+    def __init__(self) -> None:
+        self.record: PolicyDecisionRecord | None = None
+
+    def add(self, item):  # type: ignore[no-untyped-def]
+        if isinstance(item, PolicyDecisionRecord):
+            item.id = 101
+            self.record = item
+
+    def commit(self) -> None:
+        return None
+
+    def refresh(self, item):  # type: ignore[no-untyped-def]
+        return None
 
 
 def _learner_state(
