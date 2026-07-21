@@ -663,6 +663,20 @@ button {
   box-shadow: 0 10px 24px rgba(36, 92, 110, 0.14);
 }
 
+.progress-card .metric-strip.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.progress-card .metric {
+  min-width: 0;
+}
+
+.progress-card .metric-value {
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  line-height: 1.12;
+}
+
 .detail-title {
   margin: 3px 0 0;
   font-size: 20px;
