@@ -579,10 +579,29 @@ function TutorConceptSnapshot({ response }: { response: TutorResponse }) {
 
 function TutorLearnerSnapshot({ response }: { response: TutorResponse }) {
   const state = response.decision.learner_state_snapshot
+  const conceptState = response.decision.concept_state_snapshot
+  const isUnobservedConcept =
+    response.decision.learner_state_scope === 'concept' &&
+    conceptState?.state_status === 'unobserved'
+
   return (
     <div className="snapshot-grid">
-      <Metric label="Mastery" value={`${Math.round(state.mastery_score * 100)}%`} />
-      <Metric label="Accuracy" value={`${Math.round(state.recent_accuracy * 100)}%`} />
+      <Metric
+        label="Mastery"
+        value={
+          isUnobservedConcept
+            ? 'Unknown'
+            : `${Math.round(state.mastery_score * 100)}%`
+        }
+      />
+      <Metric
+        label="Accuracy"
+        value={
+          isUnobservedConcept
+            ? 'Unknown'
+            : `${Math.round(state.recent_accuracy * 100)}%`
+        }
+      />
       <Metric label="Attempts" value={state.attempt_count} />
       <Metric label="Errors" value={state.consecutive_errors} />
     </div>
