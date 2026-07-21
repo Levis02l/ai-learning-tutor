@@ -14,6 +14,10 @@ from app.models.document import Chunk, Document
 from app.models.quiz import QuizAttempt, QuizItem
 from app.models.review import ReviewRecord
 from app.schemas.quiz import Difficulty, QuestionType, TraceabilityLabel
+from app.services.concepts import (
+    get_concept_quiz_chunks,
+    resolve_concept_for_focus,
+)
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 
 
@@ -83,12 +87,19 @@ def generate_quiz_items(
     llm_provider: LLMProvider | None = None,
 ) -> list[QuizItem]:
     focus = topic.strip() if topic else ""
+    concept_id = _resolve_quiz_concept_id(
+        db=db,
+        focus=focus,
+        user_id=user_id,
+        course_id=course_id,
+    )
     chunks = _retrieve_quiz_chunks(
         db=db,
         focus=focus,
         user_id=user_id,
         top_k=top_k,
         course_id=course_id,
+        concept_id=concept_id,
     )
     if not chunks:
         raise QuizGenerationError("No uploaded materials found in this scope")
@@ -113,6 +124,7 @@ def generate_quiz_items(
             item=item,
             user_id=user_id,
             course_id=course_id,
+            concept_id=concept_id,
             difficulty=difficulty,
             valid_source_ids=source_ids,
         )
@@ -284,7 +296,19 @@ def _retrieve_quiz_chunks(
     user_id: str,
     top_k: int,
     course_id: int | None,
+    concept_id: int | None = None,
 ) -> list[RetrievedChunk]:
+    if concept_id is not None and course_id is not None:
+        concept_chunks = get_concept_quiz_chunks(
+            db=db,
+            user_id=user_id,
+            course_id=course_id,
+            concept_id=concept_id,
+            limit=top_k,
+        )
+        if concept_chunks:
+            return concept_chunks
+
     if focus:
         return retrieve_relevant_chunks(
             db=db,
@@ -394,6 +418,7 @@ def _to_quiz_item(
     difficulty: Difficulty,
     valid_source_ids: set[int],
     course_id: int | None = None,
+    concept_id: int | None = None,
 ) -> QuizItem:
     source_chunk_ids = [
         chunk_id for chunk_id in item.source_chunk_ids if chunk_id in valid_source_ids
@@ -417,6 +442,7 @@ def _to_quiz_item(
     return QuizItem(
         user_id=user_id,
         course_id=course_id,
+        concept_id=concept_id if source_chunk_ids else None,
         question=item.question,
         answer=item.answer,
         difficulty=difficulty,
@@ -428,6 +454,25 @@ def _to_quiz_item(
         question_type=item.question_type,
         traceability_label=traceability_label,
     )
+
+
+def _resolve_quiz_concept_id(
+    *,
+    db: Session,
+    focus: str,
+    user_id: str,
+    course_id: int | None,
+) -> int | None:
+    if not focus or course_id is None:
+        return None
+
+    resolved = resolve_concept_for_focus(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        focus=focus,
+    )
+    return resolved.concept.id if resolved else None
 
 
 def _normalize_options(options: list[dict]) -> list[dict[str, str]]:

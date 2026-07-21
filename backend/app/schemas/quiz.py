@@ -31,6 +31,7 @@ class QuizItemResponse(BaseModel):
     id: int
     user_id: str
     course_id: int | None = None
+    concept_id: int | None = None
     question: str
     answer: str
     difficulty: str

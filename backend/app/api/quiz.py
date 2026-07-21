@@ -148,6 +148,7 @@ def _to_response(item: QuizItem) -> QuizItemResponse:
         id=item.id,
         user_id=item.user_id,
         course_id=item.course_id,
+        concept_id=item.concept_id,
         question=item.question,
         answer=item.answer,
         difficulty=item.difficulty,

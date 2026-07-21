@@ -6,6 +6,7 @@ from app.services.concepts import (
     _parse_generated_concepts,
     _to_candidates,
     _upsert_concept_graph,
+    resolve_concept_for_focus,
 )
 
 
@@ -131,6 +132,40 @@ def test_upsert_skips_candidates_without_valid_sources() -> None:
     assert db.concepts == []
 
 
+def test_resolve_concept_for_focus_uses_conservative_matching() -> None:
+    db = _FakeSession()
+    db.concepts = [
+        _concept(
+            concept_id=1,
+            name="Machine Learning",
+            normalized_name="machine learning",
+        ),
+        _concept(
+            concept_id=2,
+            name="Supervised Learning",
+            normalized_name="supervised learning",
+        ),
+    ]
+
+    resolved = resolve_concept_for_focus(
+        db,  # type: ignore[arg-type]
+        user_id="demo-user",
+        course_id=7,
+        focus="Quiz me on supervised learning",
+    )
+    broad = resolve_concept_for_focus(
+        db,  # type: ignore[arg-type]
+        user_id="demo-user",
+        course_id=7,
+        focus="learning",
+    )
+
+    assert resolved is not None
+    assert resolved.concept.id == 2
+    assert resolved.confidence >= 0.72
+    assert broad is None
+
+
 class _FakeSession:
     def __init__(self) -> None:
         self.concepts: list[Concept] = []
@@ -184,3 +219,14 @@ class _FakeSession:
 
     def commit(self) -> None:
         return None
+
+
+def _concept(*, concept_id: int, name: str, normalized_name: str) -> Concept:
+    return Concept(
+        id=concept_id,
+        course_id=7,
+        name=name,
+        normalized_name=normalized_name,
+        description=f"{name} description.",
+        extraction_confidence=0.8,
+    )

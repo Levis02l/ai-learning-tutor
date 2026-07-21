@@ -91,6 +91,7 @@ export type QuizItem = {
   id: number
   user_id: string
   course_id: number | null
+  concept_id: number | null
   question: string
   answer: string
   difficulty: string

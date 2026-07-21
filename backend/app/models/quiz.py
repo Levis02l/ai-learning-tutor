@@ -17,6 +17,12 @@ class QuizItem(Base):
         index=True,
         nullable=True,
     )
+    concept_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("concepts.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     question: Mapped[str] = mapped_column(Text)
     answer: Mapped[str] = mapped_column(Text)
     difficulty: Mapped[str] = mapped_column(String)
@@ -35,6 +41,7 @@ class QuizItem(Base):
     )
 
     course = relationship("Course", back_populates="quiz_items")
+    concept = relationship("Concept")
 
 
 class QuizAttempt(Base):

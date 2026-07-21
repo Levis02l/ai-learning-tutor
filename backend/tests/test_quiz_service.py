@@ -8,8 +8,10 @@ from app.services.quiz import (
     QuizGenerationError,
     _grade_quiz_attempt,
     _parse_generated_quiz,
+    _retrieve_quiz_chunks,
     _to_quiz_item,
 )
+from app.services.retrieval import RetrievedChunk
 
 
 def test_parse_generated_quiz_accepts_json() -> None:
@@ -72,6 +74,30 @@ def test_to_quiz_item_preserves_traceable_sources() -> None:
     assert quiz_item.explanation == "Because B is supported."
 
 
+def test_to_quiz_item_sets_concept_id_when_sources_are_traceable() -> None:
+    item = GeneratedQuizItem(
+        question="Q?",
+        answer="A.",
+        options=_options(),
+        correct_option_id="B",
+        explanation="Because B is supported.",
+        source_chunk_ids=[1],
+        evidence_quote="Evidence.",
+        question_type="conceptual",
+        traceability_label="fully_traceable",
+    )
+
+    quiz_item = _to_quiz_item(
+        item=item,
+        user_id="demo-user",
+        difficulty="medium",
+        valid_source_ids={1},
+        concept_id=7,
+    )
+
+    assert quiz_item.concept_id == 7
+
+
 def test_to_quiz_item_downgrades_item_without_valid_sources() -> None:
     item = GeneratedQuizItem(
         question="Q?",
@@ -94,6 +120,7 @@ def test_to_quiz_item_downgrades_item_without_valid_sources() -> None:
 
     assert quiz_item.source_chunk_ids == []
     assert quiz_item.traceability_label == "not_traceable"
+    assert quiz_item.concept_id is None
 
 
 def test_to_quiz_item_rejects_invalid_option_count() -> None:
@@ -137,6 +164,46 @@ def test_to_quiz_item_rejects_duplicate_option_ids() -> None:
             difficulty="medium",
             valid_source_ids={1},
         )
+
+
+def test_retrieve_quiz_chunks_prefers_concept_sources(monkeypatch) -> None:
+    concept_chunk = RetrievedChunk(
+        chunk_id=11,
+        document_id=2,
+        course_id=4,
+        filename="lecture.pdf",
+        content="Supervised learning content.",
+        metadata={},
+        distance=0.1,
+        similarity=0.9,
+    )
+    fallback_called = False
+
+    def fake_concept_chunks(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return [concept_chunk]
+
+    def fake_retrieve(*args, **kwargs):  # type: ignore[no-untyped-def]
+        nonlocal fallback_called
+        fallback_called = True
+        return []
+
+    monkeypatch.setattr(
+        "app.services.quiz.get_concept_quiz_chunks",
+        fake_concept_chunks,
+    )
+    monkeypatch.setattr("app.services.quiz.retrieve_relevant_chunks", fake_retrieve)
+
+    chunks = _retrieve_quiz_chunks(
+        db=None,  # type: ignore[arg-type]
+        focus="supervised learning",
+        user_id="demo-user",
+        top_k=5,
+        course_id=4,
+        concept_id=7,
+    )
+
+    assert chunks == [concept_chunk]
+    assert fallback_called is False
 
 
 def test_grade_quiz_attempt_marks_correct_answer() -> None:

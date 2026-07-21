@@ -12,6 +12,7 @@ from app.llm.provider import LLMProvider
 from app.models.concept import Concept, ConceptPrerequisite, ConceptSourceChunk
 from app.models.course import Course
 from app.models.document import Chunk, Document
+from app.services.retrieval import RetrievedChunk
 
 
 class ConceptExtractionError(RuntimeError):
@@ -60,6 +61,13 @@ class ConceptDetail:
     concept: Concept
     sources: list[ConceptSource]
     prerequisites: list[ConceptPrerequisiteDetail]
+
+
+@dataclass(frozen=True)
+class ResolvedConcept:
+    concept: Concept
+    confidence: float
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -223,6 +231,85 @@ def get_concept_detail(
             for link, prerequisite in prerequisite_rows
         ],
     )
+
+
+def resolve_concept_for_focus(
+    db: Session,
+    *,
+    user_id: str,
+    course_id: int,
+    focus: str,
+    confidence_threshold: float = 0.72,
+) -> ResolvedConcept | None:
+    normalized_focus = _normalize_name(focus)
+    if not normalized_focus:
+        return None
+
+    concepts = list(
+        db.scalars(
+            select(Concept)
+            .join(Course, Course.id == Concept.course_id)
+            .where(Concept.course_id == course_id, Course.user_id == user_id)
+            .order_by(Concept.name.asc())
+        )
+    )
+    scored: list[ResolvedConcept] = []
+    for concept in concepts:
+        score = _score_concept_match(
+            normalized_focus=normalized_focus,
+            concept=concept,
+        )
+        if score is not None:
+            scored.append(score)
+    if not scored:
+        return None
+
+    best = max(
+        scored,
+        key=lambda result: (
+            result.confidence,
+            len(result.concept.normalized_name),
+        ),
+    )
+    if best.confidence < confidence_threshold:
+        return None
+    return best
+
+
+def get_concept_quiz_chunks(
+    db: Session,
+    *,
+    user_id: str,
+    course_id: int,
+    concept_id: int,
+    limit: int,
+) -> list[RetrievedChunk]:
+    rows = db.execute(
+        select(ConceptSourceChunk, Chunk, Document)
+        .join(Chunk, Chunk.id == ConceptSourceChunk.chunk_id)
+        .join(Document, Document.id == Chunk.document_id)
+        .where(
+            ConceptSourceChunk.concept_id == concept_id,
+            Document.user_id == user_id,
+            Document.course_id == course_id,
+        )
+        .order_by(ConceptSourceChunk.relevance_score.desc(), Chunk.id.asc())
+        .limit(limit)
+    ).all()
+
+    return [
+        RetrievedChunk(
+            chunk_id=chunk.id,
+            document_id=document.id,
+            course_id=document.course_id,
+            filename=document.filename,
+            content=chunk.content,
+            metadata=chunk.chunk_metadata,
+            distance=round(1.0 - link.relevance_score, 3),
+            similarity=link.relevance_score,
+        )
+        for link, chunk, document in rows
+    ]
 
 
 def _load_course_chunks(
@@ -526,6 +613,46 @@ def _normalize_name(name: str) -> str:
         "nlp": "natural language processing",
     }
     return aliases.get(value, value)
+
+
+def _score_concept_match(
+    *,
+    normalized_focus: str,
+    concept: Concept,
+) -> ResolvedConcept | None:
+    concept_name = concept.normalized_name
+    if not concept_name:
+        return None
+    if normalized_focus == concept_name:
+        return ResolvedConcept(
+            concept=concept,
+            confidence=1.0,
+            reason="exact_normalized_match",
+        )
+
+    compact_focus = normalized_focus.replace(" ", "")
+    compact_concept = concept_name.replace(" ", "")
+    if len(compact_concept) >= 4 and compact_concept in compact_focus:
+        return ResolvedConcept(
+            concept=concept,
+            confidence=0.9,
+            reason="compact_name_match",
+        )
+
+    focus_tokens = set(normalized_focus.split())
+    concept_tokens = set(concept_name.split())
+    if not focus_tokens or not concept_tokens:
+        return None
+
+    overlap = focus_tokens & concept_tokens
+    coverage = len(overlap) / len(concept_tokens)
+    if len(overlap) >= 2 and coverage >= 0.75:
+        return ResolvedConcept(
+            concept=concept,
+            confidence=round(0.72 + min(coverage, 1.0) * 0.15, 3),
+            reason="token_coverage_match",
+        )
+    return None
 
 
 def _clean_name(name: str) -> str:
