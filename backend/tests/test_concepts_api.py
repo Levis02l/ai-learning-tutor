@@ -7,6 +7,7 @@ from app.models.concept import Concept
 from app.services.concepts import (
     ConceptDetail,
     ConceptExtractionStats,
+    ConceptLearnerState,
     ConceptPrerequisiteDetail,
     ConceptSource,
     ConceptSummary,
@@ -87,6 +88,50 @@ def test_list_course_concepts_returns_summaries(monkeypatch) -> None:
     assert body[0]["name"] == "Artificial Intelligence"
     assert body[0]["source_count"] == 2
     assert body[0]["prerequisite_count"] == 0
+
+
+def test_list_concept_learner_states_returns_unobserved_state(monkeypatch) -> None:
+    captured: dict[str, int | str] = {}
+
+    def fake_validate(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["validated_course_id"] = kwargs["course_id"]
+        captured["validated_user_id"] = kwargs["user_id"]
+
+    def fake_states(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["state_course_id"] = kwargs["course_id"]
+        captured["state_user_id"] = kwargs["user_id"]
+        return [
+            ConceptLearnerState(
+                concept_id=3,
+                concept_name="K-means Clustering",
+                state_status="unobserved",
+                mastery_score=None,
+                recent_accuracy=None,
+                attempt_count=0,
+                consecutive_errors=0,
+                last_attempted_at=None,
+                review_due=False,
+                needs_attention=False,
+            )
+        ]
+
+    monkeypatch.setattr("app.api.concepts.validate_course_scope", fake_validate)
+    monkeypatch.setattr("app.api.concepts.list_concept_learner_states", fake_states)
+    client = TestClient(app)
+
+    response = client.get("/courses/4/concepts/learner-state?user_id=demo-user")
+
+    assert response.status_code == 200
+    assert captured == {
+        "validated_course_id": 4,
+        "validated_user_id": "demo-user",
+        "state_course_id": 4,
+        "state_user_id": "demo-user",
+    }
+    body = response.json()
+    assert body[0]["state_status"] == "unobserved"
+    assert body[0]["mastery_score"] is None
+    assert body[0]["recent_accuracy"] is None
 
 
 def test_get_concept_detail_returns_sources_and_prerequisites(monkeypatch) -> None:

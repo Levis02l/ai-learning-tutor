@@ -7,6 +7,7 @@ from app.schemas.concept import (
     ConceptDetailResponse,
     ConceptExtractRequest,
     ConceptExtractResponse,
+    ConceptLearnerStateResponse,
     ConceptPrerequisiteResponse,
     ConceptSourceResponse,
     ConceptSummaryResponse,
@@ -15,10 +16,12 @@ from app.services.concepts import (
     ConceptDetail,
     ConceptExtractionError,
     ConceptExtractionStats,
+    ConceptLearnerState,
     ConceptNotFoundError,
     ConceptSummary,
     extract_course_concepts,
     get_concept_detail,
+    list_concept_learner_states,
     list_course_concepts,
 )
 from app.services.courses import CourseNotFoundError, validate_course_scope
@@ -81,6 +84,28 @@ def get_course_concepts(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
     return [_summary_response(summary) for summary in concepts]
+
+
+@router.get(
+    "/courses/{course_id}/concepts/learner-state",
+    response_model=list[ConceptLearnerStateResponse],
+)
+def get_course_concept_learner_states(
+    course_id: int,
+    user_id: str = "demo-user",
+    db: Session = Depends(get_db),
+) -> list[ConceptLearnerStateResponse]:
+    try:
+        validate_course_scope(db=db, user_id=user_id, course_id=course_id)
+        states = list_concept_learner_states(
+            db=db,
+            user_id=user_id,
+            course_id=course_id,
+        )
+    except (CourseNotFoundError, ConceptNotFoundError) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+    return [_learner_state_response(state) for state in states]
 
 
 @router.get("/concepts/{concept_id}", response_model=ConceptDetailResponse)
@@ -153,4 +178,21 @@ def _detail_response(detail: ConceptDetail) -> ConceptDetailResponse:
         ],
         created_at=concept.created_at,
         updated_at=concept.updated_at,
+    )
+
+
+def _learner_state_response(
+    state: ConceptLearnerState,
+) -> ConceptLearnerStateResponse:
+    return ConceptLearnerStateResponse(
+        concept_id=state.concept_id,
+        concept_name=state.concept_name,
+        state_status=state.state_status,
+        mastery_score=state.mastery_score,
+        recent_accuracy=state.recent_accuracy,
+        attempt_count=state.attempt_count,
+        consecutive_errors=state.consecutive_errors,
+        last_attempted_at=state.last_attempted_at,
+        review_due=state.review_due,
+        needs_attention=state.needs_attention,
     )

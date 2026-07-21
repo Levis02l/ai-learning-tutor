@@ -23,6 +23,16 @@ class LearnerState:
     review_due: bool
 
 
+@dataclass(frozen=True)
+class AttemptStateMetrics:
+    mastery_score: float
+    recent_accuracy: float
+    attempt_count: int
+    consecutive_errors: int
+    last_attempted_at: datetime | None
+    needs_attention: bool
+
+
 def compute_learner_state(
     db: Session,
     *,
@@ -132,33 +142,66 @@ def _build_learner_state_from_attempts(
     quiz_items: list[QuizItem],
     attempts: list[QuizAttempt],
 ) -> LearnerState:
-    recent_attempts = attempts[:RECENT_ATTEMPT_LIMIT]
-    attempt_count = len(attempts)
-    recent_accuracy = _calculate_attempt_accuracy(recent_attempts)
-    consecutive_errors = _count_consecutive_attempt_errors(attempts)
+    metrics = _calculate_attempt_state_metrics(
+        quiz_items=quiz_items,
+        attempts=attempts,
+        due_penalty=False,
+    )
     review_due = _has_due_attempt(
         quiz_items=quiz_items,
         attempts=attempts,
-        recent_accuracy=recent_accuracy,
-        consecutive_errors=consecutive_errors,
+        recent_accuracy=metrics.recent_accuracy,
+        consecutive_errors=metrics.consecutive_errors,
     )
-    mastery_score = _estimate_attempt_mastery_score(
+    metrics = _calculate_attempt_state_metrics(
         quiz_items=quiz_items,
-        recent_attempts=recent_attempts,
-        recent_accuracy=recent_accuracy,
-        review_due=review_due,
-        consecutive_errors=consecutive_errors,
+        attempts=attempts,
+        due_penalty=review_due,
     )
 
     return LearnerState(
         user_id=user_id,
         course_id=course_id,
+        mastery_score=metrics.mastery_score,
+        recent_accuracy=metrics.recent_accuracy,
+        attempt_count=metrics.attempt_count,
+        consecutive_errors=metrics.consecutive_errors,
+        last_reviewed_at=metrics.last_attempted_at,
+        review_due=review_due,
+    )
+
+
+def _calculate_attempt_state_metrics(
+    *,
+    quiz_items: list[QuizItem],
+    attempts: list[QuizAttempt],
+    due_penalty: bool,
+) -> AttemptStateMetrics:
+    recent_attempts = attempts[:RECENT_ATTEMPT_LIMIT]
+    attempt_count = len(attempts)
+    recent_accuracy = _calculate_attempt_accuracy(recent_attempts)
+    consecutive_errors = _count_consecutive_attempt_errors(attempts)
+    mastery_score = _estimate_attempt_mastery_score(
+        quiz_items=quiz_items,
+        recent_attempts=recent_attempts,
+        recent_accuracy=recent_accuracy,
+        review_due=due_penalty,
+        consecutive_errors=consecutive_errors,
+    )
+    return AttemptStateMetrics(
         mastery_score=mastery_score,
         recent_accuracy=recent_accuracy,
         attempt_count=attempt_count,
         consecutive_errors=consecutive_errors,
-        last_reviewed_at=attempts[0].attempted_at,
-        review_due=review_due,
+        last_attempted_at=attempts[0].attempted_at if attempts else None,
+        needs_attention=(
+            attempt_count > 0
+            and (
+                recent_accuracy < 0.5
+                or consecutive_errors >= 2
+                or mastery_score < 0.4
+            )
+        ),
     )
 
 

@@ -1,7 +1,13 @@
+from datetime import datetime, timedelta
+
 from app.models.concept import Concept, ConceptPrerequisite, ConceptSourceChunk
+from app.models.quiz import QuizAttempt, QuizItem
+from app.models.review import ReviewRecord
 from app.services.concepts import (
+    _build_concept_learner_state,
     _ConceptCandidate,
     _deduplicate_candidates,
+    _has_due_concept_review,
     _normalize_name,
     _parse_generated_concepts,
     _to_candidates,
@@ -166,6 +172,81 @@ def test_resolve_concept_for_focus_uses_conservative_matching() -> None:
     assert broad is None
 
 
+def test_concept_learner_state_marks_no_attempts_unobserved() -> None:
+    now = datetime(2026, 7, 21, 12, 0, 0)
+    state = _build_concept_learner_state(
+        concept=_concept(
+            concept_id=1,
+            name="K-means Clustering",
+            normalized_name="k means clustering",
+        ),
+        quiz_items=[_quiz_item(item_id=1, concept_id=1)],
+        attempts=[],
+        reviews=[],
+        now=now,
+    )
+
+    assert state.state_status == "unobserved"
+    assert state.mastery_score is None
+    assert state.recent_accuracy is None
+    assert state.attempt_count == 0
+    assert state.review_due is False
+    assert state.needs_attention is False
+
+
+def test_concept_learner_state_observed_attempts_need_attention() -> None:
+    now = datetime(2026, 7, 21, 12, 0, 0)
+    concept = _concept(
+        concept_id=1,
+        name="WSS-BSS Decomposition",
+        normalized_name="wss bss decomposition",
+    )
+    item = _quiz_item(item_id=1, concept_id=1)
+    attempts = [
+        _attempt(attempt_id=2, item_id=1, is_correct=False, minutes_ago=0),
+        _attempt(attempt_id=1, item_id=1, is_correct=False, minutes_ago=5),
+    ]
+    reviews = [
+        _review(
+            review_id=1,
+            item_id=1,
+            due_at=now + timedelta(days=1),
+        )
+    ]
+
+    state = _build_concept_learner_state(
+        concept=concept,
+        quiz_items=[item],
+        attempts=attempts,
+        reviews=reviews,
+        now=now,
+    )
+
+    assert state.state_status == "observed"
+    assert state.mastery_score is not None
+    assert state.mastery_score < 0.4
+    assert state.recent_accuracy == 0.0
+    assert state.attempt_count == 2
+    assert state.consecutive_errors == 2
+    assert state.review_due is False
+    assert state.needs_attention is True
+
+
+def test_due_review_is_separate_from_attention_signal() -> None:
+    now = datetime(2026, 7, 21, 12, 0, 0)
+    assert _has_due_concept_review(
+        quiz_items=[_quiz_item(item_id=1, concept_id=1)],
+        reviews=[
+            _review(
+                review_id=1,
+                item_id=1,
+                due_at=now - timedelta(minutes=1),
+            )
+        ],
+        now=now,
+    )
+
+
 class _FakeSession:
     def __init__(self) -> None:
         self.concepts: list[Concept] = []
@@ -229,4 +310,65 @@ def _concept(*, concept_id: int, name: str, normalized_name: str) -> Concept:
         normalized_name=normalized_name,
         description=f"{name} description.",
         extraction_confidence=0.8,
+    )
+
+
+def _quiz_item(*, item_id: int, concept_id: int | None) -> QuizItem:
+    return QuizItem(
+        id=item_id,
+        user_id="demo-user",
+        course_id=7,
+        concept_id=concept_id,
+        question="Question?",
+        answer="Answer.",
+        difficulty="medium",
+        source_chunk_ids=[1],
+        evidence_quote="Evidence.",
+        options=[
+            {"id": "A", "text": "Wrong"},
+            {"id": "B", "text": "Correct"},
+            {"id": "C", "text": "Wrong"},
+            {"id": "D", "text": "Wrong"},
+        ],
+        correct_option_id="B",
+        explanation="Explanation.",
+        question_type="conceptual",
+        traceability_label="fully_traceable",
+    )
+
+
+def _attempt(
+    *,
+    attempt_id: int,
+    item_id: int,
+    is_correct: bool,
+    minutes_ago: int,
+) -> QuizAttempt:
+    return QuizAttempt(
+        id=attempt_id,
+        user_id="demo-user",
+        course_id=7,
+        quiz_item_id=item_id,
+        selected_option_id="B" if is_correct else "A",
+        selected_option_text="Correct" if is_correct else "Wrong",
+        correct_option_id="B",
+        correct_option_text="Correct",
+        is_correct=is_correct,
+        attempted_at=datetime(2026, 7, 21, 12, 0, 0)
+        - timedelta(minutes=minutes_ago),
+    )
+
+
+def _review(*, review_id: int, item_id: int, due_at: datetime) -> ReviewRecord:
+    return ReviewRecord(
+        id=review_id,
+        user_id="demo-user",
+        course_id=7,
+        item_id=item_id,
+        rating=3,
+        is_correct=True,
+        reviewed_at=datetime(2026, 7, 21, 11, 0, 0),
+        stability=2.0,
+        difficulty=5.0,
+        due_at=due_at,
     )

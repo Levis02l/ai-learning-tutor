@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+ConceptLearnerStateStatus = Literal["observed", "unobserved"]
 
 
 class ConceptExtractRequest(BaseModel):
@@ -56,3 +59,16 @@ class ConceptDetailResponse(BaseModel):
     prerequisites: list[ConceptPrerequisiteResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+
+class ConceptLearnerStateResponse(BaseModel):
+    concept_id: int
+    concept_name: str
+    state_status: ConceptLearnerStateStatus
+    mastery_score: float | None = None
+    recent_accuracy: float | None = None
+    attempt_count: int
+    consecutive_errors: int
+    last_attempted_at: datetime | None = None
+    review_due: bool
+    needs_attention: bool

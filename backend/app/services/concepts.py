@@ -1,7 +1,8 @@
 import json
 import re
 from dataclasses import dataclass
-from typing import Iterable
+from datetime import datetime
+from typing import Iterable, Literal
 
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import func, select
@@ -12,6 +13,9 @@ from app.llm.provider import LLMProvider
 from app.models.concept import Concept, ConceptPrerequisite, ConceptSourceChunk
 from app.models.course import Course
 from app.models.document import Chunk, Document
+from app.models.quiz import QuizAttempt, QuizItem
+from app.models.review import ReviewRecord
+from app.services.learner_state import _calculate_attempt_state_metrics
 from app.services.retrieval import RetrievedChunk
 
 
@@ -61,6 +65,23 @@ class ConceptDetail:
     concept: Concept
     sources: list[ConceptSource]
     prerequisites: list[ConceptPrerequisiteDetail]
+
+
+ConceptLearnerStateStatus = Literal["observed", "unobserved"]
+
+
+@dataclass(frozen=True)
+class ConceptLearnerState:
+    concept_id: int
+    concept_name: str
+    state_status: ConceptLearnerStateStatus
+    mastery_score: float | None
+    recent_accuracy: float | None
+    attempt_count: int
+    consecutive_errors: int
+    last_attempted_at: datetime | None
+    review_due: bool
+    needs_attention: bool
 
 
 @dataclass(frozen=True)
@@ -233,6 +254,60 @@ def get_concept_detail(
     )
 
 
+def list_concept_learner_states(
+    db: Session,
+    *,
+    user_id: str,
+    course_id: int,
+    now: datetime | None = None,
+) -> list[ConceptLearnerState]:
+    _require_course(db=db, user_id=user_id, course_id=course_id)
+    current_time = now or datetime.utcnow()
+    concepts = list(
+        db.scalars(
+            select(Concept)
+            .where(Concept.course_id == course_id)
+            .order_by(Concept.name.asc())
+        )
+    )
+    concept_ids = [concept.id for concept in concepts]
+    if not concept_ids:
+        return []
+
+    quiz_items_by_concept = _load_quiz_items_by_concept(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        concept_ids=concept_ids,
+    )
+    attempts_by_concept = _load_attempts_by_concept(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        concept_ids=concept_ids,
+    )
+    reviews_by_concept = _load_reviews_by_concept(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        concept_ids=concept_ids,
+    )
+
+    states: list[ConceptLearnerState] = []
+    for concept in concepts:
+        states.append(
+            _build_concept_learner_state(
+                concept=concept,
+                quiz_items=quiz_items_by_concept.get(concept.id, []),
+                attempts=attempts_by_concept.get(concept.id, []),
+                reviews=reviews_by_concept.get(concept.id, []),
+                now=current_time,
+            )
+        )
+
+    return states
+
+
 def resolve_concept_for_focus(
     db: Session,
     *,
@@ -310,6 +385,150 @@ def get_concept_quiz_chunks(
         )
         for link, chunk, document in rows
     ]
+
+
+def _load_quiz_items_by_concept(
+    *,
+    db: Session,
+    user_id: str,
+    course_id: int,
+    concept_ids: list[int],
+) -> dict[int, list[QuizItem]]:
+    rows = list(
+        db.scalars(
+            select(QuizItem)
+            .where(
+                QuizItem.user_id == user_id,
+                QuizItem.course_id == course_id,
+                QuizItem.concept_id.in_(concept_ids),
+                QuizItem.archived_at.is_(None),
+            )
+            .order_by(QuizItem.created_at.asc(), QuizItem.id.asc())
+        )
+    )
+    by_concept: dict[int, list[QuizItem]] = {}
+    for item in rows:
+        if item.concept_id is not None:
+            by_concept.setdefault(item.concept_id, []).append(item)
+    return by_concept
+
+
+def _load_attempts_by_concept(
+    *,
+    db: Session,
+    user_id: str,
+    course_id: int,
+    concept_ids: list[int],
+) -> dict[int, list[QuizAttempt]]:
+    rows = db.execute(
+        select(QuizAttempt, QuizItem.concept_id)
+        .join(QuizItem, QuizItem.id == QuizAttempt.quiz_item_id)
+        .where(
+            QuizAttempt.user_id == user_id,
+            QuizAttempt.course_id == course_id,
+            QuizItem.user_id == user_id,
+            QuizItem.course_id == course_id,
+            QuizItem.concept_id.in_(concept_ids),
+        )
+        .order_by(QuizAttempt.attempted_at.desc(), QuizAttempt.id.desc())
+    ).all()
+    by_concept: dict[int, list[QuizAttempt]] = {}
+    for attempt, concept_id in rows:
+        if concept_id is not None:
+            by_concept.setdefault(concept_id, []).append(attempt)
+    return by_concept
+
+
+def _load_reviews_by_concept(
+    *,
+    db: Session,
+    user_id: str,
+    course_id: int,
+    concept_ids: list[int],
+) -> dict[int, list[ReviewRecord]]:
+    rows = db.execute(
+        select(ReviewRecord, QuizItem.concept_id)
+        .join(QuizItem, QuizItem.id == ReviewRecord.item_id)
+        .where(
+            ReviewRecord.user_id == user_id,
+            ReviewRecord.course_id == course_id,
+            QuizItem.user_id == user_id,
+            QuizItem.course_id == course_id,
+            QuizItem.concept_id.in_(concept_ids),
+        )
+        .order_by(ReviewRecord.reviewed_at.desc(), ReviewRecord.id.desc())
+    ).all()
+    by_concept: dict[int, list[ReviewRecord]] = {}
+    for review, concept_id in rows:
+        if concept_id is not None:
+            by_concept.setdefault(concept_id, []).append(review)
+    return by_concept
+
+
+def _has_due_concept_review(
+    *,
+    quiz_items: list[QuizItem],
+    reviews: list[ReviewRecord],
+    now: datetime,
+) -> bool:
+    if not quiz_items:
+        return False
+
+    latest_by_item: dict[int, ReviewRecord] = {}
+    for review in reviews:
+        latest_by_item.setdefault(review.item_id, review)
+
+    for item in quiz_items:
+        latest_review = latest_by_item.get(item.id)
+        if latest_review is None or latest_review.due_at <= now:
+            return True
+    return False
+
+
+def _build_concept_learner_state(
+    *,
+    concept: Concept,
+    quiz_items: list[QuizItem],
+    attempts: list[QuizAttempt],
+    reviews: list[ReviewRecord],
+    now: datetime,
+) -> ConceptLearnerState:
+    if not attempts:
+        return ConceptLearnerState(
+            concept_id=concept.id,
+            concept_name=concept.name,
+            state_status="unobserved",
+            mastery_score=None,
+            recent_accuracy=None,
+            attempt_count=0,
+            consecutive_errors=0,
+            last_attempted_at=None,
+            review_due=False,
+            needs_attention=False,
+        )
+
+    review_due = _has_due_concept_review(
+        quiz_items=quiz_items,
+        reviews=reviews,
+        now=now,
+    )
+    metrics = _calculate_attempt_state_metrics(
+        quiz_items=quiz_items,
+        attempts=attempts,
+        due_penalty=review_due,
+    )
+    return ConceptLearnerState(
+        concept_id=concept.id,
+        concept_name=concept.name,
+        state_status="observed",
+        mastery_score=metrics.mastery_score,
+        recent_accuracy=metrics.recent_accuracy,
+        attempt_count=metrics.attempt_count,
+        consecutive_errors=metrics.consecutive_errors,
+        last_attempted_at=metrics.last_attempted_at,
+        review_due=review_due,
+        needs_attention=metrics.needs_attention or review_due,
+    )
 
 
 def _load_course_chunks(
