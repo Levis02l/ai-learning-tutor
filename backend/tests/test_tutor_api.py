@@ -118,6 +118,41 @@ def test_tutor_respond_returns_unified_response(monkeypatch) -> None:
     assert body["review_items"] == []
 
 
+def test_tutor_outcome_links_existing_quiz_attempt(monkeypatch) -> None:
+    captured: dict[str, int | str | None] = {}
+
+    def fake_record_outcome(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["decision_id"] = kwargs["decision_id"]
+        captured["outcome_type"] = kwargs["outcome_type"]
+        captured["quiz_attempt_id"] = kwargs["quiz_attempt_id"]
+        captured["review_record_id"] = kwargs["review_record_id"]
+        return {
+            "type": "quiz_attempt",
+            "quiz_attempt_id": kwargs["quiz_attempt_id"],
+            "is_correct": False,
+        }
+
+    monkeypatch.setattr("app.api.tutor.record_tutor_outcome", fake_record_outcome)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tutor/decisions/12/outcome",
+        json={"outcome_type": "quiz_attempt", "quiz_attempt_id": 9},
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "decision_id": 12,
+        "outcome_type": "quiz_attempt",
+        "quiz_attempt_id": 9,
+        "review_record_id": None,
+    }
+    body = response.json()
+    assert body["decision_id"] == 12
+    assert body["outcome"]["type"] == "quiz_attempt"
+    assert body["outcome"]["is_correct"] is False
+
+
 def _policy_decision(*, query: str) -> PolicyDecision:
     return PolicyDecision(
         decision_id=12,

@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.chat import ChatClaim, ChatSource
 from app.schemas.quiz import QuizItemResponse
@@ -92,3 +92,27 @@ class TutorResponseResponse(BaseModel):
     quiz_items: list[QuizItemResponse] = Field(default_factory=list)
     review_items: list[DueReviewItemResponse] = Field(default_factory=list)
     suggested_next_step: str
+
+
+TutorOutcomeType = Literal["quiz_attempt", "review"]
+
+
+class TutorOutcomeRequest(BaseModel):
+    outcome_type: TutorOutcomeType
+    quiz_attempt_id: int | None = Field(default=None, ge=1)
+    review_record_id: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def validate_reference(self) -> "TutorOutcomeRequest":
+        if self.outcome_type == "quiz_attempt":
+            if self.quiz_attempt_id is None or self.review_record_id is not None:
+                raise ValueError("quiz_attempt outcomes require only quiz_attempt_id")
+        if self.outcome_type == "review":
+            if self.review_record_id is None or self.quiz_attempt_id is not None:
+                raise ValueError("review outcomes require only review_record_id")
+        return self
+
+
+class TutorOutcomeResponse(BaseModel):
+    decision_id: int
+    outcome: dict[str, Any]

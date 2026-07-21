@@ -12,6 +12,7 @@ import type {
   QuizItem,
   QuizItemRemovalResponse,
   ReviewRecord,
+  TutorOutcomeResponse,
   TutorResponse,
 } from './types'
 
@@ -140,6 +141,19 @@ export async function tutorRespond(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...scopedBody(userId, courseId), query, top_k: topK }),
+  })
+}
+
+export async function linkTutorOutcome(
+  decisionId: number,
+  payload:
+    | { outcome_type: 'quiz_attempt'; quiz_attempt_id: number }
+    | { outcome_type: 'review'; review_record_id: number },
+): Promise<TutorOutcomeResponse> {
+  return request(`/tutor/decisions/${decisionId}/outcome`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   })
 }
 

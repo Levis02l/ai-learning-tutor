@@ -32,6 +32,7 @@ import {
   getHealth,
   getLearnerState,
   getMastery,
+  linkTutorOutcome,
   listCourses,
   listDocuments,
   listDueReviews,
@@ -419,10 +420,22 @@ function TutorView({
             <>
               <TutorAnswerCard response={response} />
               {response.quiz_items.length > 0 && (
-                <TutorQuizItems items={response.quiz_items} />
+                <TutorQuizItems
+                  courseId={courseId}
+                  decisionId={response.decision.decision_id}
+                  items={response.quiz_items}
+                  onOutcomeLinked={onResponded}
+                  userId={userId}
+                />
               )}
               {response.review_items.length > 0 && (
-                <TutorReviewItems items={response.review_items} />
+                <TutorReviewItems
+                  courseId={courseId}
+                  decisionId={response.decision.decision_id}
+                  items={response.review_items}
+                  onOutcomeLinked={onResponded}
+                  userId={userId}
+                />
               )}
               {response.claims.length > 0 && <TutorClaims response={response} />}
             </>
@@ -553,55 +566,249 @@ function TutorEvidenceSnapshot({ response }: { response: TutorResponse }) {
   )
 }
 
-function TutorQuizItems({ items }: { items: QuizItem[] }) {
+function TutorQuizItems({
+  courseId,
+  decisionId,
+  items,
+  onOutcomeLinked,
+  userId,
+}: {
+  courseId: number | null
+  decisionId: number
+  items: QuizItem[]
+  onOutcomeLinked: () => Promise<void>
+  userId: string
+}) {
+  const [selectedOptions, setSelectedOptions] = useState<Record<number, string>>({})
+  const [attemptFeedback, setAttemptFeedback] = useState<Record<number, QuizAttemptResponse>>(
+    {},
+  )
+  const [busyItemId, setBusyItemId] = useState<number | null>(null)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    setSelectedOptions({})
+    setAttemptFeedback({})
+    setBusyItemId(null)
+    setError('')
+    setNotice('')
+  }, [decisionId])
+
+  async function handleSubmitAttempt(item: QuizItem) {
+    const selectedOptionId = selectedOptions[item.id]
+    if (!selectedOptionId) return
+
+    setBusyItemId(item.id)
+    setError('')
+    setNotice('')
+    try {
+      const feedback = await submitQuizAttempt(
+        userId,
+        item.id,
+        selectedOptionId,
+        courseId,
+      )
+      await linkTutorOutcome(decisionId, {
+        outcome_type: 'quiz_attempt',
+        quiz_attempt_id: feedback.id,
+      })
+      setAttemptFeedback((current) => ({ ...current, [item.id]: feedback }))
+      setNotice('Outcome linked to this tutor decision.')
+      await onOutcomeLinked()
+    } catch (attemptError) {
+      setError(getErrorMessage(attemptError))
+    } finally {
+      setBusyItemId(null)
+    }
+  }
+
   return (
     <div className="stack">
       <h3 className="section-title">Generated Practice</h3>
+      {error && <div className="error">{error}</div>}
+      {notice && <div className="notice">{notice}</div>}
       <div className="list">
-        {items.map((item) => (
-          <div className="item-row quiz-card" key={item.id}>
-            <div className="item-topline">
-              <h4 className="item-title">{item.question}</h4>
-              <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
-                {item.traceability_label}
-              </span>
-            </div>
-            {item.options.length > 0 && (
-              <div className="option-list">
-                {item.options.map((option) => (
-                  <div className="option-button static" key={option.id}>
-                    <span className="option-letter">{option.id}</span>
-                    <span>{option.text}</span>
-                  </div>
+        {items.map((item) => {
+          const selectedOptionId = selectedOptions[item.id]
+          const feedback = attemptFeedback[item.id]
+          const hasOptions = item.options.length > 0
+          return (
+            <div className="item-row quiz-card" key={item.id}>
+              <div className="item-topline">
+                <h4 className="item-title">{item.question}</h4>
+                <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
+                  {item.traceability_label}
+                </span>
+              </div>
+              {hasOptions ? (
+                <div className="option-list" role="group" aria-label="Tutor answer options">
+                  {item.options.map((option) => {
+                    const isSelected = selectedOptionId === option.id
+                    const isCorrect = feedback?.correct_option_id === option.id
+                    const isIncorrectSelection =
+                      feedback?.selected_option_id === option.id && !feedback.is_correct
+                    return (
+                      <button
+                        className={[
+                          'option-button',
+                          isSelected ? 'selected' : '',
+                          isCorrect ? 'correct' : '',
+                          isIncorrectSelection ? 'incorrect' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        disabled={Boolean(feedback)}
+                        key={option.id}
+                        onClick={() =>
+                          setSelectedOptions((current) => ({
+                            ...current,
+                            [item.id]: option.id,
+                          }))
+                        }
+                        type="button"
+                      >
+                        <span className="option-letter">{option.id}</span>
+                        <span>{option.text}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="answer">{item.answer}</p>
+              )}
+
+              {hasOptions && (
+                <div className="quiz-actions">
+                  <button
+                    className="button secondary"
+                    disabled={
+                      !selectedOptionId ||
+                      Boolean(feedback) ||
+                      busyItemId === item.id
+                    }
+                    onClick={() => void handleSubmitAttempt(item)}
+                    type="button"
+                  >
+                    {busyItemId === item.id ? (
+                      <Loader2 className="spin" size={16} aria-hidden="true" />
+                    ) : (
+                      <CheckCircle2 size={16} aria-hidden="true" />
+                    )}
+                    {feedback ? 'Outcome recorded' : 'Submit answer'}
+                  </button>
+                </div>
+              )}
+
+              {feedback && (
+                <div
+                  className={`attempt-feedback ${
+                    feedback.is_correct ? 'correct' : 'incorrect'
+                  }`}
+                >
+                  <strong>{feedback.is_correct ? 'Correct' : 'Not quite'}</strong>
+                  <span>
+                    Correct answer: {feedback.correct_option_id}.{' '}
+                    {feedback.correct_option_text}
+                  </span>
+                  <p>{feedback.explanation}</p>
+                </div>
+              )}
+
+              <div className="badge-row">
+                <span className="badge">{item.difficulty}</span>
+                <span className="badge">{item.question_type}</span>
+                {item.source_chunk_ids.map((id) => (
+                  <span className="badge" key={id}>
+                    chunk {id}
+                  </span>
                 ))}
               </div>
-            )}
-            <div className="badge-row">
-              <span className="badge">{item.difficulty}</span>
-              <span className="badge">{item.question_type}</span>
-              {item.source_chunk_ids.map((id) => (
-                <span className="badge" key={id}>
-                  chunk {id}
-                </span>
-              ))}
+              {item.evidence_quote && <p className="quote">{item.evidence_quote}</p>}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 }
 
-function TutorReviewItems({ items }: { items: DueReviewItem[] }) {
+function TutorReviewItems({
+  courseId,
+  decisionId,
+  items,
+  onOutcomeLinked,
+  userId,
+}: {
+  courseId: number | null
+  decisionId: number
+  items: DueReviewItem[]
+  onOutcomeLinked: () => Promise<void>
+  userId: string
+}) {
+  const [busyItemId, setBusyItemId] = useState<number | null>(null)
+  const [completedItems, setCompletedItems] = useState<Record<number, number>>({})
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    setBusyItemId(null)
+    setCompletedItems({})
+    setError('')
+    setNotice('')
+  }, [decisionId])
+
+  async function handleReview(itemId: number, rating: number, isCorrect: boolean) {
+    setBusyItemId(itemId)
+    setError('')
+    setNotice('')
+    try {
+      const review = await submitReview(userId, itemId, rating, isCorrect, courseId)
+      await linkTutorOutcome(decisionId, {
+        outcome_type: 'review',
+        review_record_id: review.id,
+      })
+      setCompletedItems((current) => ({ ...current, [itemId]: rating }))
+      setNotice('Review outcome linked to this tutor decision.')
+      await onOutcomeLinked()
+    } catch (reviewError) {
+      setError(getErrorMessage(reviewError))
+    } finally {
+      setBusyItemId(null)
+    }
+  }
+
   return (
     <div className="stack">
       <h3 className="section-title">Due Review</h3>
+      {error && <div className="error">{error}</div>}
+      {notice && <div className="notice">{notice}</div>}
       <div className="list">
         {items.map(({ item, latest_review }) => (
           <div className="item-row compact" key={item.id}>
             <div className="item-topline">
               <h4 className="item-title">{item.question}</h4>
-              <span className="badge warn">due</span>
+              <span className={`badge ${completedItems[item.id] ? 'good' : 'warn'}`}>
+                {completedItems[item.id] ? 'recorded' : 'due'}
+              </span>
+            </div>
+            <p className="answer">{item.answer}</p>
+            <div className="review-actions">
+              {[1, 2, 3, 4].map((rating) => (
+                <button
+                  className={rating >= 3 ? 'button secondary' : 'button ghost'}
+                  disabled={busyItemId === item.id || Boolean(completedItems[item.id])}
+                  key={rating}
+                  onClick={() => void handleReview(item.id, rating, rating >= 3)}
+                  type="button"
+                >
+                  {busyItemId === item.id ? (
+                    <Loader2 className="spin" size={15} aria-hidden="true" />
+                  ) : (
+                    rating
+                  )}
+                </button>
+              ))}
             </div>
             <div className="badge-row">
               <span className="badge">{item.difficulty}</span>

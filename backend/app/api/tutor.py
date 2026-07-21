@@ -12,6 +12,8 @@ from app.schemas.tutor import (
     TutorDecisionResponse,
     TutorEvidenceStateSnapshot,
     TutorLearnerStateSnapshot,
+    TutorOutcomeRequest,
+    TutorOutcomeResponse,
     TutorResponseRequest,
     TutorResponseResponse,
 )
@@ -19,6 +21,12 @@ from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.embeddings import EmbeddingConfigurationError
 from app.services.policy import PolicyDecision, create_policy_decision
 from app.services.quiz import QuizGenerationError
+from app.services.tutor_outcome import (
+    TutorOutcomeCompatibilityError,
+    TutorOutcomeNotFoundError,
+    TutorOutcomeScopeError,
+    record_tutor_outcome,
+)
 from app.services.tutor_response import TutorResponse, create_tutor_response
 
 router = APIRouter(prefix="/tutor", tags=["tutor"])
@@ -85,6 +93,34 @@ def respond_as_tutor(
         )
 
     return _to_tutor_response(response)
+
+
+@router.post(
+    "/decisions/{decision_id}/outcome",
+    response_model=TutorOutcomeResponse,
+)
+def link_tutor_outcome(
+    decision_id: int,
+    request: TutorOutcomeRequest,
+    db: Session = Depends(get_db),
+) -> TutorOutcomeResponse:
+    try:
+        outcome = record_tutor_outcome(
+            db=db,
+            decision_id=decision_id,
+            outcome_type=request.outcome_type,
+            quiz_attempt_id=request.quiz_attempt_id,
+            review_record_id=request.review_record_id,
+        )
+    except TutorOutcomeNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except (TutorOutcomeCompatibilityError, TutorOutcomeScopeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        )
+
+    return TutorOutcomeResponse(decision_id=decision_id, outcome=outcome)
 
 
 def _to_response(decision: PolicyDecision) -> TutorDecisionResponse:

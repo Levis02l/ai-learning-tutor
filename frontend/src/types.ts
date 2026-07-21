@@ -230,6 +230,11 @@ export type TutorResponse = {
   suggested_next_step: string
 }
 
+export type TutorOutcomeResponse = {
+  decision_id: number
+  outcome: Record<string, unknown>
+}
+
 export type AnswerEvaluation = {
   user_id: string
   course_id: number | null
