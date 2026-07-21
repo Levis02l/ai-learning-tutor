@@ -7,6 +7,7 @@ from app.models.misconception import Misconception
 from app.models.quiz import QuizAttempt, QuizItem
 from app.services.misconceptions import (
     detect_misconception_for_attempt,
+    get_relevant_misconception,
     try_detect_misconception_for_attempt,
 )
 
@@ -90,6 +91,37 @@ def test_try_detect_misconception_is_failure_safe() -> None:
     assert db.rollbacks == 1
 
 
+def test_get_relevant_misconception_filters_scope_and_confidence() -> None:
+    db = _CaptureScalarSession()
+
+    get_relevant_misconception(
+        db=db,  # type: ignore[arg-type]
+        user_id="demo-user",
+        course_id=4,
+        concept_id=7,
+        min_confidence=0.6,
+    )
+
+    assert "misconceptions.user_id = 'demo-user'" in db.sql
+    assert "misconceptions.course_id = 4" in db.sql
+    assert "misconceptions.concept_id = 7" in db.sql
+    assert "misconceptions.confidence >= 0.6" in db.sql
+    assert "ORDER BY misconceptions.created_at DESC" in db.sql
+
+
+def test_get_relevant_misconception_scopes_uncoursed_records() -> None:
+    db = _CaptureScalarSession()
+
+    get_relevant_misconception(
+        db=db,  # type: ignore[arg-type]
+        user_id="demo-user",
+        course_id=None,
+        concept_id=7,
+    )
+
+    assert "misconceptions.course_id IS NULL" in db.sql
+
+
 class _Provider:
     def __init__(self, text: str) -> None:
         self.text = text
@@ -151,6 +183,15 @@ class _DetectionSession:
 
     def rollback(self) -> None:
         self.rollbacks += 1
+
+
+class _CaptureScalarSession:
+    def __init__(self) -> None:
+        self.sql = ""
+
+    def scalar(self, query):  # type: ignore[no-untyped-def]
+        self.sql = str(query.compile(compile_kwargs={"literal_binds": True}))
+        return None
 
 
 class _Rows:

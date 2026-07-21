@@ -13,6 +13,7 @@ from app.schemas.tutor import (
     TutorDecisionResponse,
     TutorEvidenceStateSnapshot,
     TutorLearnerStateSnapshot,
+    TutorMisconceptionSnapshot,
     TutorOutcomeRequest,
     TutorOutcomeResponse,
     TutorResponseRequest,
@@ -147,6 +148,11 @@ def _to_response(decision: PolicyDecision) -> TutorDecisionResponse:
         concept_state_snapshot=(
             TutorConceptLearnerStateSnapshot(**decision.concept_state_snapshot)
             if decision.concept_state_snapshot
+            else None
+        ),
+        misconception_snapshot=(
+            TutorMisconceptionSnapshot(**decision.misconception_snapshot)
+            if decision.misconception_snapshot
             else None
         ),
         evidence_state_snapshot=TutorEvidenceStateSnapshot(

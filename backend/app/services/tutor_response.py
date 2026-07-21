@@ -347,6 +347,9 @@ Learner state scope:
 Concept learner state snapshot:
 {json.dumps(decision.concept_state_snapshot, ensure_ascii=False)}
 
+Misconception snapshot:
+{json.dumps(decision.misconception_snapshot, ensure_ascii=False)}
+
 Evidence state snapshot:
 {json.dumps(decision.evidence_state_snapshot, ensure_ascii=False)}
 
@@ -372,6 +375,42 @@ Return this exact JSON shape:
 
 
 def _strategy_instructions(decision: PolicyDecision) -> str:
+    if decision.response_strategy == "contrastive":
+        return (
+            "- Explicitly contrast the confused concepts or objectives.\n"
+            "- Name the key distinction before giving details.\n"
+            "- Use a concrete discriminative example.\n"
+            "- Do not simply repeat the original explanation.\n"
+            "- Use only the supplied course evidence."
+        )
+    if decision.response_strategy == "definition_clarification":
+        return (
+            "- Start by correcting the mistaken definition.\n"
+            "- Give the accurate definition in simple language.\n"
+            "- Break down the important terms in the definition.\n"
+            "- Use one short example grounded in the supplied evidence."
+        )
+    if decision.response_strategy == "prerequisite_scaffolded":
+        return (
+            "- Briefly establish the likely missing prerequisite first.\n"
+            "- Then connect that prerequisite to the target concept.\n"
+            "- Keep the prerequisite explanation short and source-grounded.\n"
+            "- End with one check that links prerequisite to target concept."
+        )
+    if decision.response_strategy == "reasoning_guidance":
+        return (
+            "- Focus on the reasoning step the learner likely missed.\n"
+            "- Ask one guiding question before revealing the conclusion.\n"
+            "- Explain the chain of reasoning one step at a time.\n"
+            "- Use only the supplied course evidence."
+        )
+    if decision.response_strategy == "source_correction":
+        return (
+            "- Point to the relevant source excerpt first.\n"
+            "- Explain what the source actually says.\n"
+            "- Identify the likely misreading without overclaiming.\n"
+            "- Rephrase the source meaning in simpler language."
+        )
     if (
         decision.selected_action == "explain"
         and decision.response_strategy == "scaffolded"

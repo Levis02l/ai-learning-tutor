@@ -515,6 +515,7 @@ function TutorDecisionPanel({ response }: { response: TutorResponse | null }) {
             <p className="quote">{response.decision.teaching_reason}</p>
             <TutorLearnerSnapshot response={response} />
             <TutorConceptSnapshot response={response} />
+            <TutorMisconceptionSnapshot response={response} />
             <TutorEvidenceSnapshot response={response} />
             {response.sources.length > 0 && (
               <div className="source-box list">
@@ -573,6 +574,26 @@ function TutorConceptSnapshot({ response }: { response: TutorResponse }) {
         <Metric label="Attempts" value={state.attempt_count} />
         <Metric label="Attention" value={state.needs_attention ? 'Yes' : 'No'} />
       </div>
+    </div>
+  )
+}
+
+function TutorMisconceptionSnapshot({ response }: { response: TutorResponse }) {
+  const misconception = response.decision.misconception_snapshot
+  if (!misconception) return null
+
+  return (
+    <div className="concept-snapshot">
+      <div className="item-topline">
+        <div>
+          <span className="field-label">Misconception</span>
+          <h4 className="item-title">{misconception.misconception_type}</h4>
+        </div>
+        <span className="badge info">
+          {Math.round(misconception.confidence * 100)}%
+        </span>
+      </div>
+      <p className="muted small">{misconception.description}</p>
     </div>
   )
 }

@@ -172,6 +172,32 @@ def list_misconceptions(
     ]
 
 
+def get_relevant_misconception(
+    db: Session,
+    *,
+    user_id: str,
+    course_id: int | None,
+    concept_id: int,
+    min_confidence: float = 0.6,
+) -> Misconception | None:
+    query = (
+        select(Misconception)
+        .where(
+            Misconception.user_id == user_id,
+            Misconception.concept_id == concept_id,
+            Misconception.confidence >= min_confidence,
+        )
+        .order_by(Misconception.created_at.desc(), Misconception.id.desc())
+        .limit(1)
+    )
+    if course_id is None:
+        query = query.where(Misconception.course_id.is_(None))
+    else:
+        query = query.where(Misconception.course_id == course_id)
+
+    return db.scalar(query)
+
+
 def _load_attempt_concept(*, db: Session, item: QuizItem) -> Concept | None:
     if item.concept_id is None:
         return None

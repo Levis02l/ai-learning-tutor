@@ -26,6 +26,7 @@ class PolicyDecisionRecord(Base):
         server_default="course",
     )
     concept_state_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    misconception_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     evidence_state_snapshot: Mapped[dict] = mapped_column(JSON)
     selected_action: Mapped[str] = mapped_column(String)
     response_strategy: Mapped[str] = mapped_column(String)

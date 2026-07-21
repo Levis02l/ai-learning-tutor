@@ -199,6 +199,11 @@ export type TutorDecision = {
     | 'challenging'
     | 'refusal'
     | 'review_drill'
+    | 'contrastive'
+    | 'definition_clarification'
+    | 'prerequisite_scaffolded'
+    | 'reasoning_guidance'
+    | 'source_correction'
   primary_reason: string
   teaching_reason: string
   suggested_next_step: string
@@ -216,6 +221,15 @@ export type TutorDecision = {
     last_attempted_at: string | null
     review_due: boolean
     needs_attention: boolean
+  } | null
+  misconception_snapshot: {
+    id: number
+    misconception_type: string
+    description: string
+    confidence: number
+    quiz_attempt_id: number
+    concept_id: number
+    created_at: string | null
   } | null
   evidence_state_snapshot: {
     evidence_strength: TutorEvidenceStrength

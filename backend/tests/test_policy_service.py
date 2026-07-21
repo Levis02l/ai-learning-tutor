@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from app.models.concept import Concept
+from app.models.misconception import Misconception
 from app.models.policy import PolicyDecisionRecord
 from app.services.concepts import ConceptLearnerState, ResolvedConcept
 from app.services.learner_state import LearnerState
@@ -54,6 +55,51 @@ def test_explicit_explain_with_high_mastery_stays_explain_but_concise() -> None:
     assert decision.selected_action == "explain"
     assert decision.response_strategy == "concise"
     assert decision.primary_reason == "explicit_explanation_request"
+
+
+def test_explicit_explain_with_concept_confusion_uses_contrastive_strategy() -> None:
+    decision = _decision(
+        query="Explain K-means clustering",
+        learner_state=_learner_state(mastery_score=0.2, consecutive_errors=2),
+        evidence_state=_evidence("high"),
+        misconception_snapshot=_misconception_snapshot(
+            misconception_type="concept_confusion",
+        ),
+    )
+
+    assert decision.selected_action == "explain"
+    assert decision.response_strategy == "contrastive"
+    assert decision.misconception_snapshot is not None
+    assert "concept_confusion" in decision.teaching_reason
+
+
+def test_unknown_misconception_keeps_existing_strategy() -> None:
+    decision = _decision(
+        query="Explain K-means clustering",
+        learner_state=_learner_state(mastery_score=0.2, consecutive_errors=2),
+        evidence_state=_evidence("high"),
+        misconception_snapshot=_misconception_snapshot(
+            misconception_type="unknown",
+        ),
+    )
+
+    assert decision.selected_action == "explain"
+    assert decision.response_strategy == "scaffolded"
+
+
+def test_misconception_does_not_override_insufficient_evidence() -> None:
+    decision = _decision(
+        query="Explain K-means clustering",
+        learner_state=_learner_state(mastery_score=0.2, consecutive_errors=2),
+        evidence_state=_evidence("insufficient"),
+        misconception_snapshot=_misconception_snapshot(
+            misconception_type="concept_confusion",
+        ),
+    )
+
+    assert decision.selected_action == "refuse"
+    assert decision.response_strategy == "refusal"
+    assert decision.primary_reason == "insufficient_evidence"
 
 
 def test_explicit_hint_returns_hint() -> None:
@@ -201,6 +247,10 @@ def test_create_policy_decision_uses_observed_concept_state(monkeypatch) -> None
             needs_attention=False,
         ),
     )
+    monkeypatch.setattr(
+        "app.services.policy.get_relevant_misconception",
+        lambda **kwargs: None,
+    )
 
     decision = create_policy_decision(
         db=db,  # type: ignore[arg-type]
@@ -222,6 +272,74 @@ def test_create_policy_decision_uses_observed_concept_state(monkeypatch) -> None
     assert db.record.concept_state_snapshot["concept_name"] == "K-means Clustering"
 
 
+def test_create_policy_decision_uses_relevant_misconception(monkeypatch) -> None:
+    db = _PolicySession()
+
+    monkeypatch.setattr(
+        "app.services.policy.compute_learner_state",
+        lambda **kwargs: _learner_state(mastery_score=0.2, consecutive_errors=2),
+    )
+    monkeypatch.setattr("app.services.policy.get_due_review_items", lambda **kwargs: [])
+    monkeypatch.setattr(
+        "app.services.policy.build_tutor_evidence_context",
+        lambda **kwargs: TutorEvidenceContext(
+            resolved_concept=kwargs["resolved_concept"],
+            chunks=[_chunk(chunk_id=41)],
+            evidence_state=_evidence("high", source_chunk_ids=[41]),
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.policy.resolve_concept_for_focus",
+        lambda **kwargs: ResolvedConcept(
+            concept=_concept(concept_id=9, name="K-means Clustering"),
+            confidence=0.94,
+            reason="exact normalized match",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.policy.get_concept_learner_state",
+        lambda **kwargs: ConceptLearnerState(
+            concept_id=9,
+            concept_name="K-means Clustering",
+            state_status="observed",
+            mastery_score=0.2,
+            recent_accuracy=0.2,
+            attempt_count=5,
+            consecutive_errors=2,
+            last_attempted_at=datetime(2026, 7, 21, 11, 30, 0),
+            review_due=False,
+            needs_attention=True,
+        ),
+    )
+    captured: dict[str, int | str | None] = {}
+
+    def fake_relevant_misconception(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["user_id"] = kwargs["user_id"]
+        captured["course_id"] = kwargs["course_id"]
+        captured["concept_id"] = kwargs["concept_id"]
+        return _misconception()
+
+    monkeypatch.setattr(
+        "app.services.policy.get_relevant_misconception",
+        fake_relevant_misconception,
+    )
+
+    decision = create_policy_decision(
+        db=db,  # type: ignore[arg-type]
+        query="Explain K-means clustering",
+        user_id="demo-user",
+        course_id=7,
+    )
+
+    assert captured == {"user_id": "demo-user", "course_id": 7, "concept_id": 9}
+    assert decision.selected_action == "explain"
+    assert decision.response_strategy == "contrastive"
+    assert decision.misconception_snapshot is not None
+    assert decision.misconception_snapshot["quiz_attempt_id"] == 22
+    assert db.record is not None
+    assert db.record.misconception_snapshot["misconception_type"] == "concept_confusion"
+
+
 def test_create_policy_decision_falls_back_to_course_state(monkeypatch) -> None:
     db = _PolicySession()
 
@@ -240,6 +358,10 @@ def test_create_policy_decision_falls_back_to_course_state(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "app.services.policy.resolve_concept_for_focus",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.policy.get_relevant_misconception",
         lambda **kwargs: None,
     )
 
@@ -264,6 +386,7 @@ def _decision(
     query: str,
     learner_state: LearnerState,
     evidence_state: PolicyEvidenceState,
+    misconception_snapshot: dict | None = None,
 ):
     return decide_teaching_action(
         query=query,
@@ -271,6 +394,7 @@ def _decision(
         course_id=1,
         learner_state=learner_state,
         evidence_state=evidence_state,
+        misconception_snapshot=misconception_snapshot,
     )
 
 
@@ -283,6 +407,33 @@ def _concept(*, concept_id: int, name: str) -> Concept:
         description=f"{name} description.",
         extraction_confidence=0.9,
     )
+
+
+def _misconception() -> Misconception:
+    return Misconception(
+        id=13,
+        user_id="demo-user",
+        course_id=7,
+        concept_id=9,
+        quiz_attempt_id=22,
+        misconception_type="concept_confusion",
+        description="The learner confused clustering with classification.",
+        confidence=0.86,
+        evidence_snapshot={},
+        created_at=datetime(2026, 7, 21, 12, 0, 0),
+    )
+
+
+def _misconception_snapshot(*, misconception_type: str) -> dict:
+    return {
+        "id": 13,
+        "misconception_type": misconception_type,
+        "description": "The learner confused clustering with classification.",
+        "confidence": 0.86,
+        "quiz_attempt_id": 22,
+        "concept_id": 9,
+        "created_at": "2026-07-21T12:00:00",
+    }
 
 
 class _PolicySession:

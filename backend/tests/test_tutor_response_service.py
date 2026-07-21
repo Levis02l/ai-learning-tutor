@@ -239,6 +239,37 @@ def test_guided_hint_prompt_forbids_full_answer(monkeypatch) -> None:
     assert "Provide only one useful hint" in prompt
 
 
+def test_contrastive_strategy_uses_misconception_aware_prompt(monkeypatch) -> None:
+    provider = FakeLLMProvider()
+    monkeypatch.setattr(
+        "app.services.tutor_response.retrieve_relevant_chunks",
+        lambda **kwargs: [_chunk()],
+    )
+
+    execute_tutor_decision(
+        db=None,  # type: ignore[arg-type]
+        decision=_decision(
+            selected_action="explain",
+            response_strategy="contrastive",
+            misconception_snapshot={
+                "id": 13,
+                "misconception_type": "concept_confusion",
+                "description": "The learner confused clustering with classification.",
+                "confidence": 0.86,
+                "quiz_attempt_id": 22,
+                "concept_id": 9,
+                "created_at": "2026-07-21T12:00:00",
+            },
+        ),
+        llm_provider=provider,
+    )
+
+    prompt = provider.calls[0]["user_prompt"]
+    assert "Response strategy:\ncontrastive" in prompt
+    assert "concept_confusion" in prompt
+    assert "Explicitly contrast the confused concepts" in prompt
+
+
 def test_quiz_action_reuses_quiz_service_for_one_item(monkeypatch) -> None:
     captured: dict[str, int | str] = {}
 
@@ -292,6 +323,7 @@ def _decision(
     requires_evidence: bool = True,
     evidence_chunks: list[RetrievedChunk] | None = None,
     concept_state_snapshot: dict | None = None,
+    misconception_snapshot: dict | None = None,
 ) -> PolicyDecision:
     return PolicyDecision(
         decision_id=1,
@@ -327,6 +359,7 @@ def _decision(
         },
         learner_state_scope="concept" if concept_state_snapshot else "course",
         concept_state_snapshot=concept_state_snapshot,
+        misconception_snapshot=misconception_snapshot,
         evidence_chunks=evidence_chunks or [],
     )
 

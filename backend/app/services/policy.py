@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from sqlalchemy.orm import Session
 
+from app.models.misconception import Misconception
 from app.models.policy import PolicyDecisionRecord
 from app.services.concepts import (
     ConceptLearnerState,
@@ -12,6 +13,7 @@ from app.services.concepts import (
     resolve_concept_for_focus,
 )
 from app.services.learner_state import LearnerState, compute_learner_state
+from app.services.misconceptions import get_relevant_misconception
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 from app.services.review import get_due_review_items
 from app.services.tutor_context import (
@@ -23,7 +25,7 @@ from app.services.tutor_context import (
     build_tutor_evidence_context,
 )
 
-POLICY_VERSION = "rule_v1"
+POLICY_VERSION = "rule_v2"
 
 DetectedIntent = Literal["explain", "hint", "practice", "review", "unknown"]
 TeachingAction = Literal["explain", "hint", "quiz", "review", "refuse"]
@@ -35,6 +37,11 @@ ResponseStrategy = Literal[
     "challenging",
     "refusal",
     "review_drill",
+    "contrastive",
+    "definition_clarification",
+    "prerequisite_scaffolded",
+    "reasoning_guidance",
+    "source_correction",
 ]
 PolicyEvidenceStrength = TutorEvidenceStrength
 PolicyEvidenceState = TutorEvidenceState
@@ -57,6 +64,7 @@ class PolicyDecision:
     evidence_state_snapshot: dict[str, Any]
     learner_state_scope: LearnerStateScope = "course"
     concept_state_snapshot: dict[str, Any] | None = None
+    misconception_snapshot: dict[str, Any] | None = None
     evidence_chunks: list[RetrievedChunk] = field(default_factory=list)
 
 
@@ -94,6 +102,12 @@ def create_policy_decision(
         course_learner_state=course_learner_state,
         resolved_concept=resolved_concept,
     )
+    misconception_snapshot = _resolve_misconception_snapshot(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        resolved_concept=resolved_concept,
+    )
     has_due_review_item = bool(
         get_due_review_items(
             db=db,
@@ -122,6 +136,7 @@ def create_policy_decision(
         detected_intent=detected_intent,
         learner_state_scope=learner_context.scope,
         concept_state=learner_context.concept_state,
+        misconception_snapshot=misconception_snapshot,
         evidence_chunks=evidence_context.chunks,
     )
     record = PolicyDecisionRecord(
@@ -132,6 +147,7 @@ def create_policy_decision(
         learner_state_snapshot=decision.learner_state_snapshot,
         learner_state_scope=decision.learner_state_scope,
         concept_state_snapshot=decision.concept_state_snapshot,
+        misconception_snapshot=decision.misconception_snapshot,
         evidence_state_snapshot=decision.evidence_state_snapshot,
         selected_action=decision.selected_action,
         response_strategy=decision.response_strategy,
@@ -161,6 +177,7 @@ def create_policy_decision(
         evidence_state_snapshot=decision.evidence_state_snapshot,
         learner_state_scope=decision.learner_state_scope,
         concept_state_snapshot=decision.concept_state_snapshot,
+        misconception_snapshot=decision.misconception_snapshot,
         evidence_chunks=decision.evidence_chunks,
     )
 
@@ -222,6 +239,7 @@ def decide_teaching_action(
     detected_intent: DetectedIntent | None = None,
     learner_state_scope: LearnerStateScope = "course",
     concept_state: ConceptLearnerState | None = None,
+    misconception_snapshot: dict[str, Any] | None = None,
     evidence_chunks: list[RetrievedChunk] | None = None,
 ) -> PolicyDecision:
     intent = detected_intent or detect_intent(query)
@@ -253,6 +271,7 @@ def decide_teaching_action(
             evidence_state_snapshot=evidence_snapshot,
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
 
@@ -269,6 +288,7 @@ def decide_teaching_action(
             primary_reason="explicit_explanation_request",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
     if intent == "hint":
@@ -284,6 +304,7 @@ def decide_teaching_action(
             primary_reason="explicit_hint_request",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
     if intent == "practice":
@@ -299,6 +320,7 @@ def decide_teaching_action(
             primary_reason="explicit_practice_request",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
     if intent == "review":
@@ -314,6 +336,7 @@ def decide_teaching_action(
             primary_reason="explicit_review_request",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
 
@@ -339,6 +362,7 @@ def decide_teaching_action(
             ),
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
 
@@ -359,6 +383,7 @@ def decide_teaching_action(
             suggested_next_step="Open the review queue and work through due questions.",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
 
@@ -382,6 +407,7 @@ def decide_teaching_action(
             ),
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
 
@@ -404,6 +430,7 @@ def decide_teaching_action(
             ),
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            misconception_snapshot=misconception_snapshot,
             evidence_chunks=final_evidence_chunks,
         )
 
@@ -423,6 +450,7 @@ def decide_teaching_action(
         suggested_next_step="Generate a higher-challenge practice question.",
         learner_state_scope=learner_state_scope,
         concept_state_snapshot=concept_snapshot,
+        misconception_snapshot=misconception_snapshot,
         evidence_chunks=final_evidence_chunks,
     )
 
@@ -490,6 +518,28 @@ def _resolve_query_concept(
         course_id=course_id,
         focus=query,
     )
+
+
+def _resolve_misconception_snapshot(
+    *,
+    db: Session,
+    user_id: str,
+    course_id: int | None,
+    resolved_concept: ResolvedConcept | None,
+) -> dict[str, Any] | None:
+    if course_id is None or resolved_concept is None:
+        return None
+
+    misconception = get_relevant_misconception(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        concept_id=resolved_concept.concept.id,
+    )
+    if misconception is None:
+        return None
+
+    return _misconception_snapshot(misconception)
 
 
 def _resolve_policy_learner_context(
@@ -576,6 +626,7 @@ def _explicit_decision(
     primary_reason: str,
     learner_state_scope: LearnerStateScope,
     concept_state_snapshot: dict[str, Any] | None,
+    misconception_snapshot: dict[str, Any] | None,
     evidence_chunks: list[RetrievedChunk],
 ) -> PolicyDecision:
     response_strategy = _strategy_for_action(
@@ -603,6 +654,7 @@ def _explicit_decision(
         evidence_state_snapshot=evidence_snapshot,
         learner_state_scope=learner_state_scope,
         concept_state_snapshot=concept_state_snapshot,
+        misconception_snapshot=misconception_snapshot,
         evidence_chunks=evidence_chunks,
     )
 
@@ -621,6 +673,7 @@ def _implicit_decision(
     suggested_next_step: str,
     learner_state_scope: LearnerStateScope,
     concept_state_snapshot: dict[str, Any] | None,
+    misconception_snapshot: dict[str, Any] | None,
     evidence_chunks: list[RetrievedChunk],
 ) -> PolicyDecision:
     return _build_decision(
@@ -637,6 +690,7 @@ def _implicit_decision(
         evidence_state_snapshot=evidence_snapshot,
         learner_state_scope=learner_state_scope,
         concept_state_snapshot=concept_state_snapshot,
+        misconception_snapshot=misconception_snapshot,
         evidence_chunks=evidence_chunks,
     )
 
@@ -656,8 +710,25 @@ def _build_decision(
     evidence_state_snapshot: dict[str, Any],
     learner_state_scope: LearnerStateScope = "course",
     concept_state_snapshot: dict[str, Any] | None = None,
+    misconception_snapshot: dict[str, Any] | None = None,
     evidence_chunks: list[RetrievedChunk] | None = None,
 ) -> PolicyDecision:
+    final_strategy = _misconception_aware_strategy(
+        selected_action=selected_action,
+        response_strategy=response_strategy,
+        misconception_snapshot=misconception_snapshot,
+    )
+    final_teaching_reason = _misconception_aware_teaching_reason(
+        teaching_reason=teaching_reason,
+        original_strategy=response_strategy,
+        final_strategy=final_strategy,
+        misconception_snapshot=misconception_snapshot,
+    )
+    final_next_step = _misconception_aware_next_step(
+        suggested_next_step=suggested_next_step,
+        original_strategy=response_strategy,
+        final_strategy=final_strategy,
+    )
     return PolicyDecision(
         decision_id=None,
         user_id=user_id,
@@ -665,15 +736,16 @@ def _build_decision(
         query=query,
         detected_intent=detected_intent,
         selected_action=selected_action,
-        response_strategy=response_strategy,
+        response_strategy=final_strategy,
         primary_reason=primary_reason,
-        teaching_reason=teaching_reason,
-        suggested_next_step=suggested_next_step,
+        teaching_reason=final_teaching_reason,
+        suggested_next_step=final_next_step,
         policy_version=POLICY_VERSION,
         learner_state_snapshot=learner_state_snapshot,
         evidence_state_snapshot=evidence_state_snapshot,
         learner_state_scope=learner_state_scope,
         concept_state_snapshot=concept_state_snapshot,
+        misconception_snapshot=misconception_snapshot,
         evidence_chunks=evidence_chunks or [],
     )
 
@@ -694,6 +766,76 @@ def _strategy_for_action(
     if learner_state.mastery_score < 0.75:
         return "guided"
     return "concise"
+
+
+def _misconception_aware_strategy(
+    *,
+    selected_action: TeachingAction,
+    response_strategy: ResponseStrategy,
+    misconception_snapshot: dict[str, Any] | None,
+) -> ResponseStrategy:
+    if selected_action not in {"explain", "hint"} or misconception_snapshot is None:
+        return response_strategy
+
+    misconception_type = misconception_snapshot.get("misconception_type")
+    if misconception_type == "concept_confusion":
+        return "contrastive"
+    if misconception_type == "incorrect_definition":
+        return "definition_clarification"
+    if misconception_type == "missing_prerequisite":
+        return "prerequisite_scaffolded"
+    if misconception_type == "incomplete_reasoning":
+        return "reasoning_guidance"
+    if misconception_type == "source_misinterpretation":
+        return "source_correction"
+    return response_strategy
+
+
+def _misconception_aware_teaching_reason(
+    *,
+    teaching_reason: str,
+    original_strategy: ResponseStrategy,
+    final_strategy: ResponseStrategy,
+    misconception_snapshot: dict[str, Any] | None,
+) -> str:
+    if final_strategy == original_strategy or misconception_snapshot is None:
+        return teaching_reason
+
+    misconception_type = misconception_snapshot.get("misconception_type", "unknown")
+    description = misconception_snapshot.get("description", "")
+    confidence = misconception_snapshot.get("confidence", 0.0)
+    return (
+        f"{teaching_reason} Recent misconception evidence suggests "
+        f"{misconception_type} with confidence {confidence:.2f}: {description}"
+    )
+
+
+def _misconception_aware_next_step(
+    *,
+    suggested_next_step: str,
+    original_strategy: ResponseStrategy,
+    final_strategy: ResponseStrategy,
+) -> str:
+    if final_strategy == original_strategy:
+        return suggested_next_step
+
+    if final_strategy == "contrastive":
+        return (
+            "Explain the confused concepts side by side, then ask a "
+            "discriminative check."
+        )
+    if final_strategy == "definition_clarification":
+        return "Clarify the correct definition, then test the key wording."
+    if final_strategy == "prerequisite_scaffolded":
+        return "Briefly rebuild the prerequisite before explaining the target concept."
+    if final_strategy == "reasoning_guidance":
+        return (
+            "Guide the learner through the missing reasoning step before giving "
+            "the final answer."
+        )
+    if final_strategy == "source_correction":
+        return "Point back to the source excerpt and correct the likely misreading."
+    return suggested_next_step
 
 
 def _explicit_teaching_reason(
@@ -779,6 +921,18 @@ def _concept_state_snapshot(state: ConceptLearnerState) -> dict[str, Any]:
         "last_attempted_at": _serialize_datetime(state.last_attempted_at),
         "review_due": state.review_due,
         "needs_attention": state.needs_attention,
+    }
+
+
+def _misconception_snapshot(misconception: Misconception) -> dict[str, Any]:
+    return {
+        "id": misconception.id,
+        "misconception_type": misconception.misconception_type,
+        "description": misconception.description,
+        "confidence": misconception.confidence,
+        "quiz_attempt_id": misconception.quiz_attempt_id,
+        "concept_id": misconception.concept_id,
+        "created_at": _serialize_datetime(misconception.created_at),
     }
 
 

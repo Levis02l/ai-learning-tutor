@@ -16,6 +16,11 @@ ResponseStrategy = Literal[
     "challenging",
     "refusal",
     "review_drill",
+    "contrastive",
+    "definition_clarification",
+    "prerequisite_scaffolded",
+    "reasoning_guidance",
+    "source_correction",
 ]
 PolicyEvidenceStrength = Literal[
     "high",
@@ -74,6 +79,16 @@ class TutorConceptLearnerStateSnapshot(BaseModel):
     needs_attention: bool
 
 
+class TutorMisconceptionSnapshot(BaseModel):
+    id: int
+    misconception_type: str
+    description: str
+    confidence: float
+    quiz_attempt_id: int
+    concept_id: int
+    created_at: str | None = None
+
+
 class TutorDecisionResponse(BaseModel):
     decision_id: int
     user_id: str
@@ -89,6 +104,7 @@ class TutorDecisionResponse(BaseModel):
     learner_state_scope: LearnerStateScope = "course"
     learner_state_snapshot: TutorLearnerStateSnapshot
     concept_state_snapshot: TutorConceptLearnerStateSnapshot | None = None
+    misconception_snapshot: TutorMisconceptionSnapshot | None = None
     evidence_state_snapshot: TutorEvidenceStateSnapshot
 
 
