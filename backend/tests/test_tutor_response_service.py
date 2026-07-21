@@ -267,7 +267,47 @@ def test_contrastive_strategy_uses_misconception_aware_prompt(monkeypatch) -> No
     prompt = provider.calls[0]["user_prompt"]
     assert "Response strategy:\ncontrastive" in prompt
     assert "concept_confusion" in prompt
+    assert "Private misconception teaching signal" in prompt
+    assert "0.86" not in prompt
+    assert "quiz_attempt_id" not in prompt
     assert "Explicitly contrast the confused concepts" in prompt
+
+
+@pytest.mark.parametrize(
+    ("strategy", "expected_instruction"),
+    [
+        ("contrastive", "Explicitly contrast the confused concepts"),
+        ("definition_clarification", "Start by correcting the mistaken definition"),
+        ("prerequisite_scaffolded", "establish the likely missing prerequisite"),
+        ("reasoning_guidance", "Focus on the reasoning step"),
+        ("source_correction", "Point to the relevant source excerpt"),
+    ],
+)
+def test_misconception_strategies_have_distinct_prompt_instructions(
+    monkeypatch,
+    strategy: str,
+    expected_instruction: str,
+) -> None:
+    provider = FakeLLMProvider()
+    monkeypatch.setattr(
+        "app.services.tutor_response.retrieve_relevant_chunks",
+        lambda **kwargs: [_chunk()],
+    )
+
+    execute_tutor_decision(
+        db=None,  # type: ignore[arg-type]
+        decision=_decision(
+            selected_action="explain",
+            response_strategy=strategy,
+            misconception_snapshot=_misconception_snapshot(strategy=strategy),
+        ),
+        llm_provider=provider,
+    )
+
+    prompt = provider.calls[0]["user_prompt"]
+    assert f"Response strategy:\n{strategy}" in prompt
+    assert expected_instruction in prompt
+    assert "Do not mention the internal label" in prompt
 
 
 def test_quiz_action_reuses_quiz_service_for_one_item(monkeypatch) -> None:
@@ -389,6 +429,25 @@ def _concept_snapshot() -> dict:
         "last_attempted_at": None,
         "review_due": False,
         "needs_attention": True,
+    }
+
+
+def _misconception_snapshot(*, strategy: str) -> dict:
+    misconception_type = {
+        "contrastive": "concept_confusion",
+        "definition_clarification": "incorrect_definition",
+        "prerequisite_scaffolded": "missing_prerequisite",
+        "reasoning_guidance": "incomplete_reasoning",
+        "source_correction": "source_misinterpretation",
+    }[strategy]
+    return {
+        "id": 13,
+        "misconception_type": misconception_type,
+        "description": "The learner needs targeted corrective teaching.",
+        "confidence": 0.86,
+        "quiz_attempt_id": 22,
+        "concept_id": 9,
+        "created_at": "2026-07-21T12:00:00",
     }
 
 

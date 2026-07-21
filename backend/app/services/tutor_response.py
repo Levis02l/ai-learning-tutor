@@ -82,6 +82,9 @@ class TutorAnswerPayload(BaseModel):
 SYSTEM_PROMPT = (
     "You are an evidence-grounded AI learning tutor.\n"
     "Use only the provided course excerpts.\n"
+    "Treat policy, learner-state, and misconception metadata as private teaching "
+    "signals. Do not reveal internal labels, confidence scores, JSON fields, or "
+    "policy names to the learner.\n"
     "Return valid JSON only. Do not include markdown fences or commentary.\n"
     "For every factual claim, include source_chunk_ids, support_level, and "
     "evidence_quote.\n"
@@ -326,6 +329,7 @@ def _build_policy_aware_prompt(
 ) -> str:
     instructions = _strategy_instructions(decision)
     context = _format_context(chunks)
+    misconception_context = _format_private_misconception_context(decision)
     return f"""Student query:
 {decision.query}
 
@@ -347,8 +351,8 @@ Learner state scope:
 Concept learner state snapshot:
 {json.dumps(decision.concept_state_snapshot, ensure_ascii=False)}
 
-Misconception snapshot:
-{json.dumps(decision.misconception_snapshot, ensure_ascii=False)}
+Private misconception teaching signal:
+{misconception_context}
 
 Evidence state snapshot:
 {json.dumps(decision.evidence_state_snapshot, ensure_ascii=False)}
@@ -444,6 +448,21 @@ def _strategy_instructions(decision: PolicyDecision) -> str:
             "- Include one quick check question."
         )
     return "- Use only the supplied course evidence."
+
+
+def _format_private_misconception_context(decision: PolicyDecision) -> str:
+    snapshot = decision.misconception_snapshot
+    if not snapshot:
+        return "No recent high-confidence misconception signal."
+
+    misconception_type = snapshot.get("misconception_type", "unknown")
+    description = snapshot.get("description", "")
+    return (
+        f"Likely error pattern: {misconception_type}\n"
+        f"Teaching implication: {description}\n"
+        "Use this only to shape the tutoring response. Do not mention the "
+        "internal label, confidence score, or quiz attempt ID."
+    )
 
 
 def _format_context(chunks: list[RetrievedChunk]) -> str:

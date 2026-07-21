@@ -586,8 +586,10 @@ function TutorMisconceptionSnapshot({ response }: { response: TutorResponse }) {
     <div className="concept-snapshot">
       <div className="item-topline">
         <div>
-          <span className="field-label">Misconception</span>
-          <h4 className="item-title">{misconception.misconception_type}</h4>
+          <span className="field-label">Learning signal</span>
+          <h4 className="item-title">
+            {misconception.misconception_type.replace(/_/g, ' ')}
+          </h4>
         </div>
         <span className="badge info">
           {Math.round(misconception.confidence * 100)}%
