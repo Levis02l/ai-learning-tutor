@@ -31,6 +31,7 @@ import {
   deleteQuizItem,
   evaluateAnswer,
   generateQuiz,
+  getCourseProgress,
   getHealth,
   getLearnerState,
   getMastery,
@@ -53,17 +54,26 @@ import type {
   ChatCompareResponse,
   ChatResponse,
   Course,
+  CourseProgress,
   DocumentItem,
   DueReviewItem,
   LearnerState,
   MasteryResponse,
   QuizAttemptResponse,
   QuizItem,
+  ProgressConceptStatus,
   SocraticSession,
   TutorResponse,
 } from './types'
 
-type View = 'documents' | 'tutor' | 'chat' | 'quiz' | 'review' | 'evaluation'
+type View =
+  | 'documents'
+  | 'tutor'
+  | 'chat'
+  | 'quiz'
+  | 'review'
+  | 'progress'
+  | 'evaluation'
 type HealthStatus = 'checking' | 'connected' | 'unreachable'
 
 const userIdDefault = 'demo-user'
@@ -181,7 +191,8 @@ function App() {
     { id: 'chat' as const, label: 'Evidence Chat', icon: MessageSquareText },
     { id: 'quiz' as const, label: 'Quiz Lab', icon: ClipboardList },
     { id: 'review' as const, label: 'Review', icon: Brain },
-    { id: 'evaluation' as const, label: 'Evaluation', icon: BarChart3 },
+    { id: 'progress' as const, label: 'Progress', icon: BarChart3 },
+    { id: 'evaluation' as const, label: 'Evaluation', icon: SearchCheck },
   ]
 
   return (
@@ -337,6 +348,13 @@ function App() {
             mastery={mastery}
             userId={userId}
             onReviewed={refreshCoreData}
+          />
+        )}
+        {activeView === 'progress' && (
+          <ProgressView
+            courseId={selectedCourseId}
+            courseName={selectedCourse?.name ?? null}
+            userId={userId}
           />
         )}
         {activeView === 'evaluation' && <EvaluationView courseId={selectedCourseId} userId={userId} />}
@@ -1660,6 +1678,318 @@ function ChatView({ courseId, userId }: { courseId: number | null; userId: strin
   )
 }
 
+function ProgressView({
+  courseId,
+  courseName,
+  userId,
+}: {
+  courseId: number | null
+  courseName: string | null
+  userId: string
+}) {
+  const [progress, setProgress] = useState<CourseProgress | null>(null)
+  const [selectedConceptId, setSelectedConceptId] = useState<number | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const selectedConcept = useMemo(() => {
+    if (!progress) return null
+    return (
+      progress.concepts.find((concept) => concept.concept_id === selectedConceptId) ??
+      progress.concepts[0] ??
+      null
+    )
+  }, [progress, selectedConceptId])
+
+  const loadProgress = useCallback(async () => {
+    if (courseId == null) {
+      setProgress(null)
+      setSelectedConceptId(null)
+      setError('')
+      return
+    }
+
+    setBusy(true)
+    setError('')
+    try {
+      const result = await getCourseProgress(userId, courseId)
+      setProgress(result)
+      setSelectedConceptId((current) =>
+        current != null &&
+        result.concepts.some((concept) => concept.concept_id === current)
+          ? current
+          : (result.concepts[0]?.concept_id ?? null),
+      )
+    } catch (progressError) {
+      setError(getErrorMessage(progressError))
+    } finally {
+      setBusy(false)
+    }
+  }, [courseId, userId])
+
+  useEffect(() => {
+    void loadProgress()
+  }, [loadProgress])
+
+  if (courseId == null) {
+    return (
+      <section className="panel">
+        <div className="panel-body">
+          <EmptyState label="Select a course workspace to view concept progress." />
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <div className="grid two">
+      <section className="panel">
+        <div className="panel-header">
+          <h3 className="panel-title">
+            <BarChart3 size={18} aria-hidden="true" />
+            Course Progress
+          </h3>
+          <div className="toolbar">
+            <span className="badge info">{courseName ?? `Course ${courseId}`}</span>
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => void loadProgress()}
+              type="button"
+            >
+              {busy ? (
+                <Loader2 className="spin" size={16} aria-hidden="true" />
+              ) : (
+                <RefreshCw size={16} aria-hidden="true" />
+              )}
+              Refresh
+            </button>
+          </div>
+        </div>
+        <div className="panel-body stack">
+          {error && <div className="error">{error}</div>}
+          {busy && !progress ? (
+            <EmptyState label="Loading course progress..." />
+          ) : !progress || progress.concepts.length === 0 ? (
+            <EmptyState label="No concept progress yet. Extract concepts from your course materials first." />
+          ) : (
+            <>
+              <ProgressOverview progress={progress} />
+              <div className="progress-card-grid">
+                {progress.concepts.map((concept) => (
+                  <button
+                    className={`progress-card ${
+                      selectedConcept?.concept_id === concept.concept_id
+                        ? 'selected'
+                        : ''
+                    }`}
+                    key={concept.concept_id}
+                    onClick={() => setSelectedConceptId(concept.concept_id)}
+                    type="button"
+                  >
+                    <div className="item-topline">
+                      <h4 className="item-title">{concept.concept_name}</h4>
+                      <span className={`badge ${progressStatusBadgeClass(concept.status)}`}>
+                        {formatProgressStatus(concept.status)}
+                      </span>
+                    </div>
+                    <div className="metric-strip compact">
+                      <Metric
+                        label="Estimated mastery"
+                        value={formatNullablePercent(concept.mastery_score)}
+                      />
+                      <Metric
+                        label="Recent accuracy"
+                        value={formatNullablePercent(concept.recent_accuracy)}
+                      />
+                      <Metric label="Attempts" value={concept.attempt_count} />
+                      <Metric
+                        label="Review"
+                        value={concept.review_due ? 'Due' : 'Not due'}
+                      />
+                    </div>
+                    {concept.latest_misconception && (
+                      <p className="muted small">
+                        Learning signal: {concept.latest_misconception.description}
+                      </p>
+                    )}
+                    {concept.status === 'unobserved' && (
+                      <p className="muted small">No learning evidence yet.</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      <ProgressDetailPanel concept={selectedConcept} />
+    </div>
+  )
+}
+
+function ProgressOverview({ progress }: { progress: CourseProgress }) {
+  const summary = progress.summary
+  return (
+    <div className="metric-strip progress-overview">
+      <Metric label="Concepts" value={summary.total_concepts} />
+      <Metric label="Observed" value={summary.observed_concepts} />
+      <Metric label="Unobserved" value={summary.unobserved_concepts} />
+      <Metric label="Need attention" value={summary.needs_attention_count} />
+      <Metric label="Reviews due" value={summary.review_due_count} />
+      <Metric label="Strong" value={summary.strong_count} />
+      <Metric label="Guided sessions" value={summary.socratic_completed_count} />
+      <Metric
+        label="Completion checks"
+        value={summary.socratic_completion_attempt_count}
+      />
+    </div>
+  )
+}
+
+function ProgressDetailPanel({
+  concept,
+}: {
+  concept: CourseProgress['concepts'][number] | null
+}) {
+  return (
+    <aside className="panel">
+      <div className="panel-header">
+        <h3 className="panel-title">
+          <Gauge size={18} aria-hidden="true" />
+          Concept Detail
+        </h3>
+        {concept && (
+          <span className={`badge ${progressStatusBadgeClass(concept.status)}`}>
+            {formatProgressStatus(concept.status)}
+          </span>
+        )}
+      </div>
+      <div className="panel-body stack">
+        {!concept ? (
+          <EmptyState label="Select a concept to inspect progress." />
+        ) : (
+          <>
+            <div>
+              <span className="field-label">Concept</span>
+              <h3 className="detail-title">{concept.concept_name}</h3>
+            </div>
+            <div className="snapshot-grid">
+              <Metric
+                label="Estimated mastery"
+                value={formatNullablePercent(concept.mastery_score)}
+              />
+              <Metric
+                label="Recent accuracy"
+                value={formatNullablePercent(concept.recent_accuracy)}
+              />
+              <Metric label="Attempts" value={concept.attempt_count} />
+              <Metric label="Errors" value={concept.consecutive_errors} />
+            </div>
+            <div className="evidence-snapshot">
+              <div className="badge-row">
+                <span className={`badge ${progressStatusBadgeClass(concept.status)}`}>
+                  {formatProgressStatus(concept.status)}
+                </span>
+                <span className={`badge ${concept.review_due ? 'warn' : 'info'}`}>
+                  {concept.review_due ? 'review due' : 'review not due'}
+                </span>
+                <span className="badge">
+                  {concept.state_status === 'unobserved'
+                    ? 'unobserved'
+                    : 'observed'}
+                </span>
+              </div>
+              {concept.attention_reasons.length > 0 ? (
+                <div className="badge-row">
+                  {concept.attention_reasons.map((reason) => (
+                    <span className="badge warn" key={reason}>
+                      {formatAttentionReason(reason)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted small">
+                  {concept.status === 'unobserved'
+                    ? 'No learning evidence has been recorded for this concept yet.'
+                    : 'No current attention signal.'}
+                </p>
+              )}
+            </div>
+
+            <div className="concept-snapshot">
+              <div className="item-topline">
+                <div>
+                  <span className="field-label">Learning signal</span>
+                  <h4 className="item-title">
+                    {concept.latest_misconception
+                      ? formatMisconceptionType(
+                          concept.latest_misconception.misconception_type,
+                        )
+                      : 'No recent signal'}
+                  </h4>
+                </div>
+                {concept.latest_misconception && (
+                  <span className="badge info">
+                    {Math.round(concept.latest_misconception.confidence * 100)}%
+                  </span>
+                )}
+              </div>
+              <p className="muted small">
+                {concept.latest_misconception
+                  ? concept.latest_misconception.description
+                  : 'No high-confidence misconception has been detected recently.'}
+              </p>
+            </div>
+
+            <div className="concept-snapshot">
+              <span className="field-label">Prerequisites</span>
+              {concept.prerequisites.length > 0 ? (
+                <div className="badge-row">
+                  {concept.prerequisites.map((prerequisite) => (
+                    <span className="badge" key={prerequisite.id}>
+                      {prerequisite.name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted small">No prerequisite concepts recorded.</p>
+              )}
+            </div>
+
+            <div className="concept-snapshot">
+              <span className="field-label">Guided learning activity</span>
+              <div className="snapshot-grid compact">
+                <Metric
+                  label="Sessions"
+                  value={concept.socratic_activity.completed_sessions}
+                />
+                <Metric
+                  label="Checks"
+                  value={concept.socratic_activity.completion_attempts}
+                />
+                <Metric
+                  label="Latest check"
+                  value={formatCompletionCheck(concept)}
+                />
+                <Metric
+                  label="Latest session"
+                  value={
+                    concept.socratic_activity.latest_completed_at
+                      ? formatDate(concept.socratic_activity.latest_completed_at)
+                      : 'None'
+                  }
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </aside>
+  )
+}
+
 function EvaluationView({
   courseId,
   userId,
@@ -2464,6 +2794,7 @@ function pageTitle(view: View) {
     chat: 'Evidence Chat',
     quiz: 'Quiz Lab',
     review: 'Review & Mastery',
+    progress: 'Progress',
     evaluation: 'Evaluation',
   }
   return titles[view]
@@ -2476,6 +2807,7 @@ function pageKicker(view: View) {
     chat: 'Claim-level evidence, citations and grounded comparison',
     quiz: 'Traceable practice items linked to source chunks',
     review: 'Due items, ratings and mastery indicators',
+    progress: 'Estimated concept mastery, learning signals and guided activity',
     evaluation: 'Grounded vs ungrounded reliability experiments',
   }
   return subtitles[view]
@@ -2486,6 +2818,56 @@ function formatDate(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
+}
+
+function formatNullablePercent(value: number | null) {
+  return value == null ? 'Unobserved' : `${Math.round(value * 100)}%`
+}
+
+function formatProgressStatus(status: ProgressConceptStatus) {
+  const labels = {
+    unobserved: 'Unobserved',
+    needs_attention: 'Needs attention',
+    developing: 'Developing',
+    strong: 'Strong',
+  }
+  return labels[status]
+}
+
+function progressStatusBadgeClass(status: ProgressConceptStatus) {
+  if (status === 'strong') return 'good'
+  if (status === 'developing' || status === 'unobserved') return 'info'
+  return 'warn'
+}
+
+function formatAttentionReason(reason: string) {
+  const labels: Record<string, string> = {
+    review_due: 'Review due',
+    needs_attention: 'Needs attention',
+    consecutive_errors: 'Consecutive errors',
+    low_estimated_mastery: 'Low estimated mastery',
+    low_recent_accuracy: 'Low recent accuracy',
+    recent_learning_signal: 'Recent learning signal',
+  }
+  return labels[reason] ?? reason.replace(/_/g, ' ')
+}
+
+function formatMisconceptionType(type: string) {
+  const labels: Record<string, string> = {
+    concept_confusion: 'Possible concept confusion',
+    incorrect_definition: 'Possible definition issue',
+    missing_prerequisite: 'Possible missing prerequisite',
+    incomplete_reasoning: 'Possible reasoning gap',
+    source_misinterpretation: 'Possible source misreading',
+    unknown: 'Unclear learning signal',
+  }
+  return labels[type] ?? type.replace(/_/g, ' ')
+}
+
+function formatCompletionCheck(concept: CourseProgress['concepts'][number]) {
+  const latest = concept.socratic_activity.latest_completion_correct
+  if (latest == null) return 'None'
+  return latest ? 'Correct' : 'Not quite'
 }
 
 function canStartSocraticSession(response: TutorResponse) {

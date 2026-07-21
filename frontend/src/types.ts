@@ -189,6 +189,72 @@ export type LearnerState = {
   review_due: boolean
 }
 
+export type ProgressConceptStatus =
+  | 'unobserved'
+  | 'needs_attention'
+  | 'developing'
+  | 'strong'
+
+export type ProgressMisconception = {
+  id: number
+  misconception_type: string
+  description: string
+  confidence: number
+  quiz_attempt_id: number
+  created_at: string | null
+}
+
+export type ProgressPrerequisite = {
+  id: number
+  name: string
+  confidence: number
+}
+
+export type ProgressSocraticActivity = {
+  completed_sessions: number
+  completion_attempts: number
+  latest_session_id: number | null
+  latest_completed_at: string | null
+  latest_completion_quiz_item_id: number | null
+  latest_completion_quiz_attempt_id: number | null
+  latest_completion_correct: boolean | null
+}
+
+export type ProgressConcept = {
+  concept_id: number
+  concept_name: string
+  state_status: 'observed' | 'unobserved'
+  status: ProgressConceptStatus
+  mastery_score: number | null
+  recent_accuracy: number | null
+  attempt_count: number
+  consecutive_errors: number
+  last_attempted_at: string | null
+  review_due: boolean
+  needs_attention: boolean
+  attention_reasons: string[]
+  latest_misconception: ProgressMisconception | null
+  prerequisites: ProgressPrerequisite[]
+  socratic_activity: ProgressSocraticActivity
+}
+
+export type CourseProgress = {
+  user_id: string
+  course_id: number
+  summary: {
+    total_concepts: number
+    observed_concepts: number
+    unobserved_concepts: number
+    needs_attention_count: number
+    review_due_count: number
+    strong_count: number
+    developing_count: number
+    socratic_completed_count: number
+    socratic_completion_attempt_count: number
+  }
+  concepts: ProgressConcept[]
+}
+
 export type TutorDecision = {
   decision_id: number
   user_id: string
