@@ -5,6 +5,7 @@ from app.models.misconception import Misconception
 from app.models.policy import PolicyDecisionRecord
 from app.models.quiz import QuizAttempt, QuizItem
 from app.models.review import ReviewRecord
+from app.models.socratic import SocraticSession, SocraticTurn
 
 __all__ = [
     "Course",
@@ -18,4 +19,6 @@ __all__ = [
     "QuizAttempt",
     "QuizItem",
     "ReviewRecord",
+    "SocraticSession",
+    "SocraticTurn",
 ]
