@@ -10,6 +10,7 @@ from app.api.health import router as health_router
 from app.api.learner_state import router as learner_state_router
 from app.api.mastery import router as mastery_router
 from app.api.misconceptions import router as misconceptions_router
+from app.api.progress import router as progress_router
 from app.api.quiz import router as quiz_router
 from app.api.reviews import router as reviews_router
 from app.api.search import router as search_router
@@ -40,3 +41,4 @@ app.include_router(evaluation_router)
 app.include_router(tutor_router)
 app.include_router(misconceptions_router)
 app.include_router(socratic_router)
+app.include_router(progress_router)
