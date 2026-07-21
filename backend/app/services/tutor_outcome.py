@@ -80,14 +80,11 @@ def _quiz_attempt_outcome(
     decision: PolicyDecisionRecord,
     quiz_attempt_id: int,
 ) -> dict[str, Any]:
-    if decision.selected_action != "quiz":
-        raise TutorOutcomeCompatibilityError(
-            "Quiz attempts can only be linked to quiz tutor decisions"
-        )
-
     attempt = db.scalar(select(QuizAttempt).where(QuizAttempt.id == quiz_attempt_id))
     if attempt is None:
         raise TutorOutcomeNotFoundError("Quiz attempt not found")
+
+    _validate_quiz_attempt_compatibility(decision=decision, attempt=attempt)
 
     _validate_scope(
         decision=decision,
@@ -99,6 +96,7 @@ def _quiz_attempt_outcome(
         "reference_id": attempt.id,
         "quiz_attempt_id": attempt.id,
         "quiz_item_id": attempt.quiz_item_id,
+        "quiz_origin": _quiz_attempt_origin(attempt),
         "is_correct": attempt.is_correct,
         "score": 1 if attempt.is_correct else 0,
         "selected_option_id": attempt.selected_option_id,
@@ -107,6 +105,29 @@ def _quiz_attempt_outcome(
         "correct_option_text": attempt.correct_option_text,
         "observed_at": _serialize_datetime(attempt.attempted_at),
     }
+
+
+def _validate_quiz_attempt_compatibility(
+    *,
+    decision: PolicyDecisionRecord,
+    attempt: QuizAttempt,
+) -> None:
+    if decision.selected_action == "quiz":
+        return
+    if (
+        decision.selected_action == "explain"
+        and _quiz_attempt_origin(attempt) == "comprehension_check"
+    ):
+        return
+    raise TutorOutcomeCompatibilityError(
+        "Quiz attempts can only be linked to quiz tutor decisions or "
+        "comprehension checks from explain decisions"
+    )
+
+
+def _quiz_attempt_origin(attempt: QuizAttempt) -> str:
+    item = getattr(attempt, "quiz_item", None)
+    return getattr(item, "origin", None) or "manual_practice"
 
 
 def _review_outcome(

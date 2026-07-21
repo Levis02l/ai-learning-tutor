@@ -72,6 +72,7 @@ def test_to_quiz_item_preserves_traceable_sources() -> None:
     assert quiz_item.options[1] == {"id": "B", "text": "Correct answer"}
     assert quiz_item.correct_option_id == "B"
     assert quiz_item.explanation == "Because B is supported."
+    assert quiz_item.origin == "manual_practice"
 
 
 def test_to_quiz_item_sets_concept_id_when_sources_are_traceable() -> None:
@@ -93,9 +94,11 @@ def test_to_quiz_item_sets_concept_id_when_sources_are_traceable() -> None:
         difficulty="medium",
         valid_source_ids={1},
         concept_id=7,
+        origin="comprehension_check",
     )
 
     assert quiz_item.concept_id == 7
+    assert quiz_item.origin == "comprehension_check"
 
 
 def test_to_quiz_item_downgrades_item_without_valid_sources() -> None:

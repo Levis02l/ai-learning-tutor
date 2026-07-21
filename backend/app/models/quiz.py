@@ -26,6 +26,12 @@ class QuizItem(Base):
     question: Mapped[str] = mapped_column(Text)
     answer: Mapped[str] = mapped_column(Text)
     difficulty: Mapped[str] = mapped_column(String)
+    origin: Mapped[str] = mapped_column(
+        String,
+        default="manual_practice",
+        server_default="manual_practice",
+        index=True,
+    )
     source_chunk_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
     evidence_quote: Mapped[str] = mapped_column(Text, default="")
     options: Mapped[list[dict[str, str]]] = mapped_column(JSON, default=list)

@@ -12,6 +12,7 @@ from app.schemas.quiz import (
     QuizItemRemovalResponse,
     QuizItemResponse,
     QuizOptionResponse,
+    QuizOrigin,
 )
 from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.embeddings import EmbeddingConfigurationError
@@ -152,6 +153,7 @@ def _to_response(item: QuizItem) -> QuizItemResponse:
         question=item.question,
         answer=item.answer,
         difficulty=item.difficulty,
+        origin=_quiz_origin(item.origin),
         source_chunk_ids=item.source_chunk_ids,
         evidence_quote=item.evidence_quote,
         options=[QuizOptionResponse(**option) for option in item.options or []],
@@ -161,6 +163,14 @@ def _to_response(item: QuizItem) -> QuizItemResponse:
         created_at=item.created_at,
         archived_at=item.archived_at,
     )
+
+
+def _quiz_origin(value: str | None) -> QuizOrigin:
+    if value == "policy_quiz":
+        return "policy_quiz"
+    if value == "comprehension_check":
+        return "comprehension_check"
+    return "manual_practice"
 
 
 def _attempt_to_response(

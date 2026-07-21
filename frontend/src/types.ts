@@ -95,6 +95,7 @@ export type QuizItem = {
   question: string
   answer: string
   difficulty: string
+  origin: 'manual_practice' | 'policy_quiz' | 'comprehension_check'
   source_chunk_ids: number[]
   evidence_quote: string
   options: QuizOption[]

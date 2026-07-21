@@ -13,7 +13,7 @@ from app.llm.provider import LLMProvider
 from app.models.document import Chunk, Document
 from app.models.quiz import QuizAttempt, QuizItem
 from app.models.review import ReviewRecord
-from app.schemas.quiz import Difficulty, QuestionType, TraceabilityLabel
+from app.schemas.quiz import Difficulty, QuestionType, QuizOrigin, TraceabilityLabel
 from app.services.concepts import (
     get_concept_quiz_chunks,
     resolve_concept_for_focus,
@@ -84,6 +84,7 @@ def generate_quiz_items(
     count: int = 5,
     difficulty: Difficulty = "medium",
     top_k: int = 5,
+    origin: QuizOrigin = "manual_practice",
     llm_provider: LLMProvider | None = None,
 ) -> list[QuizItem]:
     focus = topic.strip() if topic else ""
@@ -104,11 +105,70 @@ def generate_quiz_items(
     if not chunks:
         raise QuizGenerationError("No uploaded materials found in this scope")
 
+    return generate_quiz_items_from_chunks(
+        db=db,
+        topic=focus or "current course materials",
+        user_id=user_id,
+        course_id=course_id,
+        concept_id=concept_id,
+        chunks=chunks,
+        count=count,
+        difficulty=difficulty,
+        origin=origin,
+        llm_provider=llm_provider,
+    )
+
+
+def generate_comprehension_check(
+    db: Session,
+    *,
+    topic: str,
+    user_id: str,
+    course_id: int | None,
+    concept_id: int,
+    chunks: list[RetrievedChunk],
+    difficulty: Difficulty = "easy",
+    llm_provider: LLMProvider | None = None,
+) -> QuizItem:
+    items = generate_quiz_items_from_chunks(
+        db=db,
+        topic=f"Comprehension check after explanation: {topic}",
+        user_id=user_id,
+        course_id=course_id,
+        concept_id=concept_id,
+        chunks=chunks,
+        count=1,
+        difficulty=difficulty,
+        origin="comprehension_check",
+        require_traceable=True,
+        llm_provider=llm_provider,
+    )
+    item = items[0]
+    return item
+
+
+def generate_quiz_items_from_chunks(
+    db: Session,
+    *,
+    topic: str,
+    user_id: str,
+    course_id: int | None,
+    concept_id: int | None,
+    chunks: list[RetrievedChunk],
+    count: int,
+    difficulty: Difficulty,
+    origin: QuizOrigin,
+    require_traceable: bool = False,
+    llm_provider: LLMProvider | None = None,
+) -> list[QuizItem]:
+    if not chunks:
+        raise QuizGenerationError("No evidence chunks available for quiz generation")
+
     provider = llm_provider or OpenAIProvider()
     response = provider.generate(
         system_prompt=SYSTEM_PROMPT,
         user_prompt=_build_quiz_prompt(
-            topic=focus or "current course materials",
+            topic=topic,
             count=count,
             difficulty=difficulty,
             chunks=chunks,
@@ -125,6 +185,7 @@ def generate_quiz_items(
             user_id=user_id,
             course_id=course_id,
             concept_id=concept_id,
+            origin=origin,
             difficulty=difficulty,
             valid_source_ids=source_ids,
         )
@@ -133,6 +194,11 @@ def generate_quiz_items(
 
     if not quiz_items:
         raise QuizGenerationError("The model did not generate any valid quiz items")
+    if require_traceable and any(
+        not item.source_chunk_ids or item.concept_id != concept_id
+        for item in quiz_items
+    ):
+        raise QuizGenerationError("Generated quiz item was not traceable")
 
     db.add_all(quiz_items)
     db.commit()
@@ -419,6 +485,7 @@ def _to_quiz_item(
     valid_source_ids: set[int],
     course_id: int | None = None,
     concept_id: int | None = None,
+    origin: QuizOrigin = "manual_practice",
 ) -> QuizItem:
     source_chunk_ids = [
         chunk_id for chunk_id in item.source_chunk_ids if chunk_id in valid_source_ids
@@ -446,6 +513,7 @@ def _to_quiz_item(
         question=item.question,
         answer=item.answer,
         difficulty=difficulty,
+        origin=origin,
         source_chunk_ids=source_chunk_ids,
         evidence_quote=item.evidence_quote,
         options=options,

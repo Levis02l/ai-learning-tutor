@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 Difficulty = Literal["easy", "medium", "hard"]
+QuizOrigin = Literal["manual_practice", "policy_quiz", "comprehension_check"]
 QuestionType = Literal["definition", "conceptual", "application", "comparison"]
 TraceabilityLabel = Literal[
     "fully_traceable",
@@ -35,6 +36,7 @@ class QuizItemResponse(BaseModel):
     question: str
     answer: str
     difficulty: str
+    origin: QuizOrigin = "manual_practice"
     source_chunk_ids: list[int]
     evidence_quote: str
     options: list[QuizOptionResponse] = Field(default_factory=list)

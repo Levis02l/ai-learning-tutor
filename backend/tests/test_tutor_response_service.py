@@ -5,6 +5,7 @@ import pytest
 from app.llm.provider import LLMResponse
 from app.models.quiz import QuizItem
 from app.services.policy import POLICY_VERSION, PolicyDecision
+from app.services.quiz import QuizGenerationError
 from app.services.retrieval import RetrievedChunk
 from app.services.tutor_response import execute_tutor_decision
 
@@ -125,6 +126,96 @@ def test_llm_response_reuses_decision_evidence_without_retrieval(monkeypatch) ->
     assert "chunk_id: 7" in prompt
 
 
+def test_scaffolded_concept_explanation_returns_comprehension_check(
+    monkeypatch,
+) -> None:
+    provider = FakeLLMProvider()
+    captured: dict[str, object] = {}
+
+    def fake_generate_check(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["concept_id"] = kwargs["concept_id"]
+        captured["chunk_ids"] = [chunk.chunk_id for chunk in kwargs["chunks"]]
+        captured["difficulty"] = kwargs["difficulty"]
+        return _quiz_item(
+            item_id=33,
+            concept_id=kwargs["concept_id"],
+            origin="comprehension_check",
+        )
+
+    monkeypatch.setattr(
+        "app.services.tutor_response.generate_comprehension_check",
+        fake_generate_check,
+    )
+
+    response = execute_tutor_decision(
+        db=None,  # type: ignore[arg-type]
+        decision=_decision(
+            selected_action="explain",
+            response_strategy="scaffolded",
+            evidence_chunks=[_chunk(chunk_id=7)],
+            concept_state_snapshot=_concept_snapshot(),
+        ),
+        llm_provider=provider,
+    )
+
+    assert captured == {"concept_id": 9, "chunk_ids": [7], "difficulty": "easy"}
+    assert len(response.quiz_items) == 1
+    assert response.quiz_items[0].origin == "comprehension_check"
+    assert response.quiz_items[0].concept_id == 9
+
+
+def test_comprehension_check_failure_does_not_fail_explanation(monkeypatch) -> None:
+    provider = FakeLLMProvider()
+
+    def raise_generation_error(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise QuizGenerationError("quiz generation failed")
+
+    monkeypatch.setattr(
+        "app.services.tutor_response.generate_comprehension_check",
+        raise_generation_error,
+    )
+
+    response = execute_tutor_decision(
+        db=None,  # type: ignore[arg-type]
+        decision=_decision(
+            selected_action="explain",
+            response_strategy="scaffolded",
+            evidence_chunks=[_chunk(chunk_id=7)],
+            concept_state_snapshot=_concept_snapshot(),
+        ),
+        llm_provider=provider,
+    )
+
+    assert response.answer_status == "answered"
+    assert response.answer == "Tutor answer."
+    assert response.quiz_items == []
+
+
+def test_concise_explanation_does_not_force_comprehension_check(monkeypatch) -> None:
+    provider = FakeLLMProvider()
+
+    def fail_check(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("Concise explanations should not force checks in V1")
+
+    monkeypatch.setattr(
+        "app.services.tutor_response.generate_comprehension_check",
+        fail_check,
+    )
+
+    response = execute_tutor_decision(
+        db=None,  # type: ignore[arg-type]
+        decision=_decision(
+            selected_action="explain",
+            response_strategy="concise",
+            evidence_chunks=[_chunk(chunk_id=7)],
+            concept_state_snapshot=_concept_snapshot(),
+        ),
+        llm_provider=provider,
+    )
+
+    assert response.quiz_items == []
+
+
 def test_guided_hint_prompt_forbids_full_answer(monkeypatch) -> None:
     provider = FakeLLMProvider()
     monkeypatch.setattr(
@@ -154,6 +245,7 @@ def test_quiz_action_reuses_quiz_service_for_one_item(monkeypatch) -> None:
     def fake_generate_quiz_items(*args, **kwargs):  # type: ignore[no-untyped-def]
         captured["count"] = kwargs["count"]
         captured["difficulty"] = kwargs["difficulty"]
+        captured["origin"] = kwargs["origin"]
         return [_quiz_item(item_id=7)]
 
     monkeypatch.setattr(
@@ -171,7 +263,7 @@ def test_quiz_action_reuses_quiz_service_for_one_item(monkeypatch) -> None:
         llm_provider=FailingLLMProvider(),
     )
 
-    assert captured == {"count": 1, "difficulty": "hard"}
+    assert captured == {"count": 1, "difficulty": "hard", "origin": "policy_quiz"}
     assert response.answer_status == "quiz_ready"
     assert response.quiz_items[0].id == 7
 
@@ -199,6 +291,7 @@ def _decision(
     evidence_strength: str = "high",
     requires_evidence: bool = True,
     evidence_chunks: list[RetrievedChunk] | None = None,
+    concept_state_snapshot: dict | None = None,
 ) -> PolicyDecision:
     return PolicyDecision(
         decision_id=1,
@@ -232,6 +325,8 @@ def _decision(
             "retrieval_scope": "course",
             "source_chunk_ids": [chunk.chunk_id for chunk in evidence_chunks or []],
         },
+        learner_state_scope="concept" if concept_state_snapshot else "course",
+        concept_state_snapshot=concept_state_snapshot,
         evidence_chunks=evidence_chunks or [],
     )
 
@@ -249,14 +344,36 @@ def _chunk(*, chunk_id: int = 1) -> RetrievedChunk:
     )
 
 
-def _quiz_item(*, item_id: int) -> QuizItem:
+def _concept_snapshot() -> dict:
+    return {
+        "concept_id": 9,
+        "concept_name": "K-means Clustering",
+        "state_status": "observed",
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.2,
+        "attempt_count": 3,
+        "consecutive_errors": 2,
+        "last_attempted_at": None,
+        "review_due": False,
+        "needs_attention": True,
+    }
+
+
+def _quiz_item(
+    *,
+    item_id: int,
+    concept_id: int | None = None,
+    origin: str = "manual_practice",
+) -> QuizItem:
     return QuizItem(
         id=item_id,
         user_id="demo-user",
         course_id=4,
+        concept_id=concept_id,
         question="Question?",
         answer="Answer.",
         difficulty="medium",
+        origin=origin,
         source_chunk_ids=[1],
         evidence_quote="Evidence.",
         options=[

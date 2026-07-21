@@ -687,9 +687,13 @@ function TutorQuizItems({
     }
   }
 
+  const isComprehensionCheck =
+    items.length > 0 && items.every((item) => item.origin === 'comprehension_check')
+  const title = isComprehensionCheck ? 'Check your understanding' : 'Generated Practice'
+
   return (
     <div className="stack">
-      <h3 className="section-title">Generated Practice</h3>
+      <h3 className="section-title">{title}</h3>
       {error && <div className="error">{error}</div>}
       {notice && <div className="notice">{notice}</div>}
       <div className="list">
@@ -701,9 +705,14 @@ function TutorQuizItems({
             <div className="item-row quiz-card" key={item.id}>
               <div className="item-topline">
                 <h4 className="item-title">{item.question}</h4>
-                <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
-                  {item.traceability_label}
-                </span>
+                <div className="badge-row">
+                  {item.origin === 'comprehension_check' && (
+                    <span className="badge info">comprehension check</span>
+                  )}
+                  <span className={`badge ${traceBadgeClass(item.traceability_label)}`}>
+                    {item.traceability_label}
+                  </span>
+                </div>
               </div>
               {hasOptions ? (
                 <div className="option-list" role="group" aria-label="Tutor answer options">

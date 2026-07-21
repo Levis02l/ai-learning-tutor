@@ -13,7 +13,11 @@ from app.models.review import ReviewRecord
 from app.schemas.chat import AnswerStatus, SupportLevel
 from app.schemas.quiz import Difficulty
 from app.services.policy import PolicyDecision, create_policy_decision
-from app.services.quiz import generate_quiz_items
+from app.services.quiz import (
+    QuizGenerationError,
+    generate_comprehension_check,
+    generate_quiz_items,
+)
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 from app.services.review import get_due_review_items
 
@@ -204,6 +208,7 @@ def _quiz_response(
         count=1,
         difficulty=_quiz_difficulty(decision),
         top_k=top_k,
+        origin="policy_quiz",
         llm_provider=llm_provider,
     )
     return TutorResponse(
@@ -253,6 +258,12 @@ def _llm_tutor_response(
         answer=payload.answer,
         claims=claims,
         sources=[_to_source(chunk) for chunk in chunks],
+        quiz_items=_maybe_generate_comprehension_check(
+            db=db,
+            decision=decision,
+            chunks=chunks,
+            llm_provider=llm_provider,
+        ),
         suggested_next_step=decision.suggested_next_step,
     )
 
@@ -263,6 +274,49 @@ def _quiz_difficulty(decision: PolicyDecision) -> Difficulty:
     if decision.response_strategy == "scaffolded":
         return "easy"
     return "medium"
+
+
+def _maybe_generate_comprehension_check(
+    *,
+    db: Session,
+    decision: PolicyDecision,
+    chunks: list[RetrievedChunk],
+    llm_provider: LLMProvider | None,
+) -> list[QuizItem]:
+    if not _should_generate_comprehension_check(decision=decision, chunks=chunks):
+        return []
+
+    concept_snapshot = decision.concept_state_snapshot or {}
+    try:
+        return [
+            generate_comprehension_check(
+                db=db,
+                topic=concept_snapshot["concept_name"],
+                user_id=decision.user_id,
+                course_id=decision.course_id,
+                concept_id=concept_snapshot["concept_id"],
+                chunks=chunks,
+                difficulty="easy",
+                llm_provider=llm_provider,
+            )
+        ]
+    except (KeyError, QuizGenerationError, LLMProviderError):
+        return []
+
+
+def _should_generate_comprehension_check(
+    *,
+    decision: PolicyDecision,
+    chunks: list[RetrievedChunk],
+) -> bool:
+    evidence_strength = decision.evidence_state_snapshot.get("evidence_strength")
+    return (
+        decision.selected_action == "explain"
+        and decision.response_strategy == "scaffolded"
+        and decision.concept_state_snapshot is not None
+        and evidence_strength in {"high", "medium"}
+        and bool(chunks)
+    )
 
 
 def _build_policy_aware_prompt(
