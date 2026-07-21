@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 
@@ -7,12 +7,21 @@ from sqlalchemy.orm import Session
 from app.models.policy import PolicyDecisionRecord
 from app.services.concepts import (
     ConceptLearnerState,
+    ResolvedConcept,
     get_concept_learner_state,
     resolve_concept_for_focus,
 )
 from app.services.learner_state import LearnerState, compute_learner_state
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 from app.services.review import get_due_review_items
+from app.services.tutor_context import (
+    TutorEvidenceContext,
+    TutorEvidenceState,
+    TutorEvidenceStrength,
+    build_evidence_state_from_chunks,
+    build_not_required_evidence_context,
+    build_tutor_evidence_context,
+)
 
 POLICY_VERSION = "rule_v1"
 
@@ -27,23 +36,8 @@ ResponseStrategy = Literal[
     "refusal",
     "review_drill",
 ]
-PolicyEvidenceStrength = Literal[
-    "high",
-    "medium",
-    "low",
-    "insufficient",
-    "not_required",
-]
-
-
-@dataclass(frozen=True)
-class PolicyEvidenceState:
-    evidence_strength: PolicyEvidenceStrength
-    source_coverage: float
-    retrieved_chunk_count: int
-    top_similarity: float
-    requires_evidence: bool
-    reason: str
+PolicyEvidenceStrength = TutorEvidenceStrength
+PolicyEvidenceState = TutorEvidenceState
 
 
 @dataclass(frozen=True)
@@ -63,6 +57,7 @@ class PolicyDecision:
     evidence_state_snapshot: dict[str, Any]
     learner_state_scope: LearnerStateScope = "course"
     concept_state_snapshot: dict[str, Any] | None = None
+    evidence_chunks: list[RetrievedChunk] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -86,12 +81,18 @@ def create_policy_decision(
         course_id=course_id,
     )
     detected_intent = detect_intent(query)
-    learner_context = _resolve_policy_learner_context(
+    resolved_concept = _resolve_query_concept(
         db=db,
         query=query,
         user_id=user_id,
         course_id=course_id,
+    )
+    learner_context = _resolve_policy_learner_context(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
         course_learner_state=course_learner_state,
+        resolved_concept=resolved_concept,
     )
     has_due_review_item = bool(
         get_due_review_items(
@@ -101,7 +102,7 @@ def create_policy_decision(
             limit=1,
         )
     )
-    evidence_state = _resolve_evidence_state(
+    evidence_context = _resolve_evidence_context(
         db=db,
         query=query,
         user_id=user_id,
@@ -110,16 +111,18 @@ def create_policy_decision(
         detected_intent=detected_intent,
         learner_state=learner_context.state,
         has_due_review_item=has_due_review_item,
+        resolved_concept=resolved_concept,
     )
     decision = decide_teaching_action(
         query=query,
         user_id=user_id,
         course_id=course_id,
         learner_state=learner_context.state,
-        evidence_state=evidence_state,
+        evidence_state=evidence_context.evidence_state,
         detected_intent=detected_intent,
         learner_state_scope=learner_context.scope,
         concept_state=learner_context.concept_state,
+        evidence_chunks=evidence_context.chunks,
     )
     record = PolicyDecisionRecord(
         user_id=user_id,
@@ -158,6 +161,7 @@ def create_policy_decision(
         evidence_state_snapshot=decision.evidence_state_snapshot,
         learner_state_scope=decision.learner_state_scope,
         concept_state_snapshot=decision.concept_state_snapshot,
+        evidence_chunks=decision.evidence_chunks,
     )
 
 
@@ -218,10 +222,12 @@ def decide_teaching_action(
     detected_intent: DetectedIntent | None = None,
     learner_state_scope: LearnerStateScope = "course",
     concept_state: ConceptLearnerState | None = None,
+    evidence_chunks: list[RetrievedChunk] | None = None,
 ) -> PolicyDecision:
     intent = detected_intent or detect_intent(query)
     learner_snapshot = _learner_state_snapshot(learner_state)
     evidence_snapshot = _evidence_state_snapshot(evidence_state)
+    final_evidence_chunks = evidence_chunks or []
     concept_snapshot = (
         _concept_state_snapshot(concept_state) if concept_state is not None else None
     )
@@ -247,6 +253,7 @@ def decide_teaching_action(
             evidence_state_snapshot=evidence_snapshot,
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
 
     if intent == "explain":
@@ -262,6 +269,7 @@ def decide_teaching_action(
             primary_reason="explicit_explanation_request",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
     if intent == "hint":
         return _explicit_decision(
@@ -276,6 +284,7 @@ def decide_teaching_action(
             primary_reason="explicit_hint_request",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
     if intent == "practice":
         return _explicit_decision(
@@ -290,6 +299,7 @@ def decide_teaching_action(
             primary_reason="explicit_practice_request",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
     if intent == "review":
         return _explicit_decision(
@@ -304,6 +314,7 @@ def decide_teaching_action(
             primary_reason="explicit_review_request",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
 
     if _is_unobserved_concept(concept_snapshot):
@@ -328,6 +339,7 @@ def decide_teaching_action(
             ),
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
 
     if learner_state.review_due:
@@ -347,6 +359,7 @@ def decide_teaching_action(
             suggested_next_step="Open the review queue and work through due questions.",
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
 
     if learner_state.mastery_score < 0.4 or learner_state.consecutive_errors >= 2:
@@ -369,6 +382,7 @@ def decide_teaching_action(
             ),
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
 
     if learner_state.mastery_score < 0.75:
@@ -390,6 +404,7 @@ def decide_teaching_action(
             ),
             learner_state_scope=learner_state_scope,
             concept_state_snapshot=concept_snapshot,
+            evidence_chunks=final_evidence_chunks,
         )
 
     return _implicit_decision(
@@ -408,6 +423,7 @@ def decide_teaching_action(
         suggested_next_step="Generate a higher-challenge practice question.",
         learner_state_scope=learner_state_scope,
         concept_state_snapshot=concept_snapshot,
+        evidence_chunks=final_evidence_chunks,
     )
 
 
@@ -426,10 +442,10 @@ def build_retrieval_evidence_state(
         course_id=course_id,
         top_k=top_k,
     )
-    return _evidence_from_chunks(chunks)
+    return build_evidence_state_from_chunks(chunks, retrieval_scope="course")
 
 
-def _resolve_evidence_state(
+def _resolve_evidence_context(
     *,
     db: Session,
     query: str,
@@ -439,54 +455,52 @@ def _resolve_evidence_state(
     detected_intent: DetectedIntent,
     learner_state: LearnerState,
     has_due_review_item: bool,
-) -> PolicyEvidenceState:
+    resolved_concept: ResolvedConcept | None,
+) -> TutorEvidenceContext:
     if has_due_review_item and (
         detected_intent == "review"
         or (detected_intent == "unknown" and learner_state.review_due)
     ):
-        return PolicyEvidenceState(
-            evidence_strength="not_required",
-            source_coverage=1.0,
-            retrieved_chunk_count=0,
-            top_similarity=0.0,
-            requires_evidence=False,
-            reason=(
-                "Existing due review items are already traceable, so new "
-                "retrieval evidence is not required for this decision."
-            ),
+        return build_not_required_evidence_context(
+            resolved_concept=resolved_concept,
         )
 
-    return build_retrieval_evidence_state(
+    return build_tutor_evidence_context(
         db=db,
         query=query,
         user_id=user_id,
         course_id=course_id,
         top_k=top_k,
+        resolved_concept=resolved_concept,
+    )
+
+
+def _resolve_query_concept(
+    *,
+    db: Session,
+    query: str,
+    user_id: str,
+    course_id: int | None,
+) -> ResolvedConcept | None:
+    if course_id is None:
+        return None
+    return resolve_concept_for_focus(
+        db=db,
+        user_id=user_id,
+        course_id=course_id,
+        focus=query,
     )
 
 
 def _resolve_policy_learner_context(
     *,
     db: Session,
-    query: str,
     user_id: str,
     course_id: int | None,
     course_learner_state: LearnerState,
+    resolved_concept: ResolvedConcept | None,
 ) -> _PolicyLearnerContext:
-    if course_id is None:
-        return _PolicyLearnerContext(
-            state=course_learner_state,
-            scope="course",
-            concept_state=None,
-        )
-
-    resolved = resolve_concept_for_focus(
-        db=db,
-        user_id=user_id,
-        course_id=course_id,
-        focus=query,
-    )
-    if resolved is None:
+    if course_id is None or resolved_concept is None:
         return _PolicyLearnerContext(
             state=course_learner_state,
             scope="course",
@@ -497,7 +511,7 @@ def _resolve_policy_learner_context(
         db=db,
         user_id=user_id,
         course_id=course_id,
-        concept_id=resolved.concept.id,
+        concept_id=resolved_concept.concept.id,
     )
     return _PolicyLearnerContext(
         state=_learner_state_from_concept_state(
@@ -542,41 +556,6 @@ def _contains_phrase(normalized_query: str, phrases: list[str]) -> bool:
     return any(phrase in normalized_query for phrase in phrases)
 
 
-def _evidence_from_chunks(chunks: list[RetrievedChunk]) -> PolicyEvidenceState:
-    if not chunks:
-        return PolicyEvidenceState(
-            evidence_strength="insufficient",
-            source_coverage=0.0,
-            retrieved_chunk_count=0,
-            top_similarity=0.0,
-            requires_evidence=True,
-            reason="No relevant course chunks were retrieved.",
-        )
-
-    top_similarity = round(max(chunk.similarity for chunk in chunks), 3)
-    source_coverage = round(
-        sum(1 for chunk in chunks if chunk.similarity >= 0.35) / len(chunks),
-        3,
-    )
-    if top_similarity >= 0.55:
-        evidence_strength: PolicyEvidenceStrength = "high"
-    elif top_similarity >= 0.4:
-        evidence_strength = "medium"
-    elif top_similarity >= 0.3:
-        evidence_strength = "low"
-    else:
-        evidence_strength = "insufficient"
-
-    return PolicyEvidenceState(
-        evidence_strength=evidence_strength,
-        source_coverage=source_coverage,
-        retrieved_chunk_count=len(chunks),
-        top_similarity=top_similarity,
-        requires_evidence=True,
-        reason=f"Top retrieval similarity is {top_similarity}.",
-    )
-
-
 def _is_evidence_insufficient(evidence_state: PolicyEvidenceState) -> bool:
     return (
         evidence_state.requires_evidence
@@ -597,6 +576,7 @@ def _explicit_decision(
     primary_reason: str,
     learner_state_scope: LearnerStateScope,
     concept_state_snapshot: dict[str, Any] | None,
+    evidence_chunks: list[RetrievedChunk],
 ) -> PolicyDecision:
     response_strategy = _strategy_for_action(
         selected_action=selected_action,
@@ -623,6 +603,7 @@ def _explicit_decision(
         evidence_state_snapshot=evidence_snapshot,
         learner_state_scope=learner_state_scope,
         concept_state_snapshot=concept_state_snapshot,
+        evidence_chunks=evidence_chunks,
     )
 
 
@@ -640,6 +621,7 @@ def _implicit_decision(
     suggested_next_step: str,
     learner_state_scope: LearnerStateScope,
     concept_state_snapshot: dict[str, Any] | None,
+    evidence_chunks: list[RetrievedChunk],
 ) -> PolicyDecision:
     return _build_decision(
         query=query,
@@ -655,6 +637,7 @@ def _implicit_decision(
         evidence_state_snapshot=evidence_snapshot,
         learner_state_scope=learner_state_scope,
         concept_state_snapshot=concept_state_snapshot,
+        evidence_chunks=evidence_chunks,
     )
 
 
@@ -673,6 +656,7 @@ def _build_decision(
     evidence_state_snapshot: dict[str, Any],
     learner_state_scope: LearnerStateScope = "course",
     concept_state_snapshot: dict[str, Any] | None = None,
+    evidence_chunks: list[RetrievedChunk] | None = None,
 ) -> PolicyDecision:
     return PolicyDecision(
         decision_id=None,
@@ -690,6 +674,7 @@ def _build_decision(
         evidence_state_snapshot=evidence_state_snapshot,
         learner_state_scope=learner_state_scope,
         concept_state_snapshot=concept_state_snapshot,
+        evidence_chunks=evidence_chunks or [],
     )
 
 
@@ -777,6 +762,8 @@ def _evidence_state_snapshot(state: PolicyEvidenceState) -> dict[str, Any]:
         "top_similarity": state.top_similarity,
         "requires_evidence": state.requires_evidence,
         "reason": state.reason,
+        "retrieval_scope": state.retrieval_scope,
+        "source_chunk_ids": state.source_chunk_ids,
     }
 
 

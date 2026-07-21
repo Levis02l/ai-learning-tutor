@@ -223,6 +223,8 @@ export type TutorDecision = {
     top_similarity: number
     requires_evidence: boolean
     reason: string
+    retrieval_scope: 'course' | 'concept' | 'concept_with_course_fallback' | 'not_required'
+    source_chunk_ids: number[]
   }
 }
 

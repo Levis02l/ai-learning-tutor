@@ -24,6 +24,12 @@ PolicyEvidenceStrength = Literal[
     "insufficient",
     "not_required",
 ]
+TutorRetrievalScope = Literal[
+    "course",
+    "concept",
+    "concept_with_course_fallback",
+    "not_required",
+]
 
 
 class TutorDecisionRequest(BaseModel):
@@ -51,6 +57,8 @@ class TutorEvidenceStateSnapshot(BaseModel):
     top_similarity: float
     requires_evidence: bool
     reason: str
+    retrieval_scope: TutorRetrievalScope = "course"
+    source_chunk_ids: list[int] = Field(default_factory=list)
 
 
 class TutorConceptLearnerStateSnapshot(BaseModel):

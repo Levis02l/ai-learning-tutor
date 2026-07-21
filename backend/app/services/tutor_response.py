@@ -224,7 +224,7 @@ def _llm_tutor_response(
     top_k: int,
     llm_provider: LLMProvider | None,
 ) -> TutorResponse:
-    chunks = retrieve_relevant_chunks(
+    chunks = decision.evidence_chunks or retrieve_relevant_chunks(
         db=db,
         query=decision.query,
         user_id=decision.user_id,

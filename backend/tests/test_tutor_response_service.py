@@ -92,6 +92,39 @@ def test_scaffolded_explanation_uses_policy_aware_prompt(monkeypatch) -> None:
     assert response.claims[0].source_chunk_ids == [1]
 
 
+def test_llm_response_reuses_decision_evidence_without_retrieval(monkeypatch) -> None:
+    provider = FakeLLMProvider(
+        text=(
+            '{"answer_status": "answered", "answer": "Tutor answer.", '
+            '"claims": [{"claim": "Supported claim", "source_chunk_ids": [7], '
+            '"support_level": "fully_supported", "evidence_quote": "Evidence."}]}'
+        )
+    )
+
+    def fail_retrieval(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("Response should reuse decision evidence")
+
+    monkeypatch.setattr(
+        "app.services.tutor_response.retrieve_relevant_chunks",
+        fail_retrieval,
+    )
+
+    response = execute_tutor_decision(
+        db=None,  # type: ignore[arg-type]
+        decision=_decision(
+            selected_action="explain",
+            response_strategy="guided",
+            evidence_chunks=[_chunk(chunk_id=7)],
+        ),
+        llm_provider=provider,
+    )
+
+    assert [source.chunk_id for source in response.sources] == [7]
+    assert response.claims[0].source_chunk_ids == [7]
+    prompt = provider.calls[0]["user_prompt"]
+    assert "chunk_id: 7" in prompt
+
+
 def test_guided_hint_prompt_forbids_full_answer(monkeypatch) -> None:
     provider = FakeLLMProvider()
     monkeypatch.setattr(
@@ -165,6 +198,7 @@ def _decision(
     primary_reason: str = "test_reason",
     evidence_strength: str = "high",
     requires_evidence: bool = True,
+    evidence_chunks: list[RetrievedChunk] | None = None,
 ) -> PolicyDecision:
     return PolicyDecision(
         decision_id=1,
@@ -195,13 +229,16 @@ def _decision(
             "top_similarity": 0.7,
             "requires_evidence": requires_evidence,
             "reason": "test evidence",
+            "retrieval_scope": "course",
+            "source_chunk_ids": [chunk.chunk_id for chunk in evidence_chunks or []],
         },
+        evidence_chunks=evidence_chunks or [],
     )
 
 
-def _chunk() -> RetrievedChunk:
+def _chunk(*, chunk_id: int = 1) -> RetrievedChunk:
     return RetrievedChunk(
-        chunk_id=1,
+        chunk_id=chunk_id,
         document_id=2,
         course_id=4,
         filename="lecture.pdf",

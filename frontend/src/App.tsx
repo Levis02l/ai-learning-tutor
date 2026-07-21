@@ -623,6 +623,7 @@ function TutorEvidenceSnapshot({ response }: { response: TutorResponse }) {
           top {Math.round(evidence.top_similarity * 100)}%
         </span>
         <span className="badge">{evidence.retrieved_chunk_count} chunks</span>
+        <span className="badge">{evidence.retrieval_scope}</span>
       </div>
       <p className="muted small">{evidence.reason}</p>
     </div>

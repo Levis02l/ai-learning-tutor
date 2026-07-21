@@ -10,6 +10,8 @@ from app.services.policy import (
     decide_teaching_action,
     detect_intent,
 )
+from app.services.retrieval import RetrievedChunk
+from app.services.tutor_context import TutorEvidenceContext
 
 
 def test_detect_intent_prioritises_hint_before_explain() -> None:
@@ -169,8 +171,12 @@ def test_create_policy_decision_uses_observed_concept_state(monkeypatch) -> None
     )
     monkeypatch.setattr("app.services.policy.get_due_review_items", lambda **kwargs: [])
     monkeypatch.setattr(
-        "app.services.policy.build_retrieval_evidence_state",
-        lambda **kwargs: _evidence("high"),
+        "app.services.policy.build_tutor_evidence_context",
+        lambda **kwargs: TutorEvidenceContext(
+            resolved_concept=kwargs["resolved_concept"],
+            chunks=[_chunk(chunk_id=41)],
+            evidence_state=_evidence("high", source_chunk_ids=[41]),
+        ),
     )
     monkeypatch.setattr(
         "app.services.policy.resolve_concept_for_focus",
@@ -207,6 +213,8 @@ def test_create_policy_decision_uses_observed_concept_state(monkeypatch) -> None
     assert decision.learner_state_snapshot["mastery_score"] == 0.88
     assert decision.concept_state_snapshot is not None
     assert decision.concept_state_snapshot["concept_id"] == 9
+    assert decision.evidence_state_snapshot["source_chunk_ids"] == [41]
+    assert [chunk.chunk_id for chunk in decision.evidence_chunks] == [41]
     assert decision.selected_action == "explain"
     assert decision.response_strategy == "concise"
     assert db.record is not None
@@ -223,8 +231,12 @@ def test_create_policy_decision_falls_back_to_course_state(monkeypatch) -> None:
     )
     monkeypatch.setattr("app.services.policy.get_due_review_items", lambda **kwargs: [])
     monkeypatch.setattr(
-        "app.services.policy.build_retrieval_evidence_state",
-        lambda **kwargs: _evidence("high"),
+        "app.services.policy.build_tutor_evidence_context",
+        lambda **kwargs: TutorEvidenceContext(
+            resolved_concept=kwargs["resolved_concept"],
+            chunks=[_chunk(chunk_id=51)],
+            evidence_state=_evidence("high", source_chunk_ids=[51]),
+        ),
     )
     monkeypatch.setattr(
         "app.services.policy.resolve_concept_for_focus",
@@ -311,6 +323,7 @@ def _evidence(
     evidence_strength,
     *,
     requires_evidence: bool = True,
+    source_chunk_ids: list[int] | None = None,
 ) -> PolicyEvidenceState:
     return PolicyEvidenceState(
         evidence_strength=evidence_strength,
@@ -319,4 +332,18 @@ def _evidence(
         top_similarity=0.7 if evidence_strength != "insufficient" else 0.0,
         requires_evidence=requires_evidence,
         reason="test evidence",
+        source_chunk_ids=source_chunk_ids or [],
+    )
+
+
+def _chunk(*, chunk_id: int) -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id=chunk_id,
+        document_id=2,
+        course_id=7,
+        filename="lecture.pdf",
+        content=f"Evidence chunk {chunk_id}.",
+        metadata={},
+        distance=0.2,
+        similarity=0.8,
     )
