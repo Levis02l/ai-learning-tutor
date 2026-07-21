@@ -11,6 +11,7 @@ import {
   Gauge,
   Library,
   Loader2,
+  MessagesSquare,
   MessageSquareText,
   RefreshCw,
   SearchCheck,
@@ -32,11 +33,14 @@ import {
   getHealth,
   getLearnerState,
   getMastery,
+  getSocraticSession,
   linkTutorOutcome,
   listCourses,
   listDocuments,
   listDueReviews,
   listQuizItems,
+  respondToSocraticSession,
+  startSocraticSession,
   submitQuizAttempt,
   submitReview,
   tutorRespond,
@@ -53,6 +57,7 @@ import type {
   MasteryResponse,
   QuizAttemptResponse,
   QuizItem,
+  SocraticSession,
   TutorResponse,
 } from './types'
 
@@ -415,10 +420,24 @@ function TutorView({
           {error && <div className="error">{error}</div>}
 
           {!response ? (
-            <EmptyState label="Ask the tutor to trigger policy-aware teaching." />
+            <>
+              <EmptyState label="Ask the tutor to trigger policy-aware teaching." />
+              <TutorSocraticSection
+                courseId={courseId}
+                response={null}
+                topK={topK}
+                userId={userId}
+              />
+            </>
           ) : (
             <>
               <TutorAnswerCard response={response} />
+              <TutorSocraticSection
+                courseId={courseId}
+                response={response}
+                topK={topK}
+                userId={userId}
+              />
               {response.quiz_items.length > 0 && (
                 <TutorQuizItems
                   courseId={courseId}
@@ -468,6 +487,273 @@ function TutorAnswerCard({ response }: { response: TutorResponse }) {
         </div>
         <p className="answer">{response.answer}</p>
         <div className="notice">{response.suggested_next_step}</div>
+      </div>
+    </div>
+  )
+}
+
+function TutorSocraticSection({
+  courseId,
+  response,
+  topK,
+  userId,
+}: {
+  courseId: number | null
+  response: TutorResponse | null
+  topK: number
+  userId: string
+}) {
+  const [session, setSession] = useState<SocraticSession | null>(null)
+  const [answer, setAnswer] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const [error, setError] = useState('')
+
+  const decisionId = response?.decision.decision_id ?? null
+  const latestStorageKey = useMemo(
+    () => socraticLatestStorageKey(userId, courseId),
+    [courseId, userId],
+  )
+  const decisionStorageKey = useMemo(
+    () =>
+      decisionId == null
+        ? null
+        : socraticDecisionStorageKey(userId, courseId, decisionId),
+    [courseId, decisionId, userId],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    const storedSessionId = decisionStorageKey
+      ? window.localStorage.getItem(decisionStorageKey)
+      : window.localStorage.getItem(latestStorageKey)
+
+    setAnswer('')
+    setError('')
+    setSession(null)
+    setRestoring(false)
+
+    if (!storedSessionId) return
+
+    const parsedSessionId = Number(storedSessionId)
+    if (!Number.isFinite(parsedSessionId)) return
+
+    setRestoring(true)
+    void getSocraticSession(userId, parsedSessionId, courseId)
+      .then((restoredSession) => {
+        if (!cancelled) setSession(restoredSession)
+      })
+      .catch(() => {
+        window.localStorage.removeItem(latestStorageKey)
+        if (decisionStorageKey) window.localStorage.removeItem(decisionStorageKey)
+      })
+      .finally(() => {
+        if (!cancelled) setRestoring(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [courseId, decisionStorageKey, latestStorageKey, userId])
+
+  const canStart = response ? canStartSocraticSession(response) : false
+  const conceptName =
+    session?.concept_snapshot?.concept_name ??
+    response?.decision.concept_state_snapshot?.concept_name ??
+    'current concept'
+
+  async function handleStartSocratic() {
+    if (!response) return
+
+    setBusy(true)
+    setError('')
+    try {
+      const startedSession = await startSocraticSession(
+        userId,
+        response.decision.query,
+        courseId,
+        response.decision.decision_id,
+        topK,
+        3,
+      )
+      setSession(startedSession)
+      setAnswer('')
+      window.localStorage.setItem(latestStorageKey, String(startedSession.id))
+      if (decisionStorageKey) {
+        window.localStorage.setItem(decisionStorageKey, String(startedSession.id))
+      }
+    } catch (socraticError) {
+      setError(getErrorMessage(socraticError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleSubmitAnswer(event: FormEvent) {
+    event.preventDefault()
+    if (!session || !answer.trim()) return
+
+    setBusy(true)
+    setError('')
+    try {
+      const updatedSession = await respondToSocraticSession(
+        userId,
+        session.id,
+        answer.trim(),
+        courseId,
+      )
+      setSession(updatedSession)
+      setAnswer('')
+      window.localStorage.setItem(latestStorageKey, String(updatedSession.id))
+    } catch (socraticError) {
+      setError(getErrorMessage(socraticError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!session && !response) {
+    return restoring ? (
+      <div className="answer-card socratic-card">
+        <div className="panel-body">
+          <div className="badge-row">
+            <span className="badge info">restoring guided session</span>
+          </div>
+        </div>
+      </div>
+    ) : null
+  }
+
+  if (!session) {
+    if (!canStart && !error) return null
+
+    return (
+      <div className="answer-card socratic-card">
+        <div className="panel-header">
+          <h3 className="panel-title">
+            <MessagesSquare size={18} aria-hidden="true" />
+            Guided Learning
+          </h3>
+          <span className="badge info">bounded</span>
+        </div>
+        <div className="panel-body stack">
+          <p className="muted">
+            Start a short step-by-step session for {conceptName}. The tutor will ask
+            one diagnostic question, then guide you with at most two hints.
+          </p>
+          {error && <div className="error">{error}</div>}
+          <div className="quiz-actions">
+            <button
+              className="button secondary"
+              disabled={busy || !canStart}
+              onClick={() => void handleStartSocratic()}
+              type="button"
+            >
+              {busy ? (
+                <Loader2 className="spin" size={16} aria-hidden="true" />
+              ) : (
+                <MessagesSquare size={16} aria-hidden="true" />
+              )}
+              Guide me step by step
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="answer-card socratic-card">
+      <div className="panel-header">
+        <h3 className="panel-title">
+          <MessagesSquare size={18} aria-hidden="true" />
+          Guided Learning
+        </h3>
+        <div className="badge-row">
+          <span className={`badge ${socraticStatusBadgeClass(session.status)}`}>
+            {session.status}
+          </span>
+          <span className="badge info">{formatSocraticStage(session.current_stage)}</span>
+        </div>
+      </div>
+      <div className="panel-body stack">
+        <div className="item-topline">
+          <div>
+            <span className="field-label">Concept</span>
+            <h4 className="item-title">{conceptName}</h4>
+          </div>
+          <span className="badge">{socraticProgressLabel(session)}</span>
+        </div>
+
+        {session.assessment && (
+          <div className="attempt-feedback">
+            <strong>{formatSocraticAssessment(session.assessment)}</strong>
+            {session.assessment_reason && <p>{session.assessment_reason}</p>}
+          </div>
+        )}
+
+        <div className="socratic-transcript">
+          {session.turns.map((turn) => (
+            <div className="socratic-turn" key={turn.id}>
+              <div className="socratic-message tutor-message">
+                <span className="field-label">{formatSocraticStage(turn.stage)}</span>
+                <p>{turn.tutor_message}</p>
+              </div>
+              {turn.student_response && (
+                <div className="socratic-message learner-message">
+                  <span className="field-label">Your answer</span>
+                  <p>{turn.student_response}</p>
+                </div>
+              )}
+              {turn.assessment && (
+                <div className="badge-row">
+                  <span className={`badge ${socraticAssessmentBadgeClass(turn.assessment)}`}>
+                    {formatSocraticAssessment(turn.assessment)}
+                  </span>
+                  {turn.assessment_reason && (
+                    <span className="muted small">{turn.assessment_reason}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {error && <div className="error">{error}</div>}
+
+        {session.status === 'active' ? (
+          <form className="stack" onSubmit={handleSubmitAnswer}>
+            <label>
+              <span className="field-label">Your answer</span>
+              <textarea
+                className="textarea socratic-input"
+                disabled={busy}
+                onChange={(event) => setAnswer(event.target.value)}
+                placeholder="Answer in your own words..."
+                value={answer}
+              />
+            </label>
+            <div className="quiz-actions">
+              <button
+                className="button"
+                disabled={busy || !answer.trim()}
+                type="submit"
+              >
+                {busy ? (
+                  <Loader2 className="spin" size={16} aria-hidden="true" />
+                ) : (
+                  <Send size={16} aria-hidden="true" />
+                )}
+                Submit answer
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="notice">
+            Session completed. Continue with a practice item or ask the tutor a
+            follow-up question when you want another pass at this concept.
+          </div>
+        )}
       </div>
     </div>
   )
@@ -2028,6 +2314,72 @@ function formatDate(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
+}
+
+function canStartSocraticSession(response: TutorResponse) {
+  const evidenceStrength =
+    response.decision.evidence_state_snapshot.evidence_strength
+  return (
+    response.decision.selected_action !== 'refuse' &&
+    response.decision.concept_state_snapshot != null &&
+    (evidenceStrength === 'high' || evidenceStrength === 'medium')
+  )
+}
+
+function socraticLatestStorageKey(userId: string, courseId: number | null) {
+  return `ai-tutor:socratic:latest:${userId}:${courseId ?? 'all'}`
+}
+
+function socraticDecisionStorageKey(
+  userId: string,
+  courseId: number | null,
+  decisionId: number,
+) {
+  return `ai-tutor:socratic:${userId}:${courseId ?? 'all'}:${decisionId}`
+}
+
+function formatSocraticStage(stage: SocraticSession['current_stage']) {
+  const labels = {
+    diagnostic: 'Diagnostic',
+    hint_1: 'Hint 1',
+    hint_2: 'Hint 2',
+    final_explanation: 'Final explanation',
+    grounded_summary: 'Grounded summary',
+  }
+  return labels[stage]
+}
+
+function formatSocraticAssessment(assessment: NonNullable<SocraticSession['assessment']>) {
+  const labels = {
+    correct: 'Correct',
+    partially_correct: 'Partially correct',
+    incorrect: 'Not quite',
+    off_topic: 'Off topic',
+  }
+  return labels[assessment]
+}
+
+function socraticProgressLabel(session: SocraticSession) {
+  if (session.status === 'completed') {
+    return `Completed after ${session.turn_count} of ${session.max_turns} attempts`
+  }
+  return `Attempt ${Math.min(session.turn_count + 1, session.max_turns)} of ${
+    session.max_turns
+  }`
+}
+
+function socraticStatusBadgeClass(status: SocraticSession['status']) {
+  if (status === 'completed') return 'good'
+  if (status === 'abandoned') return 'warn'
+  return 'info'
+}
+
+function socraticAssessmentBadgeClass(
+  assessment: NonNullable<SocraticSession['assessment']>,
+) {
+  if (assessment === 'correct') return 'good'
+  if (assessment === 'partially_correct') return 'warn'
+  return 'bad'
 }
 
 function supportBadgeClass(label: string) {

@@ -12,6 +12,7 @@ import type {
   QuizItem,
   QuizItemRemovalResponse,
   ReviewRecord,
+  SocraticSession,
   TutorOutcomeResponse,
   TutorResponse,
 } from './types'
@@ -155,6 +156,48 @@ export async function linkTutorOutcome(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
+}
+
+export async function startSocraticSession(
+  userId: string,
+  query: string,
+  courseId: number | null,
+  sourcePolicyDecisionId: number,
+  topK: number,
+  maxTurns = 3,
+): Promise<SocraticSession> {
+  return request('/tutor/socratic/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...scopedBody(userId, courseId),
+      query,
+      source_policy_decision_id: sourcePolicyDecisionId,
+      top_k: topK,
+      max_turns: maxTurns,
+    }),
+  })
+}
+
+export async function respondToSocraticSession(
+  userId: string,
+  sessionId: number,
+  answer: string,
+  courseId?: number | null,
+): Promise<SocraticSession> {
+  return request(`/tutor/socratic/${sessionId}/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...scopedBody(userId, courseId), answer }),
+  })
+}
+
+export async function getSocraticSession(
+  userId: string,
+  sessionId: number,
+  courseId?: number | null,
+): Promise<SocraticSession> {
+  return request(`/tutor/socratic/${sessionId}?${scopedQuery(userId, courseId)}`)
 }
 
 export async function generateQuiz(

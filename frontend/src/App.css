@@ -821,6 +821,51 @@ button {
   line-height: 1.45;
 }
 
+.socratic-card {
+  border-color: rgba(171, 209, 220, 0.95);
+}
+
+.socratic-transcript {
+  display: grid;
+  gap: 12px;
+}
+
+.socratic-turn {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(224, 233, 236, 0.95);
+  border-radius: 8px;
+  background: rgba(248, 251, 252, 0.86);
+}
+
+.socratic-message {
+  display: grid;
+  gap: 5px;
+}
+
+.socratic-message p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tutor-message {
+  color: #1f2b30;
+}
+
+.learner-message {
+  justify-self: end;
+  max-width: min(92%, 620px);
+  padding: 10px 12px;
+  border: 1px solid #cfe2e8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.socratic-input {
+  min-height: 92px;
+}
+
 .review-actions {
   display: flex;
   gap: 8px;

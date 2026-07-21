@@ -266,6 +266,57 @@ export type TutorOutcomeResponse = {
   outcome: Record<string, unknown>
 }
 
+export type SocraticStatus = 'active' | 'completed' | 'abandoned'
+
+export type SocraticStage =
+  | 'diagnostic'
+  | 'hint_1'
+  | 'hint_2'
+  | 'final_explanation'
+  | 'grounded_summary'
+
+export type SocraticAssessment =
+  | 'correct'
+  | 'partially_correct'
+  | 'incorrect'
+  | 'off_topic'
+
+export type SocraticTurn = {
+  id: number
+  session_id: number
+  turn_number: number
+  stage: SocraticStage
+  tutor_message: string
+  student_response: string | null
+  assessment: SocraticAssessment | null
+  assessment_reason: string | null
+  created_at: string
+}
+
+export type SocraticSession = {
+  id: number
+  user_id: string
+  course_id: number | null
+  concept_id: number | null
+  source_policy_decision_id: number | null
+  query: string
+  status: SocraticStatus
+  current_stage: SocraticStage
+  turn_count: number
+  max_turns: number
+  message: string
+  assessment: SocraticAssessment | null
+  assessment_reason: string | null
+  learner_state_snapshot: LearnerState
+  concept_snapshot: TutorDecision['concept_state_snapshot']
+  misconception_snapshot: TutorDecision['misconception_snapshot']
+  evidence_state_snapshot: TutorDecision['evidence_state_snapshot']
+  evidence_chunks_snapshot: ChatSource[]
+  turns: SocraticTurn[]
+  created_at: string
+  completed_at: string | null
+}
+
 export type AnswerEvaluation = {
   user_id: string
   course_id: number | null
