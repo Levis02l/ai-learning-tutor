@@ -116,12 +116,13 @@ def _validate_quiz_attempt_compatibility(
         return
     if (
         decision.selected_action == "explain"
-        and _quiz_attempt_origin(attempt) == "comprehension_check"
+        and _quiz_attempt_origin(attempt)
+        in {"comprehension_check", "socratic_completion_check"}
     ):
         return
     raise TutorOutcomeCompatibilityError(
         "Quiz attempts can only be linked to quiz tutor decisions or "
-        "comprehension checks from explain decisions"
+        "objective checks from explain decisions"
     )
 
 

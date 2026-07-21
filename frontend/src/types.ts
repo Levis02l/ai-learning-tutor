@@ -95,7 +95,11 @@ export type QuizItem = {
   question: string
   answer: string
   difficulty: string
-  origin: 'manual_practice' | 'policy_quiz' | 'comprehension_check'
+  origin:
+    | 'manual_practice'
+    | 'policy_quiz'
+    | 'comprehension_check'
+    | 'socratic_completion_check'
   source_chunk_ids: number[]
   evidence_quote: string
   options: QuizOption[]
@@ -299,6 +303,8 @@ export type SocraticSession = {
   course_id: number | null
   concept_id: number | null
   source_policy_decision_id: number | null
+  completion_quiz_item_id: number | null
+  completion_quiz_attempt_id: number | null
   query: string
   status: SocraticStatus
   current_stage: SocraticStage
@@ -315,6 +321,16 @@ export type SocraticSession = {
   turns: SocraticTurn[]
   created_at: string
   completed_at: string | null
+}
+
+export type SocraticCompletionCheckResponse = {
+  session: SocraticSession
+  item: QuizItem
+}
+
+export type SocraticCompletionAttemptResponse = {
+  session: SocraticSession
+  attempt: QuizAttemptResponse
 }
 
 export type AnswerEvaluation = {

@@ -25,6 +25,7 @@ import {
   chat,
   compareChat,
   createCourse,
+  createSocraticCompletionCheck,
   deleteCourse,
   deleteDocument,
   deleteQuizItem,
@@ -41,6 +42,7 @@ import {
   listQuizItems,
   respondToSocraticSession,
   startSocraticSession,
+  submitSocraticCompletionAttempt,
   submitQuizAttempt,
   submitReview,
   tutorRespond,
@@ -424,6 +426,7 @@ function TutorView({
               <EmptyState label="Ask the tutor to trigger policy-aware teaching." />
               <TutorSocraticSection
                 courseId={courseId}
+                onOutcomeRecorded={onResponded}
                 response={null}
                 topK={topK}
                 userId={userId}
@@ -434,6 +437,7 @@ function TutorView({
               <TutorAnswerCard response={response} />
               <TutorSocraticSection
                 courseId={courseId}
+                onOutcomeRecorded={onResponded}
                 response={response}
                 topK={topK}
                 userId={userId}
@@ -494,18 +498,25 @@ function TutorAnswerCard({ response }: { response: TutorResponse }) {
 
 function TutorSocraticSection({
   courseId,
+  onOutcomeRecorded,
   response,
   topK,
   userId,
 }: {
   courseId: number | null
+  onOutcomeRecorded: () => Promise<void>
   response: TutorResponse | null
   topK: number
   userId: string
 }) {
   const [session, setSession] = useState<SocraticSession | null>(null)
+  const [completionItem, setCompletionItem] = useState<QuizItem | null>(null)
+  const [completionFeedback, setCompletionFeedback] =
+    useState<QuizAttemptResponse | null>(null)
+  const [selectedCompletionOption, setSelectedCompletionOption] = useState('')
   const [answer, setAnswer] = useState('')
   const [busy, setBusy] = useState(false)
+  const [completionBusy, setCompletionBusy] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const [error, setError] = useState('')
 
@@ -531,6 +542,9 @@ function TutorSocraticSection({
     setAnswer('')
     setError('')
     setSession(null)
+    setCompletionItem(null)
+    setCompletionFeedback(null)
+    setSelectedCompletionOption('')
     setRestoring(false)
 
     if (!storedSessionId) return
@@ -578,6 +592,9 @@ function TutorSocraticSection({
       )
       setSession(startedSession)
       setAnswer('')
+      setCompletionItem(null)
+      setCompletionFeedback(null)
+      setSelectedCompletionOption('')
       window.localStorage.setItem(latestStorageKey, String(startedSession.id))
       if (decisionStorageKey) {
         window.localStorage.setItem(decisionStorageKey, String(startedSession.id))
@@ -609,6 +626,52 @@ function TutorSocraticSection({
       setError(getErrorMessage(socraticError))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleCreateCompletionCheck() {
+    if (!session || session.status !== 'completed') return
+
+    setCompletionBusy(true)
+    setError('')
+    try {
+      const result = await createSocraticCompletionCheck(
+        userId,
+        session.id,
+        courseId,
+      )
+      setSession(result.session)
+      setCompletionItem(result.item)
+      setCompletionFeedback(null)
+      setSelectedCompletionOption('')
+      window.localStorage.setItem(latestStorageKey, String(result.session.id))
+    } catch (completionError) {
+      setError(getErrorMessage(completionError))
+    } finally {
+      setCompletionBusy(false)
+    }
+  }
+
+  async function handleSubmitCompletionAttempt() {
+    if (!session || !selectedCompletionOption) return
+
+    setCompletionBusy(true)
+    setError('')
+    try {
+      const result = await submitSocraticCompletionAttempt(
+        userId,
+        session.id,
+        selectedCompletionOption,
+        courseId,
+      )
+      setSession(result.session)
+      setCompletionFeedback(result.attempt)
+      window.localStorage.setItem(latestStorageKey, String(result.session.id))
+      await onOutcomeRecorded()
+    } catch (completionError) {
+      setError(getErrorMessage(completionError))
+    } finally {
+      setCompletionBusy(false)
     }
   }
 
@@ -749,9 +812,118 @@ function TutorSocraticSection({
             </div>
           </form>
         ) : (
-          <div className="notice">
-            Session completed. Continue with a practice item or ask the tutor a
-            follow-up question when you want another pass at this concept.
+          <div className="stack">
+            <div className="notice">
+              Session completed. Use one objective check to update learning progress
+              for this concept.
+            </div>
+            {completionItem ? (
+              <div className="item-row quiz-card">
+                <div className="item-topline">
+                  <h4 className="item-title">{completionItem.question}</h4>
+                  <div className="badge-row">
+                    <span className="badge info">socratic completion check</span>
+                    <span
+                      className={`badge ${traceBadgeClass(
+                        completionItem.traceability_label,
+                      )}`}
+                    >
+                      {completionItem.traceability_label}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className="option-list"
+                  role="group"
+                  aria-label="Socratic completion check options"
+                >
+                  {completionItem.options.map((option) => {
+                    const isSelected = selectedCompletionOption === option.id
+                    const isCorrect = completionFeedback?.correct_option_id === option.id
+                    const isIncorrectSelection =
+                      completionFeedback?.selected_option_id === option.id &&
+                      !completionFeedback.is_correct
+                    return (
+                      <button
+                        className={[
+                          'option-button',
+                          isSelected ? 'selected' : '',
+                          isCorrect ? 'correct' : '',
+                          isIncorrectSelection ? 'incorrect' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        disabled={Boolean(completionFeedback) || completionBusy}
+                        key={option.id}
+                        onClick={() => setSelectedCompletionOption(option.id)}
+                        type="button"
+                      >
+                        <span className="option-letter">{option.id}</span>
+                        <span>{option.text}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="quiz-actions">
+                  <button
+                    className="button secondary"
+                    disabled={
+                      !selectedCompletionOption ||
+                      Boolean(completionFeedback) ||
+                      completionBusy
+                    }
+                    onClick={() => void handleSubmitCompletionAttempt()}
+                    type="button"
+                  >
+                    {completionBusy ? (
+                      <Loader2 className="spin" size={16} aria-hidden="true" />
+                    ) : (
+                      <CheckCircle2 size={16} aria-hidden="true" />
+                    )}
+                    {completionFeedback ? 'Progress updated' : 'Submit check'}
+                  </button>
+                </div>
+                {completionFeedback && (
+                  <div
+                    className={`attempt-feedback ${
+                      completionFeedback.is_correct ? 'correct' : 'incorrect'
+                    }`}
+                  >
+                    <strong>
+                      {completionFeedback.is_correct ? 'Correct' : 'Not quite'}
+                    </strong>
+                    <span>
+                      Correct answer: {completionFeedback.correct_option_id}.{' '}
+                      {completionFeedback.correct_option_text}
+                    </span>
+                    <p>{completionFeedback.explanation}</p>
+                  </div>
+                )}
+                {completionItem.evidence_quote && (
+                  <p className="quote">{completionItem.evidence_quote}</p>
+                )}
+              </div>
+            ) : session.completion_quiz_attempt_id ? (
+              <div className="notice">
+                Completion check already recorded for this session.
+              </div>
+            ) : (
+              <div className="quiz-actions">
+                <button
+                  className="button secondary"
+                  disabled={completionBusy}
+                  onClick={() => void handleCreateCompletionCheck()}
+                  type="button"
+                >
+                  {completionBusy ? (
+                    <Loader2 className="spin" size={16} aria-hidden="true" />
+                  ) : (
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                  )}
+                  Check my understanding
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

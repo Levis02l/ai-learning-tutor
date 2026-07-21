@@ -170,6 +170,8 @@ def _quiz_origin(value: str | None) -> QuizOrigin:
         return "policy_quiz"
     if value == "comprehension_check":
         return "comprehension_check"
+    if value == "socratic_completion_check":
+        return "socratic_completion_check"
     return "manual_practice"
 
 

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.quiz import QuizAttemptResponse, QuizItemResponse
+
 SocraticStatus = Literal["active", "completed", "abandoned"]
 SocraticStage = Literal[
     "diagnostic",
@@ -34,6 +36,12 @@ class SocraticRespondRequest(BaseModel):
     course_id: int | None = None
 
 
+class SocraticCompletionAttemptRequest(BaseModel):
+    selected_option_id: str = Field(..., min_length=1, max_length=8)
+    user_id: str = "demo-user"
+    course_id: int | None = None
+
+
 class SocraticTurnResponse(BaseModel):
     id: int
     session_id: int
@@ -52,6 +60,8 @@ class SocraticSessionResponse(BaseModel):
     course_id: int | None = None
     concept_id: int | None = None
     source_policy_decision_id: int | None = None
+    completion_quiz_item_id: int | None = None
+    completion_quiz_attempt_id: int | None = None
     query: str
     status: SocraticStatus
     current_stage: SocraticStage
@@ -68,3 +78,13 @@ class SocraticSessionResponse(BaseModel):
     turns: list[SocraticTurnResponse]
     created_at: datetime
     completed_at: datetime | None = None
+
+
+class SocraticCompletionCheckResponse(BaseModel):
+    session: SocraticSessionResponse
+    item: QuizItemResponse
+
+
+class SocraticCompletionAttemptResponse(BaseModel):
+    session: SocraticSessionResponse
+    attempt: QuizAttemptResponse

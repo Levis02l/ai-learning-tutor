@@ -28,6 +28,16 @@ class SocraticSession(Base):
         ForeignKey("policy_decisions.id", ondelete="SET NULL"),
         nullable=True,
     )
+    completion_quiz_item_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("quiz_items.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    completion_quiz_attempt_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("quiz_attempts.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     query: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String, default="active", index=True)
     current_stage: Mapped[str] = mapped_column(String, default="diagnostic")

@@ -12,6 +12,8 @@ import type {
   QuizItem,
   QuizItemRemovalResponse,
   ReviewRecord,
+  SocraticCompletionAttemptResponse,
+  SocraticCompletionCheckResponse,
   SocraticSession,
   TutorOutcomeResponse,
   TutorResponse,
@@ -198,6 +200,33 @@ export async function getSocraticSession(
   courseId?: number | null,
 ): Promise<SocraticSession> {
   return request(`/tutor/socratic/${sessionId}?${scopedQuery(userId, courseId)}`)
+}
+
+export async function createSocraticCompletionCheck(
+  userId: string,
+  sessionId: number,
+  courseId?: number | null,
+): Promise<SocraticCompletionCheckResponse> {
+  return request(
+    `/tutor/socratic/${sessionId}/completion-check?${scopedQuery(userId, courseId)}`,
+    { method: 'POST' },
+  )
+}
+
+export async function submitSocraticCompletionAttempt(
+  userId: string,
+  sessionId: number,
+  selectedOptionId: string,
+  courseId?: number | null,
+): Promise<SocraticCompletionAttemptResponse> {
+  return request(`/tutor/socratic/${sessionId}/completion-check/attempt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...scopedBody(userId, courseId),
+      selected_option_id: selectedOptionId,
+    }),
+  })
 }
 
 export async function generateQuiz(

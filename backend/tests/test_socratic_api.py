@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.models.quiz import QuizAttempt, QuizItem
 from app.models.socratic import SocraticSession, SocraticTurn
 
 
@@ -105,6 +106,80 @@ def test_get_socratic_endpoint_returns_turn_history(monkeypatch) -> None:
     assert body["turns"][1]["tutor_message"] == "Hint one."
 
 
+def test_completion_check_endpoint_returns_traceable_item(monkeypatch) -> None:
+    captured: dict[str, int | str | None] = {}
+
+    def fake_validate(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["validated_course_id"] = kwargs["course_id"]
+
+    def fake_generate(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["session_id"] = kwargs["session_id"]
+        captured["user_id"] = kwargs["user_id"]
+        session = _session_completed()
+        session.completion_quiz_item_id = 77
+        return session, _quiz_item()
+
+    monkeypatch.setattr("app.api.socratic.validate_course_scope", fake_validate)
+    monkeypatch.setattr(
+        "app.api.socratic.generate_socratic_completion_check",
+        fake_generate,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/tutor/socratic/1/completion-check?user_id=demo-user&course_id=4",
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "validated_course_id": 4,
+        "session_id": 1,
+        "user_id": "demo-user",
+    }
+    body = response.json()
+    assert body["session"]["completion_quiz_item_id"] == 77
+    assert body["item"]["origin"] == "socratic_completion_check"
+    assert body["item"]["concept_id"] == 9
+
+
+def test_completion_attempt_endpoint_returns_feedback(monkeypatch) -> None:
+    captured: dict[str, int | str | None] = {}
+
+    def fake_validate(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return None
+
+    def fake_submit(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["session_id"] = kwargs["session_id"]
+        captured["selected_option_id"] = kwargs["selected_option_id"]
+        session = _session_completed()
+        session.completion_quiz_item_id = 77
+        session.completion_quiz_attempt_id = 88
+        return session, _quiz_attempt()
+
+    monkeypatch.setattr("app.api.socratic.validate_course_scope", fake_validate)
+    monkeypatch.setattr(
+        "app.api.socratic.submit_socratic_completion_attempt",
+        fake_submit,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/tutor/socratic/1/completion-check/attempt",
+        json={
+            "user_id": "demo-user",
+            "course_id": 4,
+            "selected_option_id": "B",
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured == {"session_id": 1, "selected_option_id": "B"}
+    body = response.json()
+    assert body["session"]["completion_quiz_attempt_id"] == 88
+    assert body["attempt"]["quiz_item_id"] == 77
+    assert body["attempt"]["is_correct"] is True
+
+
 def _session() -> SocraticSession:
     session = SocraticSession(
         id=1,
@@ -137,6 +212,15 @@ def _session() -> SocraticSession:
     return session
 
 
+def _session_completed() -> SocraticSession:
+    session = _session()
+    session.status = "completed"
+    session.current_stage = "grounded_summary"
+    session.turn_count = 1
+    session.completed_at = datetime(2026, 7, 21, 12, 2, 0)
+    return session
+
+
 def _session_after_hint() -> SocraticSession:
     session = _session()
     session.current_stage = "hint_1"
@@ -157,3 +241,45 @@ def _session_after_hint() -> SocraticSession:
         )
     )
     return session
+
+
+def _quiz_item() -> QuizItem:
+    return QuizItem(
+        id=77,
+        user_id="demo-user",
+        course_id=4,
+        concept_id=9,
+        question="What does K-means minimize?",
+        answer="Within-cluster variance.",
+        difficulty="medium",
+        origin="socratic_completion_check",
+        source_chunk_ids=[7],
+        evidence_quote="K-means minimizes within-cluster variance.",
+        options=[
+            {"id": "A", "text": "Classification accuracy"},
+            {"id": "B", "text": "Within-cluster variance"},
+            {"id": "C", "text": "Network latency"},
+            {"id": "D", "text": "Database size"},
+        ],
+        correct_option_id="B",
+        explanation="Because the source states this optimization objective.",
+        question_type="conceptual",
+        traceability_label="fully_traceable",
+        created_at=datetime(2026, 7, 21, 12, 3, 0),
+    )
+
+
+def _quiz_attempt() -> QuizAttempt:
+    return QuizAttempt(
+        id=88,
+        user_id="demo-user",
+        course_id=4,
+        quiz_item_id=77,
+        selected_option_id="B",
+        selected_option_text="Within-cluster variance",
+        correct_option_id="B",
+        correct_option_text="Within-cluster variance",
+        is_correct=True,
+        attempted_at=datetime(2026, 7, 21, 12, 4, 0),
+        quiz_item=_quiz_item(),
+    )

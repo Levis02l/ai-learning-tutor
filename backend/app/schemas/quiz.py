@@ -4,7 +4,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 Difficulty = Literal["easy", "medium", "hard"]
-QuizOrigin = Literal["manual_practice", "policy_quiz", "comprehension_check"]
+QuizOrigin = Literal[
+    "manual_practice",
+    "policy_quiz",
+    "comprehension_check",
+    "socratic_completion_check",
+]
 QuestionType = Literal["definition", "conceptual", "application", "comparison"]
 TraceabilityLabel = Literal[
     "fully_traceable",

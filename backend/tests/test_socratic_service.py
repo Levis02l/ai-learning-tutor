@@ -3,14 +3,17 @@ from datetime import datetime
 import pytest
 
 from app.llm.provider import LLMResponse
+from app.models.quiz import QuizAttempt, QuizItem
 from app.models.socratic import SocraticSession, SocraticTurn
 from app.services.policy import POLICY_VERSION, PolicyDecision
 from app.services.retrieval import RetrievedChunk
 from app.services.socratic import (
     SocraticSessionClosedError,
     SocraticSessionError,
+    generate_socratic_completion_check,
     respond_to_socratic_session,
     start_socratic_session,
+    submit_socratic_completion_attempt,
 )
 
 
@@ -172,6 +175,112 @@ def test_socratic_prompts_use_frozen_evidence_snapshot() -> None:
     assert "K-means minimizes within-cluster variance" in message_prompt
 
 
+def test_completion_check_requires_completed_session() -> None:
+    session = _session(status="active")
+
+    with pytest.raises(SocraticSessionError, match="completed session"):
+        generate_socratic_completion_check(
+            db=_SessionStore(session=session),  # type: ignore[arg-type]
+            session_id=1,
+            user_id="demo-user",
+            course_id=4,
+            llm_provider=_SocraticProvider(),
+        )
+
+
+def test_completion_check_uses_frozen_evidence_and_socratic_origin(
+    monkeypatch,
+) -> None:
+    session = _session(status="completed")
+    db = _SessionStore(session=session)
+    captured: dict[str, object] = {}
+
+    def fake_generate_quiz_items_from_chunks(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["topic"] = kwargs["topic"]
+        captured["chunks"] = kwargs["chunks"]
+        captured["concept_id"] = kwargs["concept_id"]
+        captured["origin"] = kwargs["origin"]
+        captured["require_traceable"] = kwargs["require_traceable"]
+        return [_quiz_item()]
+
+    monkeypatch.setattr(
+        "app.services.socratic.generate_quiz_items_from_chunks",
+        fake_generate_quiz_items_from_chunks,
+    )
+
+    updated_session, item = generate_socratic_completion_check(
+        db=db,  # type: ignore[arg-type]
+        session_id=1,
+        user_id="demo-user",
+        course_id=4,
+        llm_provider=_SocraticProvider(),
+    )
+
+    assert item.id == 77
+    assert item.origin == "socratic_completion_check"
+    assert item.concept_id == 9
+    assert updated_session.completion_quiz_item_id == 77
+    assert captured["origin"] == "socratic_completion_check"
+    assert captured["concept_id"] == 9
+    assert captured["require_traceable"] is True
+    chunks = captured["chunks"]
+    assert isinstance(chunks, list)
+    assert chunks[0].chunk_id == 7
+
+
+def test_completion_check_is_idempotent(monkeypatch) -> None:
+    session = _session(status="completed")
+    session.completion_quiz_item_id = 77
+    db = _SessionStore(session=session, quiz_item=_quiz_item())
+
+    def fail_generate(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("completion check should be reused")
+
+    monkeypatch.setattr(
+        "app.services.socratic.generate_quiz_items_from_chunks",
+        fail_generate,
+    )
+
+    _, item = generate_socratic_completion_check(
+        db=db,  # type: ignore[arg-type]
+        session_id=1,
+        user_id="demo-user",
+        course_id=4,
+        llm_provider=_SocraticProvider(),
+    )
+
+    assert item.id == 77
+
+
+def test_completion_attempt_updates_session_link(monkeypatch) -> None:
+    session = _session(status="completed")
+    session.completion_quiz_item_id = 77
+    db = _SessionStore(session=session, quiz_item=_quiz_item())
+    captured: dict[str, object] = {}
+
+    def fake_submit_quiz_attempt(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["quiz_item_id"] = kwargs["quiz_item_id"]
+        captured["selected_option_id"] = kwargs["selected_option_id"]
+        return _quiz_attempt()
+
+    monkeypatch.setattr(
+        "app.services.socratic.submit_quiz_attempt",
+        fake_submit_quiz_attempt,
+    )
+
+    updated_session, attempt = submit_socratic_completion_attempt(
+        db=db,  # type: ignore[arg-type]
+        session_id=1,
+        selected_option_id="B",
+        user_id="demo-user",
+        course_id=4,
+    )
+
+    assert captured == {"quiz_item_id": 77, "selected_option_id": "B"}
+    assert attempt.id == 88
+    assert updated_session.completion_quiz_attempt_id == 88
+
+
 class _SocraticProvider:
     def __init__(
         self,
@@ -201,12 +310,31 @@ class _SocraticProvider:
 
 
 class _SessionStore:
-    def __init__(self, *, session: SocraticSession | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        session: SocraticSession | None = None,
+        quiz_item: QuizItem | None = None,
+        quiz_attempt: QuizAttempt | None = None,
+    ) -> None:
         self.session = session
+        self.quiz_item = quiz_item
+        self.quiz_attempt = quiz_attempt
         self.added: list[object] = []
 
     def scalar(self, query):  # type: ignore[no-untyped-def]
         return self.session
+
+    def get(self, model, item_id):  # type: ignore[no-untyped-def]
+        if model is QuizItem and self.quiz_item and self.quiz_item.id == item_id:
+            return self.quiz_item
+        if (
+            model is QuizAttempt
+            and self.quiz_attempt
+            and self.quiz_attempt.id == item_id
+        ):
+            return self.quiz_attempt
+        return None
 
     def execute(self, query):  # type: ignore[no-untyped-def]
         return _Rows([])
@@ -232,6 +360,48 @@ class _SessionStore:
 
     def refresh(self, obj: object) -> None:
         return None
+
+
+def _quiz_item() -> QuizItem:
+    return QuizItem(
+        id=77,
+        user_id="demo-user",
+        course_id=4,
+        concept_id=9,
+        question="What does K-means minimize?",
+        answer="Within-cluster variance.",
+        difficulty="medium",
+        origin="socratic_completion_check",
+        source_chunk_ids=[7],
+        evidence_quote="K-means minimizes within-cluster variance.",
+        options=[
+            {"id": "A", "text": "Classification accuracy"},
+            {"id": "B", "text": "Within-cluster variance"},
+            {"id": "C", "text": "Network latency"},
+            {"id": "D", "text": "Database size"},
+        ],
+        correct_option_id="B",
+        explanation="The source states that K-means minimizes within-cluster variance.",
+        question_type="conceptual",
+        traceability_label="fully_traceable",
+        created_at=datetime(2026, 7, 21, 12, 2, 0),
+    )
+
+
+def _quiz_attempt() -> QuizAttempt:
+    return QuizAttempt(
+        id=88,
+        user_id="demo-user",
+        course_id=4,
+        quiz_item_id=77,
+        selected_option_id="B",
+        selected_option_text="Within-cluster variance",
+        correct_option_id="B",
+        correct_option_text="Within-cluster variance",
+        is_correct=True,
+        attempted_at=datetime(2026, 7, 21, 12, 3, 0),
+        quiz_item=_quiz_item(),
+    )
 
 
 class _Rows:

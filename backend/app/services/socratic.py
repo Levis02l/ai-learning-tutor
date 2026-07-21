@@ -11,6 +11,7 @@ from app.llm.openai_provider import OpenAIProvider
 from app.llm.provider import LLMProvider, LLMProviderError
 from app.models.document import Chunk, Document
 from app.models.policy import PolicyDecisionRecord
+from app.models.quiz import QuizAttempt, QuizItem
 from app.models.socratic import SocraticSession, SocraticTurn
 from app.services.policy import (
     POLICY_VERSION,
@@ -20,6 +21,10 @@ from app.services.policy import (
     ResponseStrategy,
     TeachingAction,
     create_policy_decision,
+)
+from app.services.quiz import (
+    generate_quiz_items_from_chunks,
+    submit_quiz_attempt,
 )
 from app.services.retrieval import RetrievedChunk
 
@@ -219,6 +224,93 @@ def respond_to_socratic_session(
     return session
 
 
+def generate_socratic_completion_check(
+    db: Session,
+    *,
+    session_id: int,
+    user_id: str = "demo-user",
+    course_id: int | None = None,
+    llm_provider: LLMProvider | None = None,
+) -> tuple[SocraticSession, QuizItem]:
+    session = get_socratic_session(
+        db=db,
+        session_id=session_id,
+        user_id=user_id,
+        course_id=course_id,
+    )
+    _validate_completion_check_session(session)
+
+    existing_item = _load_existing_completion_check(db=db, session=session)
+    if existing_item is not None:
+        return session, existing_item
+
+    evidence_chunks = _retrieved_chunks_from_snapshot(
+        session.evidence_chunks_snapshot
+    )
+    if not evidence_chunks:
+        raise SocraticSessionError(
+            "Socratic completion checks require frozen course evidence"
+        )
+
+    concept_name = _session_concept_name(session)
+    items = generate_quiz_items_from_chunks(
+        db=db,
+        topic=f"Socratic completion check for {concept_name}: {session.query}",
+        user_id=session.user_id,
+        course_id=session.course_id,
+        concept_id=session.concept_id,
+        chunks=evidence_chunks,
+        count=1,
+        difficulty="medium",
+        origin="socratic_completion_check",
+        require_traceable=True,
+        llm_provider=llm_provider,
+    )
+    item = items[0]
+    session.completion_quiz_item_id = item.id
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session, item
+
+
+def submit_socratic_completion_attempt(
+    db: Session,
+    *,
+    session_id: int,
+    selected_option_id: str,
+    user_id: str = "demo-user",
+    course_id: int | None = None,
+) -> tuple[SocraticSession, QuizAttempt]:
+    session = get_socratic_session(
+        db=db,
+        session_id=session_id,
+        user_id=user_id,
+        course_id=course_id,
+    )
+    _validate_completion_check_session(session)
+    if session.completion_quiz_item_id is None:
+        raise SocraticSessionError("No Socratic completion check has been created")
+
+    existing_attempt = _load_existing_completion_attempt(db=db, session=session)
+    if existing_attempt is not None:
+        return session, existing_attempt
+
+    attempt = submit_quiz_attempt(
+        db=db,
+        user_id=session.user_id,
+        course_id=session.course_id,
+        quiz_item_id=session.completion_quiz_item_id,
+        selected_option_id=selected_option_id,
+    )
+    session.completion_quiz_attempt_id = attempt.id
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    db.refresh(attempt)
+    return session, attempt
+
+
 def get_socratic_session(
     db: Session,
     *,
@@ -322,6 +414,54 @@ def _validate_socratic_decision(decision: PolicyDecision) -> None:
         "not_required",
     }:
         raise SocraticSessionError("Socratic mode requires grounded course evidence")
+
+
+def _validate_completion_check_session(session: SocraticSession) -> None:
+    if session.status != "completed":
+        raise SocraticSessionError(
+            "Socratic completion checks require a completed session"
+        )
+    if session.concept_id is None:
+        raise SocraticSessionError(
+            "Socratic completion checks require a resolved concept"
+        )
+    if not session.evidence_chunks_snapshot:
+        raise SocraticSessionError(
+            "Socratic completion checks require frozen course evidence"
+        )
+
+
+def _load_existing_completion_check(
+    *,
+    db: Session,
+    session: SocraticSession,
+) -> QuizItem | None:
+    if session.completion_quiz_item_id is None:
+        return None
+    item = db.get(QuizItem, session.completion_quiz_item_id)
+    if item is None:
+        session.completion_quiz_item_id = None
+        return None
+    return item
+
+
+def _load_existing_completion_attempt(
+    *,
+    db: Session,
+    session: SocraticSession,
+) -> QuizAttempt | None:
+    if session.completion_quiz_attempt_id is None:
+        return None
+    attempt = db.get(QuizAttempt, session.completion_quiz_attempt_id)
+    if attempt is None:
+        session.completion_quiz_attempt_id = None
+        return None
+    return attempt
+
+
+def _session_concept_name(session: SocraticSession) -> str:
+    snapshot = session.concept_snapshot or {}
+    return str(snapshot.get("concept_name") or f"concept {session.concept_id}")
 
 
 def _load_decision_evidence_chunks(
