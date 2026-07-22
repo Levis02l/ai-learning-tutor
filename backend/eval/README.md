@@ -119,7 +119,20 @@ Refusal correctness:
 
 ## Result Format
 
-Each formal run should save:
+Each formal run should create a unique directory under
+`backend/eval/results/{pilot|formal}/`, for example:
+
+```text
+backend/eval/results/pilot/grounding_v1_20260722_153012/
+├── run_config.json
+├── raw_results.json
+├── raw_results.jsonl
+├── summary.json
+├── summary.csv
+└── manifest.json
+```
+
+Each run should save:
 
 - experiment config: model, temperature, top-k, prompt version, policy version,
   git commit, timestamp;
@@ -128,5 +141,19 @@ Each formal run should save:
 - human annotations;
 - summary JSON and CSV.
 
-The first implementation can continue using `run_answer_evaluation.py`, but
-future runner changes should preserve this result structure.
+Use a pilot run before a formal run:
+
+```bash
+cd backend
+.venv/bin/python -m eval.run_answer_evaluation --run-type pilot --limit 5
+```
+
+Formal runs should use the frozen dataset and config:
+
+```bash
+cd backend
+.venv/bin/python -m eval.run_answer_evaluation --run-type formal
+```
+
+The runner should preserve this result structure so summaries can be recomputed
+from raw outputs later.

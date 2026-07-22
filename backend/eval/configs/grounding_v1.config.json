@@ -21,9 +21,13 @@
     "policy_version": "rule_v1"
   },
   "outputs": {
-    "raw_results_json": "backend/eval/results/grounding_v1_raw.json",
-    "summary_json": "backend/eval/results/grounding_v1_summary.json",
-    "summary_csv": "backend/eval/results/grounding_v1_summary.csv",
+    "run_directory_pattern": "backend/eval/results/{run_type}/{run_id}/",
+    "run_config": "run_config.json",
+    "raw_results_json": "raw_results.json",
+    "raw_results_jsonl": "raw_results.jsonl",
+    "summary_json": "summary.json",
+    "summary_csv": "summary.csv",
+    "manifest": "manifest.json",
     "human_annotations_csv": "backend/eval/results/grounding_v1_human_annotations.csv"
   },
   "notes": "Record the git commit hash and run timestamp in every generated result file."

@@ -3,10 +3,16 @@ import json
 import pytest
 
 from eval.run_answer_evaluation import (
+    build_manifest,
+    build_run_config,
+    create_run_dir,
     expected_answerable_for,
+    file_sha256,
     load_cases,
     run_case,
+    run_case_safely,
     summarize_results,
+    write_outputs,
 )
 
 
@@ -99,6 +105,28 @@ def test_run_case_passes_course_scope_and_answerability() -> None:
     assert result["case"]["case_id"] == "grounding_003"
 
 
+def test_run_case_safely_records_error_and_continues() -> None:
+    client = _FailingClient()
+    case = {
+        "case_id": "broken",
+        "course_id": 2,
+        "question": "Q?",
+        "answerability": "answerable",
+    }
+
+    result = run_case_safely(
+        client=client,  # type: ignore[arg-type]
+        base_url="http://testserver",
+        case=case,
+        user_id="demo-user",
+        top_k=5,
+    )
+
+    assert result["case_id"] == "broken"
+    assert result["error"]["type"] == "RuntimeError"
+    assert result["evaluations"] == {}
+
+
 def test_summarize_results_aggregates_mode_metrics() -> None:
     results = [
         {
@@ -147,6 +175,171 @@ def test_summarize_results_aggregates_mode_metrics() -> None:
     assert summary["modes"]["ungrounded"]["average_unsupported_claim_rate"] == 1.0
 
 
+def test_summarize_results_tracks_failed_cases() -> None:
+    summary = summarize_results(
+        [
+            {
+                "case_id": "ok",
+                "evaluations": {
+                    "grounded": {
+                        "groundedness_score": 1.0,
+                        "unsupported_claim_rate": 0.0,
+                        "citation_precision": 1.0,
+                        "correct_refusal": True,
+                        "claim_count": 2,
+                    },
+                    "ungrounded": {
+                        "groundedness_score": 0.0,
+                        "unsupported_claim_rate": 1.0,
+                        "citation_precision": 0.0,
+                        "correct_refusal": False,
+                        "claim_count": 2,
+                    },
+                },
+                "error": None,
+            },
+            {
+                "case_id": "failed",
+                "evaluations": {},
+                "error": {"type": "RuntimeError", "message": "boom"},
+            },
+        ]
+    )
+
+    assert summary["case_count"] == 2
+    assert summary["successful_case_count"] == 1
+    assert summary["failed_case_count"] == 1
+    assert summary["failed_cases"][0]["case_id"] == "failed"
+    assert summary["modes"]["grounded"]["evaluated_case_count"] == 1
+
+
+def test_create_run_dir_prevents_explicit_overwrite(tmp_path) -> None:
+    run_dir = create_run_dir(
+        output_root=tmp_path,
+        run_type="pilot",
+        run_id="grounding_v1_test",
+        explicit_run_id=True,
+    )
+
+    assert run_dir.exists()
+    with pytest.raises(FileExistsError):
+        create_run_dir(
+            output_root=tmp_path,
+            run_type="pilot",
+            run_id="grounding_v1_test",
+            explicit_run_id=True,
+        )
+
+
+def test_create_run_dir_suffixes_generated_collisions(tmp_path) -> None:
+    first = create_run_dir(
+        output_root=tmp_path,
+        run_type="pilot",
+        run_id="grounding_v1_test",
+        explicit_run_id=False,
+    )
+    second = create_run_dir(
+        output_root=tmp_path,
+        run_type="pilot",
+        run_id="grounding_v1_test",
+        explicit_run_id=False,
+    )
+
+    assert first.name == "grounding_v1_test"
+    assert second.name == "grounding_v1_test_01"
+
+
+def test_write_outputs_creates_reproducible_run_snapshot(tmp_path) -> None:
+    results = [
+        {
+            "case_id": "grounding_001",
+            "evaluations": {
+                "grounded": {
+                    "groundedness_score": 1.0,
+                    "unsupported_claim_rate": 0.0,
+                    "citation_precision": 1.0,
+                    "correct_refusal": True,
+                    "claim_count": 2,
+                },
+                "ungrounded": {
+                    "groundedness_score": 0.0,
+                    "unsupported_claim_rate": 1.0,
+                    "citation_precision": 0.0,
+                    "correct_refusal": False,
+                    "claim_count": 2,
+                },
+            },
+            "error": None,
+        }
+    ]
+    summary = summarize_results(results)
+    manifest = {
+        "run_id": "grounding_v1_test",
+        "dataset_sha256": "abc",
+        "git_commit": "deadbeef",
+    }
+    run_config = {"runner_version": "eval_v1_a1"}
+
+    write_outputs(
+        output_dir=tmp_path,
+        results=results,
+        summary=summary,
+        manifest=manifest,
+        run_config=run_config,
+    )
+
+    assert (tmp_path / "raw_results.json").exists()
+    assert (tmp_path / "raw_results.jsonl").read_text(encoding="utf-8").count(
+        "\n"
+    ) == 1
+    assert json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))[
+        "git_commit"
+    ] == "deadbeef"
+    assert (tmp_path / "summary.csv").exists()
+
+
+def test_build_run_config_and_manifest_capture_dataset_hash(tmp_path) -> None:
+    dataset_path = tmp_path / "dataset.json"
+    dataset_path.write_text('[{"case_id": "case"}]', encoding="utf-8")
+    dataset_hash = file_sha256(dataset_path)
+    args = _Args(
+        base_url="http://testserver",
+        user_id="demo-user",
+        course_id=2,
+        top_k=5,
+        timeout=120.0,
+        run_type="pilot",
+        limit=1,
+        cases=dataset_path,
+        config=tmp_path / "config.json",
+    )
+    cases = [{"case_id": "case"}]
+    summary = {
+        "successful_case_count": 1,
+        "failed_case_count": 0,
+    }
+
+    run_config = build_run_config(
+        args=args,  # type: ignore[arg-type]
+        experiment_config={"experiment_id": "grounding_v1"},
+        dataset_hash=dataset_hash,
+        cases=cases,
+        generated_at="2026-07-22T12:00:00+00:00",
+    )
+    manifest = build_manifest(
+        run_id="grounding_v1_test",
+        generated_at="2026-07-22T12:00:00+00:00",
+        args=args,  # type: ignore[arg-type]
+        dataset_hash=dataset_hash,
+        cases=cases,
+        summary=summary,
+    )
+
+    assert run_config["dataset_sha256"] == dataset_hash
+    assert manifest["dataset_sha256"] == dataset_hash
+    assert manifest["case_count"] == 1
+
+
 class _FakeResponse:
     def __init__(self, payload: dict) -> None:
         self.payload = payload
@@ -180,3 +373,33 @@ class _FakeClient:
                 "claim_count": 1,
             }
         )
+
+
+class _FailingClient:
+    def post(self, url: str, json: dict) -> _FakeResponse:
+        raise RuntimeError("boom")
+
+
+class _Args:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        user_id: str,
+        course_id: int | None,
+        top_k: int,
+        timeout: float,
+        run_type: str,
+        limit: int | None,
+        cases,
+        config,
+    ) -> None:
+        self.base_url = base_url
+        self.user_id = user_id
+        self.course_id = course_id
+        self.top_k = top_k
+        self.timeout = timeout
+        self.run_type = run_type
+        self.limit = limit
+        self.cases = cases
+        self.config = config
