@@ -42,6 +42,54 @@ def test_evaluation_answer_endpoint() -> None:
 
     assert response.status_code == 200
     assert response.json()["supported_claim_count"] == 1
+    assert response.json()["answerability"] == "answerable"
+
+
+def test_evaluation_answer_endpoint_accepts_partial_answerability() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/evaluation/answer",
+        json={
+            "answerability": "partially_answerable",
+            "response": {
+                "query": "What is provided and what is missing?",
+                "user_id": "demo-user",
+                "mode": "grounded_strict",
+                "answer_status": "partially_answered",
+                "answer": "The material supports A, but B is not provided.",
+                "claims": [
+                    {
+                        "claim": "The material supports A.",
+                        "source_chunk_ids": [82],
+                        "support_level": "fully_supported",
+                        "evidence_quote": "A...",
+                    },
+                    {
+                        "claim": "B is not provided.",
+                        "source_chunk_ids": [],
+                        "support_level": "not_enough_information",
+                        "evidence_quote": "",
+                    },
+                ],
+                "overall_groundedness": 0.5,
+                "evidence_state": {
+                    "evidence_strength": "medium",
+                    "source_coverage": 0.5,
+                    "supported_claim_count": 1,
+                    "unsupported_claim_count": 0,
+                    "contradicted_claim_count": 0,
+                    "answer_status": "partially_answered",
+                },
+                "sources": [],
+            },
+        },
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["answerability"] == "partially_answerable"
+    assert body["automatic_refusal_correctness"] is None
 
 
 def test_evaluation_quiz_endpoint() -> None:

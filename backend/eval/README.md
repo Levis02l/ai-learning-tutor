@@ -101,13 +101,27 @@ Automated metrics can assist with scoring, but answer correctness,
 course-evidence support, citation correctness, and refusal correctness should be
 human-reviewed for the final reported dataset.
 
+The automatic API metrics are generation diagnostics, not final post-hoc course
+support judgements. In particular:
+
+- `generation_groundedness_score` is the score produced by the generation
+  pipeline for the returned claims;
+- `generated_unsupported_claim_rate` is based on generated claim support labels;
+- `automatic_cited_claim_support_rate` measures whether cited claims were
+  labelled as supported by their own citations;
+- none of these fields prove whether an ungrounded answer's final claims are
+  supported or unsupported by the course material.
+
+Post-hoc course support must be annotated separately for both grounded and
+ungrounded answers using the human annotation template.
+
 ## Human Annotation Rubric
 
 Answer correctness:
 
 - `2`: correct and sufficiently complete for the course material;
 - `1`: partially correct but incomplete, vague, or missing an important caveat;
-- `0`: incorrect, unsupported, or misleading.
+- `0`: incorrect or materially misleading.
 
 Post-hoc course evidence support:
 
@@ -145,6 +159,12 @@ Refusal correctness:
 - semantic refusals count as refusals even if an API `answer_status` field says
   `answered`, for example "I cannot determine this from the uploaded material."
 
+Partially answerable cases should not be folded into ordinary false-refusal or
+correct-refusal rates. Annotate them with two separate human judgements:
+
+- whether the supported part was answered correctly;
+- whether the unsupported part was explicitly limited rather than invented.
+
 ## Result Format
 
 Each formal run should create a unique directory under
@@ -162,8 +182,8 @@ backend/eval/results/pilot/grounding_v1_20260722_153012/
 
 Each run should save:
 
-- experiment config: model, temperature, top-k, prompt version, policy version,
-  git commit, timestamp;
+- experiment config: model, temperature, top-k, prompt version, git commit,
+  timestamp;
 - raw outputs for both conditions;
 - automatic metrics;
 - human annotations;
@@ -186,8 +206,8 @@ cd backend
 The runner should preserve this result structure so summaries can be recomputed
 from raw outputs later.
 
-Automatic summaries separate answerable and unanswerable cases. Do not average
-correct refusals into factual groundedness or citation precision. For final
-reporting, use the human annotation template in
+Automatic summaries separate answerable, partially answerable, and unanswerable
+cases. Do not average correct refusals into factual groundedness or citation
+metrics. For final reporting, use the human annotation template in
 `backend/eval/annotations/grounding_v1_template.csv` to add post-hoc
 course-evidence support and citation judgements.

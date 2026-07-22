@@ -1,5 +1,9 @@
 from app.schemas.chat import ChatResponse
-from app.schemas.evaluation import AnswerEvaluationResponse, QuizEvaluationResponse
+from app.schemas.evaluation import (
+    Answerability,
+    AnswerEvaluationResponse,
+    QuizEvaluationResponse,
+)
 from app.schemas.quiz import QuizItemResponse
 
 SUPPORTED_LABELS = {"fully_supported", "partially_supported"}
@@ -39,7 +43,7 @@ SEMANTIC_REFUSAL_MARKERS = (
 def evaluate_answer(
     *,
     response: ChatResponse,
-    expected_answerable: bool,
+    answerability: Answerability,
 ) -> AnswerEvaluationResponse:
     claim_count = len(response.claims)
     supported_claim_count = sum(
@@ -68,7 +72,7 @@ def evaluate_answer(
         and not effective_refusal
         and claim_count > 0
     )
-    citation_precision = (
+    automatic_cited_claim_support_rate = (
         round(correctly_cited_claim_count / cited_claim_count, 3)
         if citation_applicable and cited_claim_count
         else None
@@ -77,28 +81,49 @@ def evaluate_answer(
         round(cited_claim_count / claim_count, 3) if citation_applicable else None
     )
 
+    automatic_refusal_correctness = refusal_correctness_for(
+        answerability=answerability,
+        effective_refusal=effective_refusal,
+    )
+
     return AnswerEvaluationResponse(
+        answerability=answerability,
         claim_count=claim_count,
         supported_claim_count=supported_claim_count,
         unsupported_claim_count=unsupported_claim_count,
         contradicted_claim_count=contradicted_claim_count,
         cited_claim_count=cited_claim_count,
         citation_applicable=citation_applicable,
-        citation_precision=citation_precision,
+        automatic_cited_claim_support_rate=automatic_cited_claim_support_rate,
         citation_coverage=citation_coverage,
-        unsupported_claim_rate=round(unsupported_claim_rate, 3),
-        groundedness_score=response.overall_groundedness,
+        generated_unsupported_claim_rate=round(unsupported_claim_rate, 3),
+        generation_groundedness_score=response.overall_groundedness,
         refused_by_status=refused_by_status,
         semantic_refusal=semantic_refusal,
         effective_refusal=effective_refusal,
-        correct_refusal=(not expected_answerable and effective_refusal)
-        or (expected_answerable and not effective_refusal),
+        automatic_refusal_correctness=automatic_refusal_correctness,
+        citation_precision=automatic_cited_claim_support_rate,
+        unsupported_claim_rate=round(unsupported_claim_rate, 3),
+        groundedness_score=response.overall_groundedness,
+        correct_refusal=automatic_refusal_correctness,
     )
 
 
 def is_semantic_refusal(answer: str) -> bool:
     normalized = " ".join(answer.lower().split())
     return any(marker in normalized for marker in SEMANTIC_REFUSAL_MARKERS)
+
+
+def refusal_correctness_for(
+    *,
+    answerability: Answerability,
+    effective_refusal: bool,
+) -> bool | None:
+    if answerability == "answerable":
+        return not effective_refusal
+    if answerability == "unanswerable":
+        return effective_refusal
+    return None
 
 
 def evaluate_quiz_items(*, items: list[QuizItemResponse]) -> QuizEvaluationResponse:

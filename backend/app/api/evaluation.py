@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas.evaluation import (
+    Answerability,
     AnswerEvaluationRequest,
     AnswerEvaluationResponse,
     QuizEvaluationRequest,
@@ -30,7 +31,7 @@ def evaluate_answer_response(
 
     evaluation = evaluate_answer(
         response=request.response,
-        expected_answerable=request.expected_answerable,
+        answerability=_resolve_answerability(request),
     )
     return evaluation.model_copy(
         update={"user_id": request.user_id, "course_id": course_id}
@@ -69,6 +70,14 @@ def _resolve_response_course_id(
             detail="Evaluation course_id does not match response course_id",
         )
     return explicit_course_id if explicit_course_id is not None else response_course_id
+
+
+def _resolve_answerability(request: AnswerEvaluationRequest) -> Answerability:
+    if request.answerability is not None:
+        return request.answerability
+    if request.expected_answerable is True:
+        return "answerable"
+    return "unanswerable"
 
 
 def _resolve_quiz_course_id(request: QuizEvaluationRequest) -> int | None:

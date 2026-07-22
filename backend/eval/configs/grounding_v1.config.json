@@ -18,7 +18,7 @@
   },
   "versions": {
     "prompt_version": "grounding_v1",
-    "policy_version": "rule_v1"
+    "policy_version": "not_applicable_for_chat_compare"
   },
   "outputs": {
     "run_directory_pattern": "backend/eval/results/{run_type}/{run_id}/",

@@ -32,15 +32,15 @@ def test_evaluate_answer_scores_claim_support_and_refusal() -> None:
         sources=[],
     )
 
-    result = evaluate_answer(response=response, expected_answerable=True)
+    result = evaluate_answer(response=response, answerability="answerable")
 
     assert result.claim_count == 2
     assert result.supported_claim_count == 1
-    assert result.unsupported_claim_rate == 0.5
-    assert result.citation_precision == 1.0
+    assert result.generated_unsupported_claim_rate == 0.5
+    assert result.automatic_cited_claim_support_rate == 1.0
     assert result.citation_coverage == 0.5
     assert result.citation_applicable is True
-    assert result.correct_refusal is True
+    assert result.automatic_refusal_correctness is True
 
 
 def test_evaluate_answer_marks_correct_refusal_for_unanswerable_question() -> None:
@@ -61,11 +61,11 @@ def test_evaluate_answer_marks_correct_refusal_for_unanswerable_question() -> No
         sources=[],
     )
 
-    result = evaluate_answer(response=response, expected_answerable=False)
+    result = evaluate_answer(response=response, answerability="unanswerable")
 
     assert result.refused_by_status is True
     assert result.effective_refusal is True
-    assert result.correct_refusal is True
+    assert result.automatic_refusal_correctness is True
 
 
 def test_evaluate_answer_detects_semantic_refusal_when_status_is_answered() -> None:
@@ -96,14 +96,14 @@ def test_evaluate_answer_detects_semantic_refusal_when_status_is_answered() -> N
         sources=[],
     )
 
-    result = evaluate_answer(response=response, expected_answerable=False)
+    result = evaluate_answer(response=response, answerability="unanswerable")
 
     assert result.refused_by_status is False
     assert result.semantic_refusal is True
     assert result.effective_refusal is True
-    assert result.correct_refusal is True
+    assert result.automatic_refusal_correctness is True
     assert result.citation_applicable is False
-    assert result.citation_precision is None
+    assert result.automatic_cited_claim_support_rate is None
 
 
 def test_evaluate_answer_marks_ungrounded_citation_as_not_applicable() -> None:
@@ -131,11 +131,55 @@ def test_evaluate_answer_marks_ungrounded_citation_as_not_applicable() -> None:
         sources=[],
     )
 
-    result = evaluate_answer(response=response, expected_answerable=True)
+    result = evaluate_answer(response=response, answerability="answerable")
 
     assert result.citation_applicable is False
-    assert result.citation_precision is None
+    assert result.automatic_cited_claim_support_rate is None
     assert result.citation_coverage is None
+
+
+def test_partial_answerability_is_not_scored_as_correct_or_false_refusal() -> None:
+    response = ChatResponse(
+        query="What K does the course recommend and how should K be chosen?",
+        user_id="demo-user",
+        mode="grounded_strict",
+        answer_status="answered",
+        answer=(
+            "The material states K is chosen externally, but the exact "
+            "selection rule is not provided in the uploaded excerpts."
+        ),
+        claims=[
+            ChatClaim(
+                claim="K is chosen externally.",
+                source_chunk_ids=[94],
+                support_level="fully_supported",
+                evidence_quote="K is fixed externally.",
+            ),
+            ChatClaim(
+                claim="The exact selection rule is not provided.",
+                source_chunk_ids=[],
+                support_level="not_enough_information",
+                evidence_quote="",
+            ),
+        ],
+        overall_groundedness=0.5,
+        evidence_state=_evidence_state(
+            evidence_strength="medium",
+            source_coverage=0.5,
+            supported_claim_count=1,
+            answer_status="partially_answered",
+        ),
+        sources=[],
+    )
+
+    result = evaluate_answer(
+        response=response,
+        answerability="partially_answerable",
+    )
+
+    assert result.semantic_refusal is True
+    assert result.effective_refusal is True
+    assert result.automatic_refusal_correctness is None
 
 
 def test_evaluate_quiz_items_counts_traceability_labels() -> None:

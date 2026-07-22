@@ -82,6 +82,11 @@ export type ChatCompareResponse = {
   ungrounded: ChatResponse
 }
 
+export type Answerability =
+  | 'answerable'
+  | 'partially_answerable'
+  | 'unanswerable'
+
 export type QuizOption = {
   id: string
   text: string
@@ -402,12 +407,18 @@ export type SocraticCompletionAttemptResponse = {
 export type AnswerEvaluation = {
   user_id: string
   course_id: number | null
+  answerability: Answerability
   claim_count: number
   supported_claim_count: number
   unsupported_claim_count: number
   contradicted_claim_count: number
   cited_claim_count: number
   citation_applicable: boolean
+  automatic_cited_claim_support_rate: number | null
+  generated_unsupported_claim_rate: number
+  generation_groundedness_score: number
+  automatic_refusal_correctness: boolean | null
+  // Deprecated compatibility fields retained by the API for older views.
   citation_precision: number | null
   citation_coverage: number | null
   unsupported_claim_rate: number
@@ -415,5 +426,5 @@ export type AnswerEvaluation = {
   refused_by_status: boolean
   semantic_refusal: boolean
   effective_refusal: boolean
-  correct_refusal: boolean
+  correct_refusal: boolean | null
 }

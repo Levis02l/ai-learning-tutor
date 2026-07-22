@@ -1,5 +1,6 @@
 import type {
   AnswerEvaluation,
+  Answerability,
   ChatCompareResponse,
   ChatResponse,
   Course,
@@ -335,7 +336,7 @@ export async function getCourseProgress(
 
 export async function evaluateAnswer(
   response: ChatResponse,
-  expectedAnswerable: boolean,
+  answerability: Answerability,
   userId: string,
   courseId?: number | null,
 ): Promise<AnswerEvaluation> {
@@ -344,7 +345,7 @@ export async function evaluateAnswer(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ...scopedBody(userId, courseId),
-      expected_answerable: expectedAnswerable,
+      answerability,
       response,
     }),
   })

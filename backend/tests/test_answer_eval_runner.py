@@ -3,6 +3,7 @@ import json
 import pytest
 
 from eval.run_answer_evaluation import (
+    answerability_for_case,
     build_manifest,
     build_run_config,
     create_run_dir,
@@ -77,6 +78,15 @@ def test_expected_answerable_for_partially_answerable_case() -> None:
     assert expected_answerable_for({"answerability": "partially_answerable"}) is True
 
 
+def test_answerability_for_case_preserves_partial_cases() -> None:
+    assert (
+        answerability_for_case({"answerability": "partially_answerable"})
+        == "partially_answerable"
+    )
+    assert answerability_for_case({"expected_answerable": True}) == "answerable"
+    assert answerability_for_case({"expected_answerable": False}) == "unanswerable"
+
+
 def test_run_case_passes_course_scope_and_answerability() -> None:
     client = _FakeClient()
     case = {
@@ -101,7 +111,7 @@ def test_run_case_passes_course_scope_and_answerability() -> None:
     grounded_eval_payload = client.posts[1]["json"]
     assert compare_payload["course_id"] == 2
     assert grounded_eval_payload["course_id"] == 2
-    assert grounded_eval_payload["expected_answerable"] is True
+    assert grounded_eval_payload["answerability"] == "partially_answerable"
     assert result["case"]["case_id"] == "grounding_003"
 
 
@@ -133,17 +143,17 @@ def test_summarize_results_aggregates_mode_metrics() -> None:
             "answerability": "answerable",
             "evaluations": {
                 "grounded": {
-                    "groundedness_score": 1.0,
-                    "unsupported_claim_rate": 0.0,
-                    "citation_precision": 1.0,
+                    "generation_groundedness_score": 1.0,
+                    "generated_unsupported_claim_rate": 0.0,
+                    "automatic_cited_claim_support_rate": 1.0,
                     "citation_coverage": 1.0,
                     "effective_refusal": False,
                     "claim_count": 2,
                 },
                 "ungrounded": {
-                    "groundedness_score": 0.0,
-                    "unsupported_claim_rate": 1.0,
-                    "citation_precision": None,
+                    "generation_groundedness_score": 0.0,
+                    "generated_unsupported_claim_rate": 1.0,
+                    "automatic_cited_claim_support_rate": None,
                     "citation_coverage": None,
                     "effective_refusal": False,
                     "claim_count": 2,
@@ -154,17 +164,17 @@ def test_summarize_results_aggregates_mode_metrics() -> None:
             "answerability": "answerable",
             "evaluations": {
                 "grounded": {
-                    "groundedness_score": 0.5,
-                    "unsupported_claim_rate": 0.5,
-                    "citation_precision": 1.0,
+                    "generation_groundedness_score": 0.5,
+                    "generated_unsupported_claim_rate": 0.5,
+                    "automatic_cited_claim_support_rate": 1.0,
                     "citation_coverage": 1.0,
                     "effective_refusal": False,
                     "claim_count": 4,
                 },
                 "ungrounded": {
-                    "groundedness_score": 0.0,
-                    "unsupported_claim_rate": 1.0,
-                    "citation_precision": None,
+                    "generation_groundedness_score": 0.0,
+                    "generated_unsupported_claim_rate": 1.0,
+                    "automatic_cited_claim_support_rate": None,
                     "citation_coverage": None,
                     "effective_refusal": False,
                     "claim_count": 3,
@@ -172,25 +182,50 @@ def test_summarize_results_aggregates_mode_metrics() -> None:
             }
         },
         {
+            "answerability": "partially_answerable",
+            "evaluations": {
+                "grounded": {
+                    "generation_groundedness_score": 0.5,
+                    "generated_unsupported_claim_rate": 0.0,
+                    "automatic_cited_claim_support_rate": 1.0,
+                    "citation_coverage": 0.5,
+                    "effective_refusal": True,
+                    "semantic_refusal": True,
+                    "refused_by_status": False,
+                    "claim_count": 2,
+                },
+                "ungrounded": {
+                    "generation_groundedness_score": 0.0,
+                    "generated_unsupported_claim_rate": 1.0,
+                    "automatic_cited_claim_support_rate": None,
+                    "citation_coverage": None,
+                    "effective_refusal": False,
+                    "semantic_refusal": False,
+                    "refused_by_status": False,
+                    "claim_count": 3,
+                },
+            },
+        },
+        {
             "answerability": "unanswerable",
             "evaluations": {
                 "grounded": {
-                    "groundedness_score": 0.0,
-                    "unsupported_claim_rate": 0.0,
-                    "citation_precision": None,
+                    "generation_groundedness_score": 0.0,
+                    "generated_unsupported_claim_rate": 0.0,
+                    "automatic_cited_claim_support_rate": None,
                     "citation_coverage": None,
-                    "correct_refusal": True,
+                    "automatic_refusal_correctness": True,
                     "effective_refusal": True,
                     "semantic_refusal": True,
                     "refused_by_status": True,
                     "claim_count": 1,
                 },
                 "ungrounded": {
-                    "groundedness_score": 0.0,
-                    "unsupported_claim_rate": 1.0,
-                    "citation_precision": None,
+                    "generation_groundedness_score": 0.0,
+                    "generated_unsupported_claim_rate": 1.0,
+                    "automatic_cited_claim_support_rate": None,
                     "citation_coverage": None,
-                    "correct_refusal": False,
+                    "automatic_refusal_correctness": False,
                     "effective_refusal": False,
                     "semantic_refusal": False,
                     "refused_by_status": False,
@@ -202,29 +237,38 @@ def test_summarize_results_aggregates_mode_metrics() -> None:
 
     summary = summarize_results(results)
 
-    assert summary["case_count"] == 3
+    assert summary["case_count"] == 4
     assert summary["modes"]["grounded"]["answerable_case_count"] == 2
+    assert summary["modes"]["grounded"]["partial_case_count"] == 1
     assert summary["modes"]["grounded"]["unanswerable_case_count"] == 1
     assert (
         summary["modes"]["grounded"]["answerable_metrics"][
-            "average_groundedness"
+            "average_generation_groundedness"
         ]
         == 0.75
     )
     assert (
         summary["modes"]["grounded"]["refusal_metrics"][
-            "correct_refusal_rate"
+            "automatic_correct_refusal_rate"
         ]
         == 1.0
     )
     assert (
         summary["modes"]["ungrounded"]["answerable_metrics"][
-            "average_citation_precision"
+            "average_automatic_cited_claim_support_rate"
         ]
         is None
     )
     assert (
-        summary["modes"]["ungrounded"]["refusal_metrics"]["false_answer_rate"]
+        summary["modes"]["ungrounded"]["refusal_metrics"][
+            "automatic_false_answer_rate"
+        ]
+        == 1.0
+    )
+    assert (
+        summary["modes"]["grounded"]["partial_metrics"][
+            "automatic_limitation_or_refusal_rate"
+        ]
         == 1.0
     )
 
@@ -237,17 +281,17 @@ def test_summarize_results_tracks_failed_cases() -> None:
                 "answerability": "answerable",
                 "evaluations": {
                     "grounded": {
-                        "groundedness_score": 1.0,
-                        "unsupported_claim_rate": 0.0,
-                        "citation_precision": 1.0,
+                        "generation_groundedness_score": 1.0,
+                        "generated_unsupported_claim_rate": 0.0,
+                        "automatic_cited_claim_support_rate": 1.0,
                         "citation_coverage": 1.0,
                         "effective_refusal": False,
                         "claim_count": 2,
                     },
                     "ungrounded": {
-                        "groundedness_score": 0.0,
-                        "unsupported_claim_rate": 1.0,
-                        "citation_precision": None,
+                        "generation_groundedness_score": 0.0,
+                        "generated_unsupported_claim_rate": 1.0,
+                        "automatic_cited_claim_support_rate": None,
                         "citation_coverage": None,
                         "effective_refusal": False,
                         "claim_count": 2,
@@ -313,17 +357,17 @@ def test_write_outputs_creates_reproducible_run_snapshot(tmp_path) -> None:
             "answerability": "answerable",
             "evaluations": {
                 "grounded": {
-                    "groundedness_score": 1.0,
-                    "unsupported_claim_rate": 0.0,
-                    "citation_precision": 1.0,
+                    "generation_groundedness_score": 1.0,
+                    "generated_unsupported_claim_rate": 0.0,
+                    "automatic_cited_claim_support_rate": 1.0,
                     "citation_coverage": 1.0,
                     "effective_refusal": False,
                     "claim_count": 2,
                 },
                 "ungrounded": {
-                    "groundedness_score": 0.0,
-                    "unsupported_claim_rate": 1.0,
-                    "citation_precision": None,
+                    "generation_groundedness_score": 0.0,
+                    "generated_unsupported_claim_rate": 1.0,
+                    "automatic_cited_claim_support_rate": None,
                     "citation_coverage": None,
                     "effective_refusal": False,
                     "claim_count": 2,
@@ -426,11 +470,11 @@ class _FakeClient:
             )
         return _FakeResponse(
             {
-                "groundedness_score": 1.0,
-                "unsupported_claim_rate": 0.0,
-                "citation_precision": 1.0,
+                "generation_groundedness_score": 1.0,
+                "generated_unsupported_claim_rate": 0.0,
+                "automatic_cited_claim_support_rate": 1.0,
                 "citation_coverage": 1.0,
-                "correct_refusal": True,
+                "automatic_refusal_correctness": True,
                 "effective_refusal": False,
                 "semantic_refusal": False,
                 "refused_by_status": False,

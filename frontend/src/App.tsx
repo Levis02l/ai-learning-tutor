@@ -51,6 +51,7 @@ import {
 } from './api'
 import type {
   AnswerEvaluation,
+  Answerability,
   ChatCompareResponse,
   ChatResponse,
   Course,
@@ -1600,11 +1601,13 @@ function ChatView({ courseId, userId }: { courseId: number | null; userId: strin
       if (mode === 'compare') {
         const result = await compareChat(userId, query, topK, courseId)
         setComparison(result)
-        setEvaluation(await evaluateAnswer(result.grounded, true, userId, courseId))
+        setEvaluation(
+          await evaluateAnswer(result.grounded, 'answerable', userId, courseId),
+        )
       } else {
         const result = await chat(userId, query, topK, courseId)
         setAnswer(result)
-        setEvaluation(await evaluateAnswer(result, true, userId, courseId))
+        setEvaluation(await evaluateAnswer(result, 'answerable', userId, courseId))
       }
     } catch (chatError) {
       setError(getErrorMessage(chatError))
@@ -1998,7 +2001,7 @@ function EvaluationView({
   userId: string
 }) {
   const [query, setQuery] = useState('What is artificial intelligence?')
-  const [expectedAnswerable, setExpectedAnswerable] = useState(true)
+  const [answerability, setAnswerability] = useState<Answerability>('answerable')
   const [topK, setTopK] = useState(5)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -2020,8 +2023,8 @@ function EvaluationView({
     try {
       const result = await compareChat(userId, query, topK, courseId)
       const [grounded, ungrounded] = await Promise.all([
-        evaluateAnswer(result.grounded, expectedAnswerable, userId, courseId),
-        evaluateAnswer(result.ungrounded, expectedAnswerable, userId, courseId),
+        evaluateAnswer(result.grounded, answerability, userId, courseId),
+        evaluateAnswer(result.ungrounded, answerability, userId, courseId),
       ])
       setComparison(result)
       setGroundedEvaluation(grounded)
@@ -2056,12 +2059,13 @@ function EvaluationView({
                 <select
                   className="select"
                   onChange={(event) =>
-                    setExpectedAnswerable(event.target.value === 'true')
+                    setAnswerability(event.target.value as Answerability)
                   }
-                  value={String(expectedAnswerable)}
+                  value={answerability}
                 >
-                  <option value="true">answerable</option>
-                  <option value="false">unanswerable</option>
+                  <option value="answerable">answerable</option>
+                  <option value="partially_answerable">partially answerable</option>
+                  <option value="unanswerable">unanswerable</option>
                 </select>
               </label>
               <label>
@@ -2128,27 +2132,29 @@ function EvaluationMatrix({
 }) {
   const rows = [
     {
-      label: 'Groundedness',
-      grounded: `${Math.round(grounded.groundedness_score * 100)}%`,
-      ungrounded: `${Math.round(ungrounded.groundedness_score * 100)}%`,
+      label: 'Generation groundedness',
+      grounded: `${Math.round(grounded.generation_groundedness_score * 100)}%`,
+      ungrounded: `${Math.round(ungrounded.generation_groundedness_score * 100)}%`,
       direction: 'higher',
     },
     {
-      label: 'Unsupported claims',
-      grounded: `${Math.round(grounded.unsupported_claim_rate * 100)}%`,
-      ungrounded: `${Math.round(ungrounded.unsupported_claim_rate * 100)}%`,
+      label: 'Generated unsupported claims',
+      grounded: `${Math.round(grounded.generated_unsupported_claim_rate * 100)}%`,
+      ungrounded: `${Math.round(ungrounded.generated_unsupported_claim_rate * 100)}%`,
       direction: 'lower',
     },
     {
-      label: 'Citation precision',
-      grounded: formatEvaluationPercent(grounded.citation_precision),
-      ungrounded: formatEvaluationPercent(ungrounded.citation_precision),
+      label: 'Cited claim support',
+      grounded: formatEvaluationPercent(grounded.automatic_cited_claim_support_rate),
+      ungrounded: formatEvaluationPercent(
+        ungrounded.automatic_cited_claim_support_rate,
+      ),
       direction: 'higher',
     },
     {
-      label: 'Correct refusal',
-      grounded: grounded.correct_refusal ? 'yes' : 'no',
-      ungrounded: ungrounded.correct_refusal ? 'yes' : 'no',
+      label: 'Automatic refusal correctness',
+      grounded: formatNullableBoolean(grounded.automatic_refusal_correctness),
+      ungrounded: formatNullableBoolean(ungrounded.automatic_refusal_correctness),
       direction: 'higher',
     },
     {
@@ -2754,9 +2760,20 @@ function ReviewView({
 function AnswerMetrics({ evaluation }: { evaluation: AnswerEvaluation }) {
   return (
     <div className="metric-strip">
-      <Metric label="Groundedness" value={`${Math.round(evaluation.groundedness_score * 100)}%`} />
-      <Metric label="Citation" value={formatEvaluationPercent(evaluation.citation_precision)} />
-      <Metric label="Unsupported" value={`${Math.round(evaluation.unsupported_claim_rate * 100)}%`} />
+      <Metric
+        label="Groundedness"
+        value={`${Math.round(evaluation.generation_groundedness_score * 100)}%`}
+      />
+      <Metric
+        label="Cited support"
+        value={formatEvaluationPercent(
+          evaluation.automatic_cited_claim_support_rate,
+        )}
+      />
+      <Metric
+        label="Unsupported"
+        value={`${Math.round(evaluation.generated_unsupported_claim_rate * 100)}%`}
+      />
       <Metric label="Claims" value={evaluation.claim_count} />
     </div>
   )
@@ -2826,6 +2843,11 @@ function formatNullablePercent(value: number | null) {
 
 function formatEvaluationPercent(value: number | null) {
   return value == null ? 'N/A' : `${Math.round(value * 100)}%`
+}
+
+function formatNullableBoolean(value: boolean | null) {
+  if (value == null) return 'N/A'
+  return value ? 'yes' : 'no'
 }
 
 function formatProgressStatus(status: ProgressConceptStatus) {

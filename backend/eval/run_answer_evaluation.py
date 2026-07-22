@@ -17,12 +17,13 @@ DEFAULT_CONFIG_PATH = Path(__file__).parent / "configs" / "grounding_v1.config.j
 DEFAULT_CASES_PATH = Path(__file__).parent / "datasets" / "grounding_v1.json"
 DEFAULT_OUTPUT_DIR = Path(__file__).with_name("results")
 MODES = ("grounded", "ungrounded")
-RUNNER_VERSION = "eval_v1_a1"
+RUNNER_VERSION = "eval_v1_a2_1"
 ANSWERABILITY_TO_EXPECTED_ANSWERABLE = {
     "answerable": True,
     "partially_answerable": True,
     "unanswerable": False,
 }
+ANSWERABILITIES = set(ANSWERABILITY_TO_EXPECTED_ANSWERABLE)
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
@@ -53,7 +54,7 @@ def _validate_case(case: dict[str, Any]) -> None:
 
     if has_answerability:
         answerability = case["answerability"]
-        if answerability not in ANSWERABILITY_TO_EXPECTED_ANSWERABLE:
+        if answerability not in ANSWERABILITIES:
             raise ValueError(
                 "answerability must be one of: "
                 "answerable, partially_answerable, unanswerable"
@@ -64,9 +65,13 @@ def _validate_case(case: dict[str, Any]) -> None:
 
 
 def expected_answerable_for(case: dict[str, Any]) -> bool:
+    return ANSWERABILITY_TO_EXPECTED_ANSWERABLE[answerability_for_case(case)]
+
+
+def answerability_for_case(case: dict[str, Any]) -> str:
     if "answerability" in case:
-        return ANSWERABILITY_TO_EXPECTED_ANSWERABLE[case["answerability"]]
-    return bool(case["expected_answerable"])
+        return str(case["answerability"])
+    return "answerable" if bool(case["expected_answerable"]) else "unanswerable"
 
 
 def case_id_for(case: dict[str, Any]) -> str:
@@ -114,7 +119,7 @@ def run_case(
     for mode in MODES:
         evaluation_payload: dict[str, Any] = {
             "user_id": user_id,
-            "expected_answerable": expected_answerable_for(case),
+            "answerability": answerability_for_case(case),
             "response": comparison[mode],
         }
         if course_id is not None:
@@ -131,7 +136,7 @@ def run_case(
         "case_id": case_id_for(case),
         "course_id": course_id,
         "question": case["question"],
-        "answerability": case.get("answerability"),
+        "answerability": answerability_for_case(case),
         "case": case,
         "comparison": comparison,
         "evaluations": evaluations,
@@ -169,7 +174,7 @@ def run_case_safely(
             "case_id": case_id_for(case),
             "course_id": course_id,
             "question": case.get("question"),
-            "answerability": case.get("answerability"),
+            "answerability": answerability_for_case(case),
             "case": case,
             "comparison": None,
             "evaluations": {},
@@ -206,7 +211,12 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
         answerable_results = [
             result
             for result in evaluated_results
-            if answerability_for(result) != "unanswerable"
+            if answerability_for(result) == "answerable"
+        ]
+        partial_results = [
+            result
+            for result in evaluated_results
+            if answerability_for(result) == "partially_answerable"
         ]
         unanswerable_results = [
             result
@@ -217,25 +227,29 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
         answerable_evaluations = [
             result["evaluations"][mode] for result in answerable_results
         ]
+        partial_evaluations = [
+            result["evaluations"][mode] for result in partial_results
+        ]
         unanswerable_evaluations = [
             result["evaluations"][mode] for result in unanswerable_results
         ]
         summary["modes"][mode] = {
             "evaluated_case_count": len(evaluations),
             "answerable_case_count": len(answerable_evaluations),
+            "partial_case_count": len(partial_evaluations),
             "unanswerable_case_count": len(unanswerable_evaluations),
             "answerable_metrics": {
-                "average_groundedness": _average(
+                "average_generation_groundedness": _average(
                     answerable_evaluations,
-                    "groundedness_score",
+                    "generation_groundedness_score",
                 ),
-                "average_unsupported_claim_rate": _average(
+                "average_generated_unsupported_claim_rate": _average(
                     answerable_evaluations,
-                    "unsupported_claim_rate",
+                    "generated_unsupported_claim_rate",
                 ),
-                "average_citation_precision": _average_nullable(
+                "average_automatic_cited_claim_support_rate": _average_nullable(
                     answerable_evaluations,
-                    "citation_precision",
+                    "automatic_cited_claim_support_rate",
                 ),
                 "average_citation_coverage": _average_nullable(
                     answerable_evaluations,
@@ -245,17 +259,51 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
                     answerable_evaluations,
                     "claim_count",
                 ),
-                "false_refusal_rate": _rate(
+                "automatic_false_refusal_rate": _rate(
                     answerable_evaluations,
                     "effective_refusal",
                 ),
             },
-            "refusal_metrics": {
-                "correct_refusal_rate": _rate(
-                    unanswerable_evaluations,
-                    "correct_refusal",
+            "partial_metrics": {
+                "average_generation_groundedness": _average(
+                    partial_evaluations,
+                    "generation_groundedness_score",
                 ),
-                "false_answer_rate": _inverse_rate(
+                "average_generated_unsupported_claim_rate": _average(
+                    partial_evaluations,
+                    "generated_unsupported_claim_rate",
+                ),
+                "average_automatic_cited_claim_support_rate": _average_nullable(
+                    partial_evaluations,
+                    "automatic_cited_claim_support_rate",
+                ),
+                "average_citation_coverage": _average_nullable(
+                    partial_evaluations,
+                    "citation_coverage",
+                ),
+                "average_claim_count": _average(
+                    partial_evaluations,
+                    "claim_count",
+                ),
+                "automatic_limitation_or_refusal_rate": _rate(
+                    partial_evaluations,
+                    "effective_refusal",
+                ),
+                "semantic_limitation_rate": _rate(
+                    partial_evaluations,
+                    "semantic_refusal",
+                ),
+                "status_refusal_rate": _rate(
+                    partial_evaluations,
+                    "refused_by_status",
+                ),
+            },
+            "refusal_metrics": {
+                "automatic_correct_refusal_rate": _rate(
+                    unanswerable_evaluations,
+                    "automatic_refusal_correctness",
+                ),
+                "automatic_false_answer_rate": _inverse_rate(
                     unanswerable_evaluations,
                     "effective_refusal",
                 ),
@@ -274,12 +322,14 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def answerability_for(result: dict[str, Any]) -> str:
-    return str(
-        result.get(
-            "answerability",
-            result.get("case", {}).get("answerability", "answerable"),
-        )
-    )
+    if result.get("answerability") in ANSWERABILITIES:
+        return str(result["answerability"])
+    case = result.get("case")
+    if isinstance(case, dict) and (
+        "answerability" in case or "expected_answerable" in case
+    ):
+        return answerability_for_case(case)
+    return "answerable"
 
 
 def write_outputs(
@@ -327,20 +377,22 @@ def _write_summary_csv(path: Path, summary: dict[str, Any]) -> None:
     rows: list[dict[str, Any]] = []
     for mode, metrics in summary["modes"].items():
         answerable_metrics = metrics["answerable_metrics"]
+        partial_metrics = metrics["partial_metrics"]
         refusal_metrics = metrics["refusal_metrics"]
         row = {
             "mode": mode,
             "evaluated_case_count": metrics["evaluated_case_count"],
             "answerable_case_count": metrics["answerable_case_count"],
+            "partial_case_count": metrics["partial_case_count"],
             "unanswerable_case_count": metrics["unanswerable_case_count"],
-            "answerable_average_groundedness": answerable_metrics[
-                "average_groundedness"
+            "answerable_average_generation_groundedness": answerable_metrics[
+                "average_generation_groundedness"
             ],
-            "answerable_average_unsupported_claim_rate": answerable_metrics[
-                "average_unsupported_claim_rate"
+            "answerable_average_generated_unsupported_claim_rate": answerable_metrics[
+                "average_generated_unsupported_claim_rate"
             ],
-            "answerable_average_citation_precision": _csv_value(
-                answerable_metrics["average_citation_precision"]
+            "answerable_average_automatic_cited_claim_support_rate": _csv_value(
+                answerable_metrics["average_automatic_cited_claim_support_rate"]
             ),
             "answerable_average_citation_coverage": _csv_value(
                 answerable_metrics["average_citation_coverage"]
@@ -348,14 +400,36 @@ def _write_summary_csv(path: Path, summary: dict[str, Any]) -> None:
             "answerable_average_claim_count": answerable_metrics[
                 "average_claim_count"
             ],
-            "answerable_false_refusal_rate": answerable_metrics[
-                "false_refusal_rate"
+            "answerable_automatic_false_refusal_rate": answerable_metrics[
+                "automatic_false_refusal_rate"
             ],
-            "unanswerable_correct_refusal_rate": refusal_metrics[
-                "correct_refusal_rate"
+            "partial_average_generation_groundedness": partial_metrics[
+                "average_generation_groundedness"
             ],
-            "unanswerable_false_answer_rate": refusal_metrics[
-                "false_answer_rate"
+            "partial_average_generated_unsupported_claim_rate": partial_metrics[
+                "average_generated_unsupported_claim_rate"
+            ],
+            "partial_average_automatic_cited_claim_support_rate": _csv_value(
+                partial_metrics["average_automatic_cited_claim_support_rate"]
+            ),
+            "partial_average_citation_coverage": _csv_value(
+                partial_metrics["average_citation_coverage"]
+            ),
+            "partial_average_claim_count": partial_metrics["average_claim_count"],
+            "partial_automatic_limitation_or_refusal_rate": partial_metrics[
+                "automatic_limitation_or_refusal_rate"
+            ],
+            "partial_semantic_limitation_rate": partial_metrics[
+                "semantic_limitation_rate"
+            ],
+            "partial_status_refusal_rate": partial_metrics[
+                "status_refusal_rate"
+            ],
+            "unanswerable_automatic_correct_refusal_rate": refusal_metrics[
+                "automatic_correct_refusal_rate"
+            ],
+            "unanswerable_automatic_false_answer_rate": refusal_metrics[
+                "automatic_false_answer_rate"
             ],
             "unanswerable_semantic_refusal_rate": refusal_metrics[
                 "semantic_refusal_rate"
@@ -373,15 +447,24 @@ def _write_summary_csv(path: Path, summary: dict[str, Any]) -> None:
                 "mode",
                 "evaluated_case_count",
                 "answerable_case_count",
+                "partial_case_count",
                 "unanswerable_case_count",
-                "answerable_average_groundedness",
-                "answerable_average_unsupported_claim_rate",
-                "answerable_average_citation_precision",
+                "answerable_average_generation_groundedness",
+                "answerable_average_generated_unsupported_claim_rate",
+                "answerable_average_automatic_cited_claim_support_rate",
                 "answerable_average_citation_coverage",
                 "answerable_average_claim_count",
-                "answerable_false_refusal_rate",
-                "unanswerable_correct_refusal_rate",
-                "unanswerable_false_answer_rate",
+                "answerable_automatic_false_refusal_rate",
+                "partial_average_generation_groundedness",
+                "partial_average_generated_unsupported_claim_rate",
+                "partial_average_automatic_cited_claim_support_rate",
+                "partial_average_citation_coverage",
+                "partial_average_claim_count",
+                "partial_automatic_limitation_or_refusal_rate",
+                "partial_semantic_limitation_rate",
+                "partial_status_refusal_rate",
+                "unanswerable_automatic_correct_refusal_rate",
+                "unanswerable_automatic_false_answer_rate",
                 "unanswerable_semantic_refusal_rate",
                 "unanswerable_status_refusal_rate",
             ],
