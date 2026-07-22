@@ -138,7 +138,7 @@ def test_evaluate_answer_marks_ungrounded_citation_as_not_applicable() -> None:
     assert result.citation_coverage is None
 
 
-def test_partial_answerability_is_not_scored_as_correct_or_false_refusal() -> None:
+def test_partial_answer_keeps_citation_diagnostics_when_limiting_scope() -> None:
     response = ChatResponse(
         query="What K does the course recommend and how should K be chosen?",
         user_id="demo-user",
@@ -180,6 +180,9 @@ def test_partial_answerability_is_not_scored_as_correct_or_false_refusal() -> No
     assert result.semantic_refusal is True
     assert result.effective_refusal is True
     assert result.automatic_refusal_correctness is None
+    assert result.citation_applicable is True
+    assert result.automatic_cited_claim_support_rate == 1.0
+    assert result.citation_coverage == 0.5
 
 
 def test_evaluate_quiz_items_counts_traceability_labels() -> None:

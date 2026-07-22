@@ -65,6 +65,7 @@ def _validate_case(case: dict[str, Any]) -> None:
 
 
 def expected_answerable_for(case: dict[str, Any]) -> bool:
+    # Legacy compatibility only. Formal evaluation must preserve answerability.
     return ANSWERABILITY_TO_EXPECTED_ANSWERABLE[answerability_for_case(case)]
 
 

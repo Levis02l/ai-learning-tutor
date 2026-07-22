@@ -69,7 +69,7 @@ def evaluate_answer(
     effective_refusal = refused_by_status or semantic_refusal
     citation_applicable = (
         response.mode != "ungrounded"
-        and not effective_refusal
+        and answerability != "unanswerable"
         and claim_count > 0
     )
     automatic_cited_claim_support_rate = (
