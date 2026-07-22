@@ -1,0 +1,30 @@
+{
+  "experiment_id": "grounding_v1",
+  "description": "Grounded RAG tutor vs ungrounded LLM baseline for reliability, traceability and refusal behaviour.",
+  "dataset_path": "backend/eval/datasets/grounding_v1.json",
+  "conditions": [
+    "ungrounded",
+    "grounded"
+  ],
+  "model": {
+    "provider": "openai",
+    "name": "configured-by-backend-env",
+    "temperature": 0.0,
+    "max_tokens": null
+  },
+  "retrieval": {
+    "top_k": 5,
+    "course_scoped": true
+  },
+  "versions": {
+    "prompt_version": "grounding_v1",
+    "policy_version": "rule_v1"
+  },
+  "outputs": {
+    "raw_results_json": "backend/eval/results/grounding_v1_raw.json",
+    "summary_json": "backend/eval/results/grounding_v1_summary.json",
+    "summary_csv": "backend/eval/results/grounding_v1_summary.csv",
+    "human_annotations_csv": "backend/eval/results/grounding_v1_human_annotations.csv"
+  },
+  "notes": "Record the git commit hash and run timestamp in every generated result file."
+}

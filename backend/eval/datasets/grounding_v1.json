@@ -1,0 +1,83 @@
+[
+  {
+    "case_id": "grounding_001",
+    "course_id": 2,
+    "question": "What objective does K-means minimise?",
+    "answerability": "answerable",
+    "reference_answer": "K-means minimises the within-cluster sum of squares, usually by alternating between assigning observations to the nearest centroid and updating centroids.",
+    "gold_evidence": [
+      {
+        "document": "Lecture notes on unsupervised learning",
+        "document_id": null,
+        "chunk_ids": [],
+        "relevant_text": "K-means is defined as minimization of the within-cluster sum of squares."
+      }
+    ],
+    "category": "factual",
+    "concept": "K-means Clustering",
+    "difficulty": "easy",
+    "notes": "Replace document metadata with the actual uploaded lecture name after final ingestion."
+  },
+  {
+    "case_id": "grounding_002",
+    "course_id": 2,
+    "question": "Why does K-means alternate between assignment and centroid update steps?",
+    "answerability": "answerable",
+    "reference_answer": "K-means alternates because each step optimises part of the clustering objective: assigning points to the nearest centroids and then recomputing centroids from assigned points so the within-cluster objective does not increase.",
+    "gold_evidence": [
+      {
+        "document": "Lecture notes on unsupervised learning",
+        "document_id": null,
+        "chunk_ids": [],
+        "relevant_text": "The K-means algorithm iteratively alternates between assigning observations to nearest cluster centroids and updating the centroids."
+      }
+    ],
+    "category": "explanation",
+    "concept": "K-means Clustering",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_003",
+    "course_id": 2,
+    "question": "According to the course material, does K-means guarantee the global optimum?",
+    "answerability": "partially_answerable",
+    "reference_answer": "The material supports that the procedure can converge to a local minimum. If the uploaded material does not explicitly discuss global optimality, the answer should be limited to that evidence.",
+    "gold_evidence": [
+      {
+        "document": "Lecture notes on unsupervised learning",
+        "document_id": null,
+        "chunk_ids": [],
+        "relevant_text": "The procedure converges in finitely many steps to a possibly local minimum."
+      }
+    ],
+    "category": "limitation",
+    "concept": "K-means Clustering",
+    "difficulty": "medium",
+    "notes": "Useful for testing limited answers rather than overclaiming."
+  },
+  {
+    "case_id": "grounding_004",
+    "course_id": 2,
+    "question": "According to the uploaded clustering lecture, what medical treatment is recommended for diabetes?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": null,
+    "difficulty": "easy",
+    "notes": "Expected behaviour: refuse or state that the course materials do not contain this information."
+  },
+  {
+    "case_id": "grounding_005",
+    "course_id": 2,
+    "question": "According to the uploaded material, what date will the final exam take place?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": null,
+    "difficulty": "easy",
+    "notes": "Keep only if the uploaded course material does not include exam scheduling information."
+  }
+]

@@ -1,0 +1,3 @@
+case_id,mode,answer_correctness,claim_support_rate,citation_precision,citation_coverage,refusal_correctness,false_answer,false_refusal,human_notes
+grounding_001,grounded,,,,,,,,
+grounding_001,ungrounded,,,,,,,,

@@ -10,9 +10,14 @@ from typing import Any
 import httpx
 
 DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_CASES_PATH = Path(__file__).with_name("evaluation_cases.json")
+DEFAULT_CASES_PATH = Path(__file__).parent / "datasets" / "grounding_v1.json"
 DEFAULT_OUTPUT_DIR = Path(__file__).with_name("results")
 MODES = ("grounded", "ungrounded")
+ANSWERABILITY_TO_EXPECTED_ANSWERABLE = {
+    "answerable": True,
+    "partially_answerable": True,
+    "unanswerable": False,
+}
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
@@ -25,11 +30,38 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
     for case in cases:
         if not isinstance(case, dict):
             raise ValueError("Each evaluation case must be a JSON object")
-        for field in ("id", "question", "expected_answerable"):
-            if field not in case:
-                raise ValueError(f"Evaluation case is missing required field: {field}")
+        _validate_case(case)
 
     return cases
+
+
+def _validate_case(case: dict[str, Any]) -> None:
+    if "question" not in case:
+        raise ValueError("Evaluation case is missing required field: question")
+
+    has_legacy_answerable = "expected_answerable" in case
+    has_answerability = "answerability" in case
+    if not has_legacy_answerable and not has_answerability:
+        raise ValueError(
+            "Evaluation case must define answerability or expected_answerable"
+        )
+
+    if has_answerability:
+        answerability = case["answerability"]
+        if answerability not in ANSWERABILITY_TO_EXPECTED_ANSWERABLE:
+            raise ValueError(
+                "answerability must be one of: "
+                "answerable, partially_answerable, unanswerable"
+            )
+
+    if "case_id" not in case and "id" not in case:
+        raise ValueError("Evaluation case is missing required field: case_id")
+
+
+def expected_answerable_for(case: dict[str, Any]) -> bool:
+    if "answerability" in case:
+        return ANSWERABILITY_TO_EXPECTED_ANSWERABLE[case["answerability"]]
+    return bool(case["expected_answerable"])
 
 
 def run_case(
@@ -39,26 +71,39 @@ def run_case(
     case: dict[str, Any],
     user_id: str,
     top_k: int,
+    course_id_override: int | None = None,
 ) -> dict[str, Any]:
+    course_id = course_id_override if course_id_override is not None else case.get(
+        "course_id"
+    )
+    compare_payload: dict[str, Any] = {
+        "query": case["question"],
+        "user_id": user_id,
+        "top_k": top_k,
+    }
+    if course_id is not None:
+        compare_payload["course_id"] = course_id
+
     compare_response = client.post(
         f"{base_url}/chat/compare",
-        json={
-            "query": case["question"],
-            "user_id": user_id,
-            "top_k": top_k,
-        },
+        json=compare_payload,
     )
     compare_response.raise_for_status()
     comparison = compare_response.json()
 
     evaluations: dict[str, Any] = {}
     for mode in MODES:
+        evaluation_payload: dict[str, Any] = {
+            "user_id": user_id,
+            "expected_answerable": expected_answerable_for(case),
+            "response": comparison[mode],
+        }
+        if course_id is not None:
+            evaluation_payload["course_id"] = course_id
+
         eval_response = client.post(
             f"{base_url}/evaluation/answer",
-            json={
-                "expected_answerable": case["expected_answerable"],
-                "response": comparison[mode],
-            },
+            json=evaluation_payload,
         )
         eval_response.raise_for_status()
         evaluations[mode] = eval_response.json()
@@ -171,6 +216,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--user-id", default="demo-user")
+    parser.add_argument(
+        "--course-id",
+        type=int,
+        default=None,
+        help="Optional course_id override for every case.",
+    )
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--timeout", type=float, default=120.0)
     return parser.parse_args()
@@ -189,6 +240,7 @@ def main() -> None:
                 case=case,
                 user_id=args.user_id,
                 top_k=args.top_k,
+                course_id_override=args.course_id,
             )
             for case in cases
         ]
