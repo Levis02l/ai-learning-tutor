@@ -60,8 +60,9 @@ that material during generation.
 
 ## Dataset Schema
 
-The formal V1-A dataset lives in
-`backend/eval/datasets/grounding_v1.json` and is described by
+The pilot V1-A dataset lives in `backend/eval/datasets/grounding_v1.json`.
+The frozen formal V1-A dataset lives in
+`backend/eval/datasets/grounding_v1_formal.json`. Both are described by
 `backend/eval/datasets/grounding_v1.schema.json`.
 
 Each case should include:
@@ -82,7 +83,8 @@ Each case should include:
 Do not treat raw database `chunk_id` values as the only gold standard. Chunk IDs
 are implementation details and may change after re-ingestion. Use
 `gold_evidence.relevant_text` as the human-readable evidence definition. Optional
-chunk IDs may be included only as a convenience for automation.
+page numbers and chunk IDs may be included only as a convenience for audit and
+automation.
 
 ## V1-A Metrics
 
@@ -212,7 +214,9 @@ Formal runs should use the frozen dataset and config:
 
 ```bash
 cd backend
-.venv/bin/python -m eval.run_answer_evaluation --run-type formal
+.venv/bin/python -m eval.run_answer_evaluation \
+  --run-type formal \
+  --cases eval/datasets/grounding_v1_formal.json
 ```
 
 The runner should preserve this result structure so summaries can be recomputed

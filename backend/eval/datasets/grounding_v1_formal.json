@@ -1,0 +1,1020 @@
+[
+  {
+    "case_id": "grounding_formal_001",
+    "course_id": 2,
+    "question": "For fixed K-means cluster assignments, what centroid minimises the within-cluster objective for a cluster?",
+    "answerability": "answerable",
+    "reference_answer": "The unique minimiser is the arithmetic mean of the observations assigned to that cluster.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 5,
+        "relevant_text": "For fixed assignments, Proposition 1.1 states that the unique minimizer is the mean of the k-th cluster."
+      }
+    ],
+    "category": "factual",
+    "concept": "K-means Centroid Update",
+    "difficulty": "easy",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_002",
+    "course_id": 2,
+    "question": "For fixed K-means centroids, how is each observation assigned to a cluster?",
+    "answerability": "answerable",
+    "reference_answer": "Each observation is assigned to the cluster whose centroid is nearest in Euclidean distance.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 6,
+        "relevant_text": "For fixed centroids, minimizing with respect to assignments assigns each observation to the nearest centroid in Euclidean distance."
+      }
+    ],
+    "category": "factual",
+    "concept": "K-means Assignment Step",
+    "difficulty": "easy",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_003",
+    "course_id": 2,
+    "question": "What geometric form do K-means Voronoi boundaries have under Euclidean distance, and what equation defines the boundary between two centroids?",
+    "answerability": "answerable",
+    "reference_answer": "They are affine hyperplanes. Between centroids μk and μj, the boundary is 2(μj−μk)^T x = ||μj||^2 − ||μk||^2.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 7,
+        "relevant_text": "Pairwise K-means Voronoi boundaries simplify to affine hyperplanes with equation 2(μj−μk)^T x = ||μj||^2−||μk||^2."
+      }
+    ],
+    "category": "explanation",
+    "concept": "K-means Geometry",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_004",
+    "course_id": 2,
+    "question": "How are total, within-cluster, and between-cluster sums of squares related, and what does this imply for K-means?",
+    "answerability": "answerable",
+    "reference_answer": "TSS = WSS + BSS. Since TSS is fixed for a dataset, minimizing WSS is equivalent to maximizing BSS.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 11,
+        "relevant_text": "Proposition 1.2 states TSS = WSS + BSS, so minimizing WSS is equivalent to maximizing BSS."
+      }
+    ],
+    "category": "reasoning",
+    "concept": "K-means Variation Decomposition",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_005",
+    "course_id": 2,
+    "question": "Why do the notes recommend standardising variables before K-means when variables are measured on different scales?",
+    "answerability": "answerable",
+    "reference_answer": "Because larger-scale variables can dominate the squared Euclidean objective; standardisation puts variables on comparable scales.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 11,
+        "relevant_text": "Variables with larger numerical ranges can dominate the squared Euclidean norm, so the notes recommend standardization before clustering."
+      }
+    ],
+    "category": "explanation",
+    "concept": "K-means Standardisation",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_006",
+    "course_id": 2,
+    "question": "According to the exercise solution, does the ambient dimension D affect the number of ways n observations can be partitioned into K non-empty clusters?",
+    "answerability": "answerable",
+    "reference_answer": "No. The solution states that D plays no role in the Stirling number S(n,K).",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 25,
+        "relevant_text": "Exercise 1.1 solution states that D plays no role in S(n,K)."
+      }
+    ],
+    "category": "factual",
+    "concept": "K-means Combinatorial Setting",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_007",
+    "course_id": 2,
+    "question": "How does the optimal K-means WSS change as K increases, and what are the extreme values at K=1 and K=n?",
+    "answerability": "answerable",
+    "reference_answer": "WSS(K) decreases as K increases; WSS(1)=TSS and WSS(n)=0.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 12,
+        "relevant_text": "Proposition 1.3 states that WSS(K) is decreasing."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 13,
+        "relevant_text": "The notes give WSS(1)=TSS and WSS(n)=0."
+      }
+    ],
+    "category": "factual",
+    "concept": "Elbow Method",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_008",
+    "course_id": 2,
+    "question": "How does the Elbow method choose a value of K according to the notes?",
+    "answerability": "answerable",
+    "reference_answer": "It chooses a K after which additional decreases in WSS become marginal, visible as an elbow or sharp drop in improvement.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 13,
+        "relevant_text": "The elbow method looks for a K beyond which WSS decreases become marginal and WSS(K−1)−WSS(K) drops sharply."
+      }
+    ],
+    "category": "explanation",
+    "concept": "Elbow Method",
+    "difficulty": "easy",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_009",
+    "course_id": 2,
+    "question": "What do a(i), b(i), and s(i) mean in the Silhouette method, and how is s(i) interpreted?",
+    "answerability": "answerable",
+    "reference_answer": "a(i) is average within-cluster distance, b(i) the nearest other-cluster average distance, and s(i)=(b−a)/max(a,b); near 1 is good, near 0 ambiguous, and negative suggests poor assignment.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 14,
+        "relevant_text": "The notes define a(i), b(i), and silhouette width s(i), with interpretations for values near 1, 0, and below 0."
+      }
+    ],
+    "category": "definition",
+    "concept": "Silhouette Method",
+    "difficulty": "hard",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_010",
+    "course_id": 2,
+    "question": "Compare the Elbow and Silhouette methods as described in the notes.",
+    "answerability": "answerable",
+    "reference_answer": "Both are heuristic. Elbow is simple and inexpensive but relies on visual inspection; Silhouette is more quantitative but more computationally costly. Domain knowledge should also be used.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 15,
+        "relevant_text": "The notes compare Elbow and Silhouette and recommend combining such criteria with domain knowledge."
+      }
+    ],
+    "category": "comparison",
+    "concept": "Cluster Number Selection",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_011",
+    "course_id": 2,
+    "question": "What objective does K-medians minimise, and what cluster representative minimises it for fixed assignments?",
+    "answerability": "answerable",
+    "reference_answer": "It minimises within-cluster L1/Manhattan loss, whose fixed-assignment minimiser is a coordinate-wise median.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 15,
+        "relevant_text": "K-medians uses Manhattan/L1 geometry."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 16,
+        "relevant_text": "For fixed assignments, the K-medians objective is minimized by coordinate-wise medians."
+      }
+    ],
+    "category": "factual",
+    "concept": "K-medians",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_012",
+    "course_id": 2,
+    "question": "What is a medoid in K-medoids clustering?",
+    "answerability": "answerable",
+    "reference_answer": "A medoid is an actual observation in a cluster that minimises total distance or dissimilarity to the other observations in that cluster.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 17,
+        "relevant_text": "The K-medoids representative is an observation in the cluster minimizing total within-cluster dissimilarity."
+      }
+    ],
+    "category": "definition",
+    "concept": "K-medoids",
+    "difficulty": "easy",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_013",
+    "course_id": 2,
+    "question": "How does the PAM-style Lloyd-type scheme update K-medoids clusters?",
+    "answerability": "answerable",
+    "reference_answer": "Assign points to the nearest medoid, then choose as each new medoid the cluster data point that minimises total within-cluster dissimilarity.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 18,
+        "relevant_text": "PAM assigns points to nearest medoids and updates each representative by selecting the data point minimizing total within-cluster dissimilarity."
+      }
+    ],
+    "category": "explanation",
+    "concept": "PAM",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_014",
+    "course_id": 2,
+    "question": "How does changing the metric affect clustering geometry according to the notes?",
+    "answerability": "answerable",
+    "reference_answer": "It changes distance-ball shapes, Voronoi-boundary geometry, and therefore the structure of the induced clustering.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 20,
+        "relevant_text": "Changing the metric changes distance balls, Voronoi boundaries, and therefore clustering structure."
+      }
+    ],
+    "category": "explanation",
+    "concept": "Clustering Metrics",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_015",
+    "course_id": 2,
+    "question": "Why can classical Euclidean K-means struggle with nonlinear cluster structures, and what is the idea behind kernel K-means?",
+    "answerability": "answerable",
+    "reference_answer": "Classical K-means induces affine-hyperplane Voronoi boundaries in input space. Kernel K-means works in a feature space whose preimages can form nonlinear regions in the original space.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 29,
+        "relevant_text": "Classical K-means has affine-hyperplane decision boundaries; kernel K-means changes the geometry via a feature space to allow nonlinear boundaries."
+      }
+    ],
+    "category": "explanation",
+    "concept": "Kernel K-means Motivation",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_016",
+    "course_id": 2,
+    "question": "What condition defines a positive definite kernel, and what equivalent property does its Gram matrix have?",
+    "answerability": "answerable",
+    "reference_answer": "A symmetric kernel is PD when every finite quadratic form Σ_iΣ_j c_i c_j k(x_i,x_j) is non-negative; equivalently every finite Gram matrix is symmetric PSD.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 29,
+        "relevant_text": "The notes define positive definite kernels by nonnegative finite quadratic forms and give the equivalent PSD Gram-matrix condition."
+      }
+    ],
+    "category": "definition",
+    "concept": "Positive Definite Kernels",
+    "difficulty": "hard",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_017",
+    "course_id": 2,
+    "question": "What is the canonical feature map associated with an RKHS kernel, and what feature property does it satisfy?",
+    "answerability": "answerable",
+    "reference_answer": "The canonical feature map is φ(x)=k(x,·), and it satisfies <φ(x),φ(y)>_H = k(x,y).",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 30,
+        "relevant_text": "The canonical feature map is φ(x)=k(x,·), with feature property <φ(x),φ(y)>=k(x,y)."
+      }
+    ],
+    "category": "definition",
+    "concept": "RKHS Feature Map",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_018",
+    "course_id": 2,
+    "question": "How does the kernel trick let kernel K-means compute distance to a feature-space centroid without explicitly constructing the feature map?",
+    "answerability": "answerable",
+    "reference_answer": "It expands squared distances into feature-space inner products and replaces those inner products by kernel evaluations, giving a formula using only k(x_i,x_j).",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 33,
+        "relevant_text": "Proposition 2.3 rewrites feature-space distances entirely in terms of kernel evaluations."
+      }
+    ],
+    "category": "explanation",
+    "concept": "Kernel Trick",
+    "difficulty": "hard",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_019",
+    "course_id": 2,
+    "question": "What trace form does the kernel K-means objective have, and what equivalent optimisation does this imply?",
+    "answerability": "answerable",
+    "reference_answer": "J = trace(K) − trace(H^T K H), so minimizing J is equivalent to maximizing trace(H^T K H).",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 34,
+        "relevant_text": "Proposition 2.4 gives J=trace(K)−trace(H^T K H) and the equivalent trace maximization."
+      }
+    ],
+    "category": "reasoning",
+    "concept": "Kernel K-means Matrix Form",
+    "difficulty": "hard",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_020",
+    "course_id": 2,
+    "question": "What happened in the notes' concentric-cluster example when Euclidean K-means, RBF kernel K-means, Laplacian kernel K-means, and degree-2 polynomial kernel K-means were compared?",
+    "answerability": "answerable",
+    "reference_answer": "Euclidean K-means failed; with the reported settings, RBF and Laplacian kernel K-means succeeded; degree-2 polynomial kernel K-means failed.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 36,
+        "relevant_text": "The concentric-ring example reports Euclidean K-means failing, RBF and Laplace succeeding, and polynomial degree 2 failing."
+      }
+    ],
+    "category": "comparison",
+    "concept": "Kernel Choice Example",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_021",
+    "course_id": 2,
+    "question": "What is the main goal of PCA according to the notes?",
+    "answerability": "answerable",
+    "reference_answer": "PCA finds orthogonal directions of maximal variance to obtain an informative lower-dimensional linear representation.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 46,
+        "relevant_text": "PCA constructs orthogonal directions along which variance is maximized to provide dimensionality reduction."
+      }
+    ],
+    "category": "definition",
+    "concept": "PCA",
+    "difficulty": "easy",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_022",
+    "course_id": 2,
+    "question": "How is the sample covariance matrix defined in the notes, and what three key properties are stated for it?",
+    "answerability": "answerable",
+    "reference_answer": "For centred data X~, S=(1/n)X~^T X~. S is PSD, its eigenvalues are non-negative, and trace(S) equals total variance and the sum of eigenvalues.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 48,
+        "relevant_text": "The sample covariance matrix is S=(1/n)X~^T X~."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 49,
+        "relevant_text": "Proposition 3.1 states PSD, non-negative eigenvalues, and trace equal to total variance and eigenvalue sum."
+      }
+    ],
+    "category": "factual",
+    "concept": "Covariance Matrix",
+    "difficulty": "hard",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_023",
+    "course_id": 2,
+    "question": "Why is the first principal component an eigenvector associated with the largest eigenvalue of the covariance matrix?",
+    "answerability": "answerable",
+    "reference_answer": "Projected variance in unit direction u equals u^T S u; maximizing this Rayleigh quotient gives the largest eigenvalue and an associated eigenvector.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 50,
+        "relevant_text": "PC1 maximizes projected variance over unit directions."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 51,
+        "relevant_text": "Projected variance equals u^T S u; Rayleigh's theorem gives maximum λ1 at an associated eigenvector."
+      }
+    ],
+    "category": "reasoning",
+    "concept": "First Principal Component",
+    "difficulty": "hard",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_024",
+    "course_id": 2,
+    "question": "How are the later principal component directions chosen after PC1?",
+    "answerability": "answerable",
+    "reference_answer": "Each later PC maximises remaining variance subject to unit norm and orthogonality to earlier PCs; these are covariance eigenvectors ordered by decreasing eigenvalues.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 51,
+        "relevant_text": "PC2 maximizes variance subject to orthogonality to PC1."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 52,
+        "relevant_text": "Later PCs form mutually orthogonal covariance eigenvectors ordered by decreasing eigenvalues."
+      }
+    ],
+    "category": "explanation",
+    "concept": "Principal Components",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_025",
+    "course_id": 2,
+    "question": "How is the proportion of total variance explained by the first M principal components computed?",
+    "answerability": "answerable",
+    "reference_answer": "Sum the first M eigenvalues and divide by the sum of all D covariance eigenvalues.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 52,
+        "relevant_text": "Remark 3.1 gives the explained variance ratio as the sum of the first M eigenvalues divided by the sum of all eigenvalues."
+      }
+    ],
+    "category": "factual",
+    "concept": "PCA Explained Variance",
+    "difficulty": "easy",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_026",
+    "course_id": 2,
+    "question": "Why do the notes recommend scaling or standardising variables before PCA when variables have different units or scales?",
+    "answerability": "answerable",
+    "reference_answer": "Because larger-range variables can dominate PCs and differing units can make interpretations meaningless; standardisation makes the analysis more comparable.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 54,
+        "relevant_text": "The notes warn that different units/scales can make larger-range variables dominate PCA and recommend standardization."
+      }
+    ],
+    "category": "explanation",
+    "concept": "PCA Standardisation",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_027",
+    "course_id": 2,
+    "question": "How do the notes use PCA as a preprocessing step before clustering in the six-variable example?",
+    "answerability": "answerable",
+    "reference_answer": "They standardise, apply PCA, retain two PCs capturing about 85.7% cumulative variance, then cluster the PC1-PC2 representation with K-means using K=2.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 54,
+        "relevant_text": "In the six-variable example, two PCs capture about 85.7% cumulative variance."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 55,
+        "relevant_text": "The notes then run K-means with K=2 in the PC1-PC2 space."
+      }
+    ],
+    "category": "application",
+    "concept": "PCA before Clustering",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_028",
+    "course_id": 2,
+    "question": "What is the PCR procedure described in the notes, why can it help with multicollinearity, and what limitation is noted?",
+    "answerability": "answerable",
+    "reference_answer": "PCR standardises predictors, applies PCA, retains M PCs, regresses Y on them, and can map the model back to original variables. It helps with correlated predictors, but a predictor important for Y may be discarded by PCA.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 55,
+        "relevant_text": "The notes list the five-step PCR procedure."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 56,
+        "relevant_text": "The example motivates PCR using multicollinearity."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 57,
+        "relevant_text": "A limitation is that a predictor important for Y can be removed by the retained PCs."
+      }
+    ],
+    "category": "comparison",
+    "concept": "Principal Component Regression",
+    "difficulty": "hard",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_029",
+    "course_id": 2,
+    "question": "What is the difference between a metric and the more general dissimilarity definition used in the notes, and how is squared Euclidean distance classified?",
+    "answerability": "answerable",
+    "reference_answer": "A metric also requires the triangle inequality; the notes' dissimilarity definition does not. Squared Euclidean distance is treated as a dissimilarity rather than a metric.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 65,
+        "relevant_text": "The notes define metrics and the less restrictive dissimilarity notion."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 66,
+        "relevant_text": "Squared Euclidean distance is identified as a dissimilarity that may fail to be a metric."
+      }
+    ],
+    "category": "definition",
+    "concept": "Metric Spaces",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_030",
+    "course_id": 2,
+    "question": "What conclusions does the multivariable second derivative test give from the Hessian at a critical point?",
+    "answerability": "answerable",
+    "reference_answer": "PD Hessian implies local minimum, ND implies local maximum, indefinite implies saddle, and semidefinite but non-definite makes the test inconclusive.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 76,
+        "relevant_text": "Theorem 4.4 gives the Hessian-based second derivative test and its four cases."
+      }
+    ],
+    "category": "factual",
+    "concept": "Second Derivative Test",
+    "difficulty": "medium",
+    "notes": ""
+  },
+  {
+    "case_id": "grounding_formal_031",
+    "course_id": 2,
+    "question": "For a new two-dimensional dataset, what exact Voronoi boundary will separate two K-means clusters before the centroid coordinates are known, and what general boundary rule do the notes provide once the centroids are known?",
+    "answerability": "partially_answerable",
+    "reference_answer": "The exact boundary cannot be determined before the centroid coordinates are known. Once centroids μk and μj are given, the Euclidean K-means boundary is the affine hyperplane 2(μj−μk)^T x = ||μj||^2 − ||μk||^2.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 7,
+        "relevant_text": "For fixed centroids, Euclidean K-means induces Voronoi cells; the boundary between two centroids is an affine hyperplane determined by their coordinates."
+      }
+    ],
+    "category": "limitation",
+    "concept": "K-means Geometry",
+    "difficulty": "medium",
+    "notes": "Supported: general boundary formula once centroids are known. Unsupported: an exact numerical boundary before centroid coordinates/data are supplied."
+  },
+  {
+    "case_id": "grounding_formal_032",
+    "course_id": 2,
+    "question": "For a new K-medians cluster with an even number of observations, what exact unique centroid must be used, and what does the course material say about the minimisers?",
+    "answerability": "partially_answerable",
+    "reference_answer": "A unique exact centroid is not guaranteed in the even-sample case. The L1 objective is minimised by coordinate-wise medians; in one dimension with an even number of ordered values, every point between the two middle values minimises the absolute-deviation objective.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 16,
+        "relevant_text": "For K-medians, the fixed-assignment L1 objective is minimised by a vector whose coordinates are coordinate-wise medians."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 17,
+        "relevant_text": "For an even number of one-dimensional observations, the absolute-deviation objective is constant between the two middle ordered values, so the minimiser need not be unique."
+      }
+    ],
+    "category": "limitation",
+    "concept": "K-medians",
+    "difficulty": "hard",
+    "notes": "Supported: median/minimiser characterisation. Unsupported: a universally unique exact centroid for an even-sized new cluster."
+  },
+  {
+    "case_id": "grounding_formal_033",
+    "course_id": 2,
+    "question": "If the average silhouette width is at least 0.5, does that guarantee the recovered clusters are the true real-world groups, and what does the course material say the threshold indicates?",
+    "answerability": "partially_answerable",
+    "reference_answer": "The notes call about 0.5 or above a sign of good structure, but they do not claim it guarantees recovery of true real-world groups.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 15,
+        "relevant_text": "The notes give a thumb rule that average silhouette width at least 0.5 indicates good structure."
+      }
+    ],
+    "category": "limitation",
+    "concept": "Silhouette Method",
+    "difficulty": "hard",
+    "notes": "Supported: heuristic threshold. Unsupported: ground-truth guarantee."
+  },
+  {
+    "case_id": "grounding_formal_034",
+    "course_id": 2,
+    "question": "Exactly how many arbitrary outliers can K-medoids tolerate in every finite dataset, and what robustness statement do the notes make?",
+    "answerability": "partially_answerable",
+    "reference_answer": "No universal exact integer count is given. The notes state a 50% breakdown point for medians/medoids and greater stability than K-means.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 21,
+        "relevant_text": "Medians and medoids are stated to have a 50% breakdown point and greater robustness to outliers."
+      }
+    ],
+    "category": "limitation",
+    "concept": "Robust Clustering",
+    "difficulty": "hard",
+    "notes": "Supported: breakdown-point statement. Unsupported: universal exact count."
+  },
+  {
+    "case_id": "grounding_formal_035",
+    "course_id": 2,
+    "question": "Which single kernel should always be used for every nonlinear clustering dataset, and which kernel choices are actually discussed in the notes?",
+    "answerability": "partially_answerable",
+    "reference_answer": "No universally best kernel is identified. The notes discuss linear, polynomial, Gaussian/RBF, Laplacian and sigmoid kernels, with performance depending on data/settings.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 35,
+        "relevant_text": "The notes list linear, polynomial, Gaussian/RBF, Laplacian and sigmoid kernels."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 36,
+        "relevant_text": "The concentric example shows different outcomes for different kernels/settings."
+      }
+    ],
+    "category": "limitation",
+    "concept": "Kernel Choice",
+    "difficulty": "medium",
+    "notes": "Supported: options/examples. Unsupported: universally best kernel."
+  },
+  {
+    "case_id": "grounding_formal_036",
+    "course_id": 2,
+    "question": "What exact RBF kernel scale should be used for any future dataset, and what scale choice is reported for the concentric-ring experiment?",
+    "answerability": "partially_answerable",
+    "reference_answer": "No universal RBF scale is prescribed. The specific experiment reports sig = 20/median(D2) in the kernlab parametrisation.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 36,
+        "relevant_text": "For the concentric experiment, the notes report sig := 20/median(D2) for the RBF call."
+      }
+    ],
+    "category": "limitation",
+    "concept": "RBF Kernel",
+    "difficulty": "hard",
+    "notes": "Supported: experiment-specific setting. Unsupported: universal setting."
+  },
+  {
+    "case_id": "grounding_formal_037",
+    "course_id": 2,
+    "question": "For a new kernel K-means problem, exactly how many iterations will the algorithm require, and what general convergence property is established?",
+    "answerability": "partially_answerable",
+    "reference_answer": "No exact iteration count is specified. The notes establish a non-increasing objective and finite termination at a possibly local minimiser.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 34,
+        "relevant_text": "Proposition 2.5 establishes non-increasing J and finite termination at a possibly local minimizer."
+      }
+    ],
+    "category": "limitation",
+    "concept": "Kernel K-means Convergence",
+    "difficulty": "medium",
+    "notes": "Supported: convergence property. Unsupported: exact iteration count."
+  },
+  {
+    "case_id": "grounding_formal_038",
+    "course_id": 2,
+    "question": "For every six-dimensional dataset, exactly how many principal components should be retained, and what guidance do the notes provide for choosing M?",
+    "answerability": "partially_answerable",
+    "reference_answer": "No fixed M is prescribed for every 6D dataset. The notes use explained variance and scree/cumulative-variance plots, including an elbow; one example retains M=2.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 53,
+        "relevant_text": "The notes discuss scree/cumulative explained-variance plots and an elbow for selecting M."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 54,
+        "relevant_text": "One six-variable example uses M=2 with about 85.7% cumulative variance."
+      }
+    ],
+    "category": "limitation",
+    "concept": "PCA Component Selection",
+    "difficulty": "medium",
+    "notes": "Supported: selection guidance/example. Unsupported: universal M."
+  },
+  {
+    "case_id": "grounding_formal_039",
+    "course_id": 2,
+    "question": "Before seeing a new dataset, what exact numerical coefficients will PC1 have, and how are PC1 coefficients determined according to the notes?",
+    "answerability": "partially_answerable",
+    "reference_answer": "Exact coefficients cannot be known before the covariance matrix is known. The notes state that PC1 is an eigenvector associated with the largest covariance eigenvalue.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 50,
+        "relevant_text": "PC1 maximizes projected variance."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 51,
+        "relevant_text": "An eigenvector associated with the largest covariance eigenvalue solves the PC1 problem."
+      }
+    ],
+    "category": "limitation",
+    "concept": "PCA Loadings",
+    "difficulty": "medium",
+    "notes": "Supported: determination method. Unsupported: exact unseen-data coefficients."
+  },
+  {
+    "case_id": "grounding_formal_040",
+    "course_id": 2,
+    "question": "What test-set R-squared should PCR achieve on a future dataset, and what result and procedure are reported in the course example?",
+    "answerability": "partially_answerable",
+    "reference_answer": "Future test R² cannot be determined from the notes. They describe PCR and report a simulated fitted example with R² about 0.79.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 55,
+        "relevant_text": "The notes list the PCR procedure."
+      },
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "page": 56,
+        "relevant_text": "The simulated example reports R² approximately 0.79."
+      }
+    ],
+    "category": "limitation",
+    "concept": "PCR Evaluation",
+    "difficulty": "hard",
+    "notes": "Supported: example/procedure. Unsupported: future held-out performance."
+  },
+  {
+    "case_id": "grounding_formal_041",
+    "course_id": 2,
+    "question": "According to the uploaded notes, what is the default n_init value of scikit-learn's KMeans implementation?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "K-means Implementation",
+    "difficulty": "medium",
+    "notes": "The uploaded notes do not state scikit-learn's default n_init value; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_042",
+    "course_id": 2,
+    "question": "According to the uploaded notes, what exact random seed is recommended for reproducible K-means experiments?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "K-means Implementation",
+    "difficulty": "medium",
+    "notes": "No supporting statement for the requested value/procedure was found in the uploaded lecture notes; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_043",
+    "course_id": 2,
+    "question": "What asymptotic Big-O running time for PAM is stated in the uploaded lecture notes?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "PAM Complexity",
+    "difficulty": "hard",
+    "notes": "No supporting statement for the requested value/procedure was found in the uploaded lecture notes; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_044",
+    "course_id": 2,
+    "question": "According to the uploaded notes, what p-value threshold should be used to decide whether a principal component is statistically significant?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "PCA Significance Testing",
+    "difficulty": "hard",
+    "notes": "No supporting statement for the requested value/procedure was found in the uploaded lecture notes; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_045",
+    "course_id": 2,
+    "question": "What confidence-interval procedure do the uploaded notes recommend for the explained-variance ratio in PCA?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "PCA Uncertainty",
+    "difficulty": "hard",
+    "notes": "No supporting statement for the requested value/procedure was found in the uploaded lecture notes; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_046",
+    "course_id": 2,
+    "question": "According to the uploaded notes, what train/validation/test split should be used before performing unsupervised clustering?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "Experimental Protocol",
+    "difficulty": "medium",
+    "notes": "No supporting statement for the requested value/procedure was found in the uploaded lecture notes; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_047",
+    "course_id": 2,
+    "question": "Which exact version of the R package kernlab do the uploaded notes require for the kernel K-means experiments?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "Kernel K-means Implementation",
+    "difficulty": "medium",
+    "notes": "The notes mention kernlab/kkmeans in an experiment but do not specify a required package version; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_048",
+    "course_id": 2,
+    "question": "What held-out classification accuracy did PCA achieve in the uploaded course notes?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "PCA Evaluation",
+    "difficulty": "medium",
+    "notes": "No supporting statement for the requested value/procedure was found in the uploaded lecture notes; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_049",
+    "course_id": 2,
+    "question": "According to the uploaded notes, what dropout rate should be used when fitting principal component regression?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "PCR Hyperparameters",
+    "difficulty": "medium",
+    "notes": "No supporting statement for the requested value/procedure was found in the uploaded lecture notes; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  },
+  {
+    "case_id": "grounding_formal_050",
+    "course_id": 2,
+    "question": "What minimum GPU memory requirement do the uploaded notes specify for running RBF kernel K-means?",
+    "answerability": "unanswerable",
+    "reference_answer": "",
+    "gold_evidence": [],
+    "category": "refusal",
+    "concept": "Kernel K-means Implementation",
+    "difficulty": "easy",
+    "notes": "No supporting statement for the requested value/procedure was found in the uploaded lecture notes; expected behaviour is source-bounded refusal or an explicit statement that the material does not provide it."
+  }
+]

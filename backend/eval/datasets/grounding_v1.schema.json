@@ -71,6 +71,10 @@
                 "minimum": 1
               }
             },
+            "page": {
+              "type": "integer",
+              "minimum": 1
+            },
             "relevant_text": {
               "type": "string",
               "minLength": 1
