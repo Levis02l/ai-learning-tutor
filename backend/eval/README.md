@@ -184,6 +184,8 @@ Each run should save:
 
 - experiment config: model, temperature, top-k, prompt version, git commit,
   timestamp;
+- retry configuration and per-case retry attempts for transient provider or
+  network failures;
 - raw outputs for both conditions;
 - automatic metrics;
 - human annotations;

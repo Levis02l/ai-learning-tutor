@@ -7,7 +7,7 @@ import json
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from time import perf_counter
+from time import perf_counter, sleep
 from typing import Any
 
 import httpx
@@ -18,12 +18,20 @@ DEFAULT_CASES_PATH = Path(__file__).parent / "datasets" / "grounding_v1.json"
 DEFAULT_OUTPUT_DIR = Path(__file__).with_name("results")
 MODES = ("grounded", "ungrounded")
 RUNNER_VERSION = "eval_v1_a2_1"
+RETRYABLE_HTTP_STATUS_CODES = {429, 502, 503, 504}
 ANSWERABILITY_TO_EXPECTED_ANSWERABLE = {
     "answerable": True,
     "partially_answerable": True,
     "unanswerable": False,
 }
 ANSWERABILITIES = set(ANSWERABILITY_TO_EXPECTED_ANSWERABLE)
+
+
+class RetryableRequestError(RuntimeError):
+    def __init__(self, original_error: Exception, retry_attempts: list[dict]) -> None:
+        super().__init__(str(original_error))
+        self.original_error = original_error
+        self.retry_attempts = retry_attempts
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
@@ -125,6 +133,56 @@ def apply_runtime_config(
     return merged
 
 
+def post_compare_with_retries(
+    *,
+    client: httpx.Client,
+    url: str,
+    payload: dict[str, Any],
+    max_retries: int,
+    initial_delay_seconds: float,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    retry_attempts: list[dict[str, Any]] = []
+    for attempt_index in range(max_retries + 1):
+        try:
+            response = client.post(url, json=payload)
+            response.raise_for_status()
+            comparison = response.json()
+            if not isinstance(comparison, dict):
+                raise ValueError("Compare endpoint must return a JSON object")
+            return comparison, retry_attempts
+        except Exception as exc:
+            retryable = is_retryable_request_error(exc)
+            retry_attempts.append(
+                {
+                    "attempt": attempt_index + 1,
+                    "error_type": type(exc).__name__,
+                    "status_code": status_code_for_exception(exc),
+                    "message": str(exc),
+                    "retryable": retryable,
+                }
+            )
+            if not retryable or attempt_index >= max_retries:
+                raise RetryableRequestError(exc, retry_attempts) from exc
+
+            delay = initial_delay_seconds * (2**attempt_index)
+            if delay > 0:
+                sleep(delay)
+
+    raise RuntimeError("Unreachable retry loop state")
+
+
+def is_retryable_request_error(exc: Exception) -> bool:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in RETRYABLE_HTTP_STATUS_CODES
+    return isinstance(exc, (httpx.TimeoutException, httpx.NetworkError))
+
+
+def status_code_for_exception(exc: Exception) -> int | None:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code
+    return None
+
+
 def run_case(
     *,
     client: httpx.Client,
@@ -133,6 +191,8 @@ def run_case(
     user_id: str,
     top_k: int,
     course_id_override: int | None = None,
+    max_retries: int = 2,
+    retry_initial_delay: float = 2.0,
 ) -> dict[str, Any]:
     started = perf_counter()
     course_id = course_id_override if course_id_override is not None else case.get(
@@ -146,12 +206,13 @@ def run_case(
     if course_id is not None:
         compare_payload["course_id"] = course_id
 
-    compare_response = client.post(
-        f"{base_url}/chat/compare",
-        json=compare_payload,
+    comparison, retry_attempts = post_compare_with_retries(
+        client=client,
+        url=f"{base_url}/chat/compare",
+        payload=compare_payload,
+        max_retries=max_retries,
+        initial_delay_seconds=retry_initial_delay,
     )
-    compare_response.raise_for_status()
-    comparison = compare_response.json()
 
     evaluations: dict[str, Any] = {}
     for mode in MODES:
@@ -178,6 +239,8 @@ def run_case(
         "case": case,
         "comparison": comparison,
         "evaluations": evaluations,
+        "retry_count": len(retry_attempts),
+        "retry_attempts": retry_attempts,
         "latency_seconds": round(perf_counter() - started, 3),
         "error": None,
     }
@@ -191,6 +254,8 @@ def run_case_safely(
     user_id: str,
     top_k: int,
     course_id_override: int | None = None,
+    max_retries: int = 2,
+    retry_initial_delay: float = 2.0,
 ) -> dict[str, Any]:
     started = perf_counter()
     try:
@@ -201,8 +266,16 @@ def run_case_safely(
             user_id=user_id,
             top_k=top_k,
             course_id_override=course_id_override,
+            max_retries=max_retries,
+            retry_initial_delay=retry_initial_delay,
         )
     except Exception as exc:
+        original_error = (
+            exc.original_error if isinstance(exc, RetryableRequestError) else exc
+        )
+        retry_attempts = (
+            exc.retry_attempts if isinstance(exc, RetryableRequestError) else []
+        )
         course_id = (
             course_id_override if course_id_override is not None else case.get(
                 "course_id"
@@ -216,10 +289,12 @@ def run_case_safely(
             "case": case,
             "comparison": None,
             "evaluations": {},
+            "retry_count": len(retry_attempts),
+            "retry_attempts": retry_attempts,
             "latency_seconds": round(perf_counter() - started, 3),
             "error": {
-                "type": type(exc).__name__,
-                "message": str(exc),
+                "type": type(original_error).__name__,
+                "message": str(original_error),
             },
         }
 
@@ -527,6 +602,8 @@ def build_run_config(
         "course_id_override": args.course_id,
         "top_k": args.top_k,
         "timeout": args.timeout,
+        "max_retries": args.max_retries,
+        "retry_initial_delay": args.retry_initial_delay,
         "run_type": args.run_type,
         "case_limit": args.limit,
         "cases_path": str(args.cases),
@@ -560,6 +637,8 @@ def build_manifest(
         "user_id": args.user_id,
         "course_id_override": args.course_id,
         "retrieval_top_k": args.top_k,
+        "max_retries": args.max_retries,
+        "retry_initial_delay": args.retry_initial_delay,
         "model": experiment_config.get("model"),
         "embedding": experiment_config.get("embedding"),
         "prompt_version": experiment_config.get("versions", {}).get(
@@ -697,6 +776,18 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--timeout", type=float, default=120.0)
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=2,
+        help="Retry transient /chat/compare failures this many times per case.",
+    )
+    parser.add_argument(
+        "--retry-initial-delay",
+        type=float,
+        default=2.0,
+        help="Initial retry delay in seconds; each retry doubles this value.",
+    )
     parser.add_argument("--run-type", choices=("pilot", "formal"), default="pilot")
     parser.add_argument("--run-id", default=None)
     parser.add_argument(
@@ -741,6 +832,8 @@ def main() -> None:
                 user_id=args.user_id,
                 top_k=args.top_k,
                 course_id_override=args.course_id,
+                max_retries=args.max_retries,
+                retry_initial_delay=args.retry_initial_delay,
             )
             for case in cases
         ]

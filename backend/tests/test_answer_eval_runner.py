@@ -1,5 +1,6 @@
 import json
 
+import httpx
 import pytest
 
 from eval.run_answer_evaluation import (
@@ -143,6 +144,37 @@ def test_run_case_passes_course_scope_and_answerability() -> None:
     assert grounded_eval_payload["course_id"] == 2
     assert grounded_eval_payload["answerability"] == "partially_answerable"
     assert result["case"]["case_id"] == "grounding_003"
+    assert result["retry_count"] == 0
+    assert result["retry_attempts"] == []
+
+
+def test_run_case_retries_transient_compare_failure() -> None:
+    client = _TransientCompareClient()
+    case = {
+        "case_id": "grounding_005",
+        "course_id": 2,
+        "question": "According to the uploaded material, what is missing?",
+        "answerability": "unanswerable",
+    }
+
+    result = run_case(
+        client=client,  # type: ignore[arg-type]
+        base_url="http://testserver",
+        case=case,
+        user_id="demo-user",
+        top_k=5,
+        max_retries=2,
+        retry_initial_delay=0,
+    )
+
+    compare_posts = [
+        post for post in client.posts if post["url"].endswith("/chat/compare")
+    ]
+    assert len(compare_posts) == 2
+    assert result["retry_count"] == 1
+    assert result["retry_attempts"][0]["status_code"] == 502
+    assert result["retry_attempts"][0]["retryable"] is True
+    assert result["error"] is None
 
 
 def test_run_case_safely_records_error_and_continues() -> None:
@@ -165,6 +197,8 @@ def test_run_case_safely_records_error_and_continues() -> None:
     assert result["case_id"] == "broken"
     assert result["error"]["type"] == "RuntimeError"
     assert result["evaluations"] == {}
+    assert result["retry_count"] == 1
+    assert result["retry_attempts"][0]["retryable"] is False
 
 
 def test_summarize_results_aggregates_mode_metrics() -> None:
@@ -475,8 +509,12 @@ def test_build_run_config_and_manifest_capture_dataset_hash(tmp_path) -> None:
     )
 
     assert run_config["dataset_sha256"] == dataset_hash
+    assert run_config["max_retries"] == 2
+    assert run_config["retry_initial_delay"] == 2.0
     assert manifest["dataset_sha256"] == dataset_hash
     assert manifest["case_count"] == 1
+    assert manifest["max_retries"] == 2
+    assert manifest["retry_initial_delay"] == 2.0
     assert manifest["model"]["name"] == "gpt-test-model"
     assert manifest["prompt_version"] == "grounding_v1"
 
@@ -492,6 +530,23 @@ class _FakeResponse:
         return self.payload
 
 
+class _HttpErrorResponse:
+    def __init__(self, status_code: int) -> None:
+        self.status_code = status_code
+
+    def raise_for_status(self) -> None:
+        request = httpx.Request("POST", "http://testserver/chat/compare")
+        response = httpx.Response(self.status_code, request=request)
+        raise httpx.HTTPStatusError(
+            f"Server error '{self.status_code}'",
+            request=request,
+            response=response,
+        )
+
+    def json(self) -> dict:
+        return {}
+
+
 class _FakeClient:
     def __init__(self) -> None:
         self.posts: list[dict] = []
@@ -499,6 +554,38 @@ class _FakeClient:
     def post(self, url: str, json: dict) -> _FakeResponse:
         self.posts.append({"url": url, "json": json})
         if url.endswith("/chat/compare"):
+            return _FakeResponse(
+                {
+                    "grounded": {"mode": "grounded"},
+                    "ungrounded": {"mode": "ungrounded"},
+                }
+            )
+        return _FakeResponse(
+            {
+                "generation_groundedness_score": 1.0,
+                "generated_unsupported_claim_rate": 0.0,
+                "automatic_cited_claim_support_rate": 1.0,
+                "citation_coverage": 1.0,
+                "automatic_refusal_correctness": True,
+                "effective_refusal": False,
+                "semantic_refusal": False,
+                "refused_by_status": False,
+                "claim_count": 1,
+            }
+        )
+
+
+class _TransientCompareClient(_FakeClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.compare_attempts = 0
+
+    def post(self, url: str, json: dict) -> _FakeResponse | _HttpErrorResponse:
+        self.posts.append({"url": url, "json": json})
+        if url.endswith("/chat/compare"):
+            self.compare_attempts += 1
+            if self.compare_attempts == 1:
+                return _HttpErrorResponse(502)
             return _FakeResponse(
                 {
                     "grounded": {"mode": "grounded"},
@@ -538,6 +625,8 @@ class _Args:
         limit: int | None,
         cases,
         config,
+        max_retries: int = 2,
+        retry_initial_delay: float = 2.0,
     ) -> None:
         self.base_url = base_url
         self.user_id = user_id
@@ -548,3 +637,5 @@ class _Args:
         self.limit = limit
         self.cases = cases
         self.config = config
+        self.max_retries = max_retries
+        self.retry_initial_delay = retry_initial_delay
