@@ -26,6 +26,16 @@ validity, reproducibility, result export, or bug fixes only.
 Does evidence-grounded tutoring improve reliability, traceability, and refusal
 behaviour compared with an otherwise equivalent ungrounded LLM baseline?
 
+## V1-A Freeze Record
+
+The V1-A protocol is frozen after the final 6-case pilot and human audit.
+
+- Protocol freeze: `backend/eval/protocols/grounding_v1_protocol_freeze.md`
+- Final pilot audit: `backend/eval/annotations/grounding_v1_pilot_6case_human_annotations.csv`
+
+Pilot cases are development cases used to validate the protocol. They should
+not be included in the main formal results.
+
 ## V1-A Conditions
 
 Each evaluation case is run under two conditions:
