@@ -110,8 +110,12 @@ def evaluate_answer(
 
 
 def is_semantic_refusal(answer: str) -> bool:
-    normalized = " ".join(answer.lower().split())
+    normalized = normalize_for_semantic_matching(answer)
     return any(marker in normalized for marker in SEMANTIC_REFUSAL_MARKERS)
+
+
+def normalize_for_semantic_matching(answer: str) -> str:
+    return " ".join(answer.lower().replace("’", "'").replace("‘", "'").split())
 
 
 def refusal_correctness_for(

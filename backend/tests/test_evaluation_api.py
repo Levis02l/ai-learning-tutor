@@ -45,6 +45,18 @@ def test_evaluation_answer_endpoint() -> None:
     assert response.json()["answerability"] == "answerable"
 
 
+def test_evaluation_runtime_config_endpoint() -> None:
+    client = TestClient(app)
+
+    response = client.get("/evaluation/runtime-config")
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["llm_provider"] == "openai"
+    assert body["llm_model"]
+    assert body["embedding_model"]
+
+
 def test_evaluation_answer_endpoint_accepts_partial_answerability() -> None:
     client = TestClient(app)
 

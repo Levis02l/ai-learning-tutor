@@ -106,6 +106,38 @@ def test_evaluate_answer_detects_semantic_refusal_when_status_is_answered() -> N
     assert result.automatic_cited_claim_support_rate is None
 
 
+def test_evaluate_answer_detects_curly_apostrophe_semantic_refusal() -> None:
+    response = ChatResponse(
+        query="What is the final exam date?",
+        user_id="demo-user",
+        mode="ungrounded",
+        answer_status="answered",
+        answer="I can’t determine the final exam date from the uploaded material.",
+        claims=[
+            ChatClaim(
+                claim="I can’t determine the final exam date.",
+                source_chunk_ids=[],
+                support_level="unsupported",
+                evidence_quote="",
+            )
+        ],
+        overall_groundedness=0.0,
+        evidence_state=_evidence_state(
+            evidence_strength="none",
+            source_coverage=0.0,
+            supported_claim_count=0,
+            answer_status="answered",
+        ),
+        sources=[],
+    )
+
+    result = evaluate_answer(response=response, answerability="unanswerable")
+
+    assert result.semantic_refusal is True
+    assert result.effective_refusal is True
+    assert result.automatic_refusal_correctness is True
+
+
 def test_evaluate_answer_marks_ungrounded_citation_as_not_applicable() -> None:
     response = ChatResponse(
         query="What objective does K-means minimise?",

@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.schemas.evaluation import (
     Answerability,
     AnswerEvaluationRequest,
     AnswerEvaluationResponse,
+    EvaluationRuntimeConfigResponse,
     QuizEvaluationRequest,
     QuizEvaluationResponse,
 )
@@ -13,6 +15,17 @@ from app.services.courses import CourseNotFoundError, validate_course_scope
 from app.services.evaluation import evaluate_answer, evaluate_quiz_items
 
 router = APIRouter(prefix="/evaluation", tags=["evaluation"])
+
+
+@router.get("/runtime-config", response_model=EvaluationRuntimeConfigResponse)
+def get_evaluation_runtime_config() -> EvaluationRuntimeConfigResponse:
+    return EvaluationRuntimeConfigResponse(
+        llm_provider="openai",
+        llm_model=settings.openai_chat_model,
+        embedding_provider="openai",
+        embedding_model=settings.openai_embedding_model,
+        rag_max_context_chars=settings.rag_max_context_chars,
+    )
 
 
 @router.post("/answer", response_model=AnswerEvaluationResponse)

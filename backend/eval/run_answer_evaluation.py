@@ -88,6 +88,43 @@ def load_config(path: Path) -> dict[str, Any]:
     return config
 
 
+def fetch_runtime_config(*, client: httpx.Client, base_url: str) -> dict[str, Any]:
+    response = client.get(f"{base_url}/evaluation/runtime-config")
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("Runtime config endpoint must return a JSON object")
+    return payload
+
+
+def apply_runtime_config(
+    *,
+    experiment_config: dict[str, Any],
+    runtime_config: dict[str, Any],
+) -> dict[str, Any]:
+    merged = json.loads(json.dumps(experiment_config))
+    model_config = merged.setdefault("model", {})
+    model_config["provider"] = runtime_config.get(
+        "llm_provider",
+        model_config.get("provider", "unknown"),
+    )
+    model_config["name"] = runtime_config.get(
+        "llm_model",
+        model_config.get("name", "unknown"),
+    )
+    embedding_config = merged.setdefault("embedding", {})
+    embedding_config["provider"] = runtime_config.get(
+        "embedding_provider",
+        embedding_config.get("provider", "unknown"),
+    )
+    embedding_config["name"] = runtime_config.get(
+        "embedding_model",
+        embedding_config.get("name", "unknown"),
+    )
+    merged["runtime_config"] = runtime_config
+    return merged
+
+
 def run_case(
     *,
     client: httpx.Client,
@@ -506,6 +543,7 @@ def build_manifest(
     generated_at: str,
     args: argparse.Namespace,
     dataset_hash: str,
+    experiment_config: dict[str, Any],
     cases: list[dict[str, Any]],
     summary: dict[str, Any],
 ) -> dict[str, Any]:
@@ -522,6 +560,11 @@ def build_manifest(
         "user_id": args.user_id,
         "course_id_override": args.course_id,
         "retrieval_top_k": args.top_k,
+        "model": experiment_config.get("model"),
+        "embedding": experiment_config.get("embedding"),
+        "prompt_version": experiment_config.get("versions", {}).get(
+            "prompt_version"
+        ),
         "case_count": len(cases),
         "successful_case_count": summary["successful_case_count"],
         "failed_case_count": summary["failed_case_count"],
@@ -685,6 +728,11 @@ def main() -> None:
     )
 
     with httpx.Client(timeout=args.timeout) as client:
+        runtime_config = fetch_runtime_config(client=client, base_url=base_url)
+        experiment_config = apply_runtime_config(
+            experiment_config=experiment_config,
+            runtime_config=runtime_config,
+        )
         results = [
             run_case_safely(
                 client=client,
@@ -710,6 +758,7 @@ def main() -> None:
         generated_at=generated_at,
         args=args,
         dataset_hash=dataset_hash,
+        experiment_config=experiment_config,
         cases=cases,
         summary=summary,
     )

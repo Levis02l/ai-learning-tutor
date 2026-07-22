@@ -4,6 +4,7 @@ import pytest
 
 from eval.run_answer_evaluation import (
     answerability_for_case,
+    apply_runtime_config,
     build_manifest,
     build_run_config,
     create_run_dir,
@@ -76,6 +77,35 @@ def test_expected_answerable_for_supports_legacy_cases() -> None:
 
 def test_expected_answerable_for_partially_answerable_case() -> None:
     assert expected_answerable_for({"answerability": "partially_answerable"}) is True
+
+
+def test_apply_runtime_config_records_actual_backend_models() -> None:
+    config = {
+        "model": {
+            "provider": "openai",
+            "name": "configured-by-backend-env",
+            "temperature": 0.0,
+            "max_tokens": None,
+        },
+        "versions": {"prompt_version": "grounding_v1"},
+    }
+    runtime_config = {
+        "llm_provider": "openai",
+        "llm_model": "gpt-test-model",
+        "embedding_provider": "openai",
+        "embedding_model": "text-embedding-test",
+        "rag_max_context_chars": 6000,
+    }
+
+    merged = apply_runtime_config(
+        experiment_config=config,
+        runtime_config=runtime_config,
+    )
+
+    assert merged["model"]["name"] == "gpt-test-model"
+    assert merged["model"]["temperature"] == 0.0
+    assert merged["embedding"]["name"] == "text-embedding-test"
+    assert merged["runtime_config"] == runtime_config
 
 
 def test_answerability_for_case_preserves_partial_cases() -> None:
@@ -435,6 +465,11 @@ def test_build_run_config_and_manifest_capture_dataset_hash(tmp_path) -> None:
         generated_at="2026-07-22T12:00:00+00:00",
         args=args,  # type: ignore[arg-type]
         dataset_hash=dataset_hash,
+        experiment_config={
+            "model": {"provider": "openai", "name": "gpt-test-model"},
+            "embedding": {"provider": "openai", "name": "text-embedding-test"},
+            "versions": {"prompt_version": "grounding_v1"},
+        },
         cases=cases,
         summary=summary,
     )
@@ -442,6 +477,8 @@ def test_build_run_config_and_manifest_capture_dataset_hash(tmp_path) -> None:
     assert run_config["dataset_sha256"] == dataset_hash
     assert manifest["dataset_sha256"] == dataset_hash
     assert manifest["case_count"] == 1
+    assert manifest["model"]["name"] == "gpt-test-model"
+    assert manifest["prompt_version"] == "grounding_v1"
 
 
 class _FakeResponse:

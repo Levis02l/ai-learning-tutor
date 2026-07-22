@@ -63,3 +63,11 @@ class QuizEvaluationResponse(BaseModel):
     not_traceable_count: int
     traceable_item_rate: float
     label_counts: dict[str, int]
+
+
+class EvaluationRuntimeConfigResponse(BaseModel):
+    llm_provider: str
+    llm_model: str
+    embedding_provider: str
+    embedding_model: str
+    rag_max_context_chars: int
