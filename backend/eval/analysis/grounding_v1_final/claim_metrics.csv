@@ -1,0 +1,7 @@
+group,mode,substantive_claims,fully_supported,partially_supported,unsupported,contradicted,fully_supported_rate,any_supported_rate,unsupported_or_contradicted_rate
+answerable,grounded,104,104,0,0,0,1.0,1.0,0.0
+answerable,ungrounded,101,96,3,0,2,0.950495,0.980198,0.019802
+partially_answerable,grounded,28,26,2,0,0,0.928571,1.0,0.0
+partially_answerable,ungrounded,20,9,5,4,2,0.45,0.7,0.3
+factual_combined,grounded,132,130,2,0,0,0.984848,1.0,0.0
+factual_combined,ungrounded,121,105,8,4,4,0.867769,0.933884,0.066116

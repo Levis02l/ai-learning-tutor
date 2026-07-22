@@ -1,0 +1,21 @@
+group,metric,n_pairs,grounded_estimate,ungrounded_estimate,difference_grounded_minus_ungrounded,difference_ci_95_low,difference_ci_95_high,paired_test,p_value_two_sided,discordant_grounded_only,discordant_ungrounded_only
+answerable,mean_answer_correctness,30,2.0,1.733333,0.266667,0.1,0.433333,paired sign-flip exact,0.007812,,
+answerable,fully_correct_rate,30,1.0,0.733333,0.266667,0.133333,0.433333,McNemar exact,0.007812,8,0
+answerable,course_supported_claim_rate,30,1.0,0.9578,0.0422,0.0111,0.079967,paired sign-flip exact,0.0625,,
+answerable,unsupported_by_course_claim_rate,30,0.0,0.017767,-0.017767,-0.046633,0.0,paired sign-flip exact,0.5,,
+partially_answerable,mean_answer_correctness,10,1.9,1.3,0.6,0.3,0.9,paired sign-flip exact,0.03125,,
+partially_answerable,fully_correct_rate,10,0.9,0.4,0.5,0.2,0.8,McNemar exact,0.0625,5,0
+partially_answerable,course_supported_claim_rate,10,0.9417,0.4667,0.475,0.25,0.7,paired sign-flip exact,0.015625,,
+partially_answerable,unsupported_by_course_claim_rate,10,0.0,0.25,-0.25,-0.45,-0.05,paired sign-flip exact,0.125,,
+factual_combined,mean_answer_correctness,40,1.975,1.625,0.35,0.2,0.5,paired sign-flip exact,0.000122,,
+factual_combined,fully_correct_rate,40,0.975,0.65,0.325,0.2,0.475,McNemar exact,0.000244,13,0
+factual_combined,course_supported_claim_rate,40,0.985425,0.835025,0.1504,0.07165,0.243325,paired sign-flip exact,0.000488,,
+factual_combined,unsupported_by_course_claim_rate,40,0.0,0.075825,-0.075825,-0.145825,-0.020825,paired sign-flip exact,0.03125,,
+partially_answerable,supported_part_score,10,1.0,0.65,0.35,0.15,0.55,paired sign-flip exact,0.03125,,
+partially_answerable,supported_part_fully_answered_rate,10,1.0,0.4,0.6,0.3,0.9,McNemar exact,0.03125,6,0
+partially_answerable,unsupported_part_limitation_score,10,0.8,0.65,0.15,0.0,0.4,paired sign-flip exact,0.5,,
+partially_answerable,unsupported_part_fully_limited_rate,10,0.8,0.6,0.2,0.0,0.5,McNemar exact,0.5,2,0
+unanswerable,correct_refusal_rate,10,1.0,0.3,0.7,0.4,1.0,McNemar exact,0.015625,7,0
+unanswerable,false_answer_rate,10,0.0,0.6,-0.6,-0.9,-0.3,McNemar exact,0.03125,0,6
+unanswerable,semantic_refusal_rate,10,1.0,0.3,0.7,0.4,1.0,McNemar exact,0.015625,7,0
+answerable,false_refusal_rate,30,0.0,0.0,0.0,0.0,0.0,McNemar exact,1.0,0,0

@@ -1,0 +1,25 @@
+{
+  "analysis_version": "grounding-v1-a-final-1",
+  "frozen_inputs": {
+    "response_annotations": {
+      "path": "eval/annotations/grounding_v1_formal_human_annotations.csv",
+      "sha256": "ccf559b474427b0fbbb11aabdbdeb5c117cb0fdcf3d2bd4100b401522ee06974",
+      "rows": 100
+    },
+    "claim_annotations": {
+      "path": "eval/annotations/grounding_v1_formal_claim_annotations.csv",
+      "sha256": "6b3993ffb76a297280bec94af9dd11dfe0b06c6b534270d41bfe991addea3729",
+      "rows": 300
+    }
+  },
+  "methods": {
+    "confidence_level": 0.95,
+    "bootstrap_resamples": 20000,
+    "permutation_resamples": 50000,
+    "continuous_paired_test": "paired sign-flip permutation",
+    "binary_paired_test": "McNemar exact",
+    "binary_condition_ci": "Wilson score",
+    "random_seed": "deterministic SHA256-derived per metric",
+    "multiple_comparison_adjustment": "none; exploratory p-values"
+  }
+}

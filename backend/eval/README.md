@@ -227,3 +227,31 @@ cases. Do not average correct refusals into factual groundedness or citation
 metrics. For final reporting, use the human annotation template in
 `backend/eval/annotations/grounding_v1_template.csv` to add post-hoc
 course-evidence support and citation judgements.
+
+## V1-A Final Statistical Analysis
+
+The final analysis reads only the author-signed frozen response and claim
+annotations. It validates their SHA256 values before calculating any result:
+
+```bash
+cd backend
+.venv/bin/python -m eval.analyze_grounding_v1
+```
+
+Tracked outputs are written to
+`backend/eval/analysis/grounding_v1_final/`:
+
+- `analysis_manifest.json`: frozen input hashes and statistical methods;
+- `summary.json`: machine-readable final result set;
+- `response_metrics.csv`: estimates and 95% confidence intervals;
+- `paired_comparisons.csv`: paired effects and inferential tests;
+- `claim_metrics.csv`: claim-level micro analysis;
+- `qualitative_failure_cases.csv`: signed-off failure-analysis cases;
+- `results_tables.md`: dissertation-ready tables and interpretation notes;
+- `results_and_discussion.md`: dissertation-ready V1-A narrative;
+- `figures/`: publication-ready SVG comparisons.
+
+Continuous and ordinal outcomes use paired sign-flip tests with paired
+bootstrap confidence intervals. Binary paired outcomes use exact McNemar tests,
+with Wilson intervals for condition-level rates. Random procedures use stable,
+SHA256-derived seeds so repeated runs produce byte-identical outputs.
