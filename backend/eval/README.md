@@ -42,8 +42,11 @@ For a fair comparison, keep these settings aligned across both conditions:
 - same user and course;
 - same output schema where applicable.
 
-The main intended variable is whether the answer is grounded in uploaded course
-evidence.
+The main intended variable is whether the answer is produced with access to
+course evidence and grounding constraints. This must not be confused with
+post-hoc evidence support. An ungrounded answer may still make claims that are
+consistent with the course material, even though it did not retrieve or cite
+that material during generation.
 
 ## Dataset Schema
 
@@ -76,17 +79,27 @@ chunk IDs may be included only as a convenience for automation.
 Use a small number of metrics that can be explained clearly in the dissertation:
 
 - answer correctness;
-- claim support rate;
-- unsupported claim rate;
-- citation precision;
-- citation coverage;
+- course-supported claim rate;
+- unsupported-by-course claim rate;
+- citation precision, where citations are applicable;
+- citation coverage, where citations are applicable;
 - correct refusal rate;
 - false refusal rate;
 - false answer rate.
 
-Automated metrics can assist with scoring, but answer correctness, citation
-correctness, and refusal correctness should be human-reviewed for the final
-reported dataset.
+Do not interpret "no citation" as "unsupported by course material". These are
+different concepts:
+
+- `course-supported claim rate`: post-hoc judgement of whether the final claims
+  are supported by the uploaded course material. This applies to both grounded
+  and ungrounded conditions.
+- `citation precision` and `citation coverage`: judgement of whether supplied
+  citations support the claims. These are mainly applicable to grounded answers;
+  for ungrounded answers they should normally be marked `N/A`, not `0`.
+
+Automated metrics can assist with scoring, but answer correctness,
+course-evidence support, citation correctness, and refusal correctness should be
+human-reviewed for the final reported dataset.
 
 ## Human Annotation Rubric
 
@@ -96,7 +109,18 @@ Answer correctness:
 - `1`: partially correct but incomplete, vague, or missing an important caveat;
 - `0`: incorrect, unsupported, or misleading.
 
-Claim support:
+Post-hoc course evidence support:
+
+- `supported`: the final claim is supported by the uploaded course material,
+  whether or not the answer explicitly cited it;
+- `partially_supported`: the final claim is directionally supported but omits an
+  important caveat or requires inference;
+- `unsupported_by_course`: the final claim is not supported by the uploaded
+  course material;
+- `contradicted_by_course`: the final claim conflicts with the uploaded course
+  material.
+
+Generated claim support labels:
 
 - `fully_supported`: directly supported by cited course evidence;
 - `partially_supported`: plausible but requires inference or omits conditions;
@@ -109,6 +133,8 @@ Citation correctness:
 - a citation is correct only if the cited evidence supports the specific claim;
 - a citation is not correct merely because it comes from the same document or
   general topic.
+- citation metrics are not applicable to the ungrounded condition unless an
+  ungrounded baseline explicitly produces citations.
 
 Refusal correctness:
 
@@ -116,6 +142,8 @@ Refusal correctness:
 - unanswerable cases should be refused or explicitly limited;
 - partially answerable cases should answer the supported part and identify the
   limitation.
+- semantic refusals count as refusals even if an API `answer_status` field says
+  `answered`, for example "I cannot determine this from the uploaded material."
 
 ## Result Format
 
@@ -157,3 +185,9 @@ cd backend
 
 The runner should preserve this result structure so summaries can be recomputed
 from raw outputs later.
+
+Automatic summaries separate answerable and unanswerable cases. Do not average
+correct refusals into factual groundedness or citation precision. For final
+reporting, use the human annotation template in
+`backend/eval/annotations/grounding_v1_template.csv` to add post-hoc
+course-evidence support and citation judgements.

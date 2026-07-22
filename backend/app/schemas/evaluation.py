@@ -18,9 +18,15 @@ class AnswerEvaluationResponse(BaseModel):
     supported_claim_count: int
     unsupported_claim_count: int
     contradicted_claim_count: int
-    citation_precision: float
+    cited_claim_count: int
+    citation_applicable: bool
+    citation_precision: float | None
+    citation_coverage: float | None
     unsupported_claim_rate: float
     groundedness_score: float
+    refused_by_status: bool
+    semantic_refusal: bool
+    effective_refusal: bool
     correct_refusal: bool
 
 

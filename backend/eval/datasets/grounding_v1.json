@@ -16,7 +16,7 @@
     "category": "factual",
     "concept": "K-means Clustering",
     "difficulty": "easy",
-    "notes": "Replace document metadata with the actual uploaded lecture name after final ingestion."
+    "notes": "Source document: Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf."
   },
   {
     "case_id": "grounding_002",
@@ -41,8 +41,8 @@
     "case_id": "grounding_003",
     "course_id": 2,
     "question": "According to the course material, does K-means guarantee the global optimum?",
-    "answerability": "partially_answerable",
-    "reference_answer": "The material supports that the procedure can converge to a local minimum. If the uploaded material does not explicitly discuss global optimality, the answer should be limited to that evidence.",
+    "answerability": "answerable",
+    "reference_answer": "No. The material states that K-means iterations do not increase the objective and converge to a possibly local minimum, so the course evidence supports that a global optimum is not guaranteed.",
     "gold_evidence": [
       {
         "document": "Lecture notes on unsupervised learning",
@@ -54,10 +54,29 @@
     "category": "limitation",
     "concept": "K-means Clustering",
     "difficulty": "medium",
-    "notes": "Useful for testing limited answers rather than overclaiming."
+    "notes": "Changed from partially_answerable after pilot review because the local-minimum evidence is sufficient to answer the question."
   },
   {
     "case_id": "grounding_004",
+    "course_id": 2,
+    "question": "According to the course material, what exact value of K should be used for a new dataset, and which methods can help choose it?",
+    "answerability": "partially_answerable",
+    "reference_answer": "The material can support that choosing K is external to K-means and may be guided by methods such as the elbow method or silhouette method. It does not provide a universal exact value of K for a new dataset.",
+    "gold_evidence": [
+      {
+        "document": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf",
+        "document_id": null,
+        "chunk_ids": [],
+        "relevant_text": "The choice of K is external to the algorithm itself and is often guided by methods such as elbow or silhouette."
+      }
+    ],
+    "category": "limitation",
+    "concept": "Elbow Method",
+    "difficulty": "medium",
+    "notes": "True partial case: the material supports methods for choosing K but not a universal exact K."
+  },
+  {
+    "case_id": "grounding_005",
     "course_id": 2,
     "question": "According to the uploaded clustering lecture, what medical treatment is recommended for diabetes?",
     "answerability": "unanswerable",
@@ -69,7 +88,7 @@
     "notes": "Expected behaviour: refuse or state that the course materials do not contain this information."
   },
   {
-    "case_id": "grounding_005",
+    "case_id": "grounding_006",
     "course_id": 2,
     "question": "According to the uploaded material, what date will the final exam take place?",
     "answerability": "unanswerable",

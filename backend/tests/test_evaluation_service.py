@@ -38,6 +38,8 @@ def test_evaluate_answer_scores_claim_support_and_refusal() -> None:
     assert result.supported_claim_count == 1
     assert result.unsupported_claim_rate == 0.5
     assert result.citation_precision == 1.0
+    assert result.citation_coverage == 0.5
+    assert result.citation_applicable is True
     assert result.correct_refusal is True
 
 
@@ -61,7 +63,79 @@ def test_evaluate_answer_marks_correct_refusal_for_unanswerable_question() -> No
 
     result = evaluate_answer(response=response, expected_answerable=False)
 
+    assert result.refused_by_status is True
+    assert result.effective_refusal is True
     assert result.correct_refusal is True
+
+
+def test_evaluate_answer_detects_semantic_refusal_when_status_is_answered() -> None:
+    response = ChatResponse(
+        query="What is the exam date?",
+        user_id="demo-user",
+        mode="ungrounded",
+        answer_status="answered",
+        answer="I cannot determine the final exam date from the uploaded material.",
+        claims=[
+            ChatClaim(
+                claim=(
+                    "I cannot determine the final exam date from the uploaded "
+                    "material."
+                ),
+                source_chunk_ids=[],
+                support_level="unsupported",
+                evidence_quote="",
+            )
+        ],
+        overall_groundedness=0.0,
+        evidence_state=_evidence_state(
+            evidence_strength="none",
+            source_coverage=0.0,
+            supported_claim_count=0,
+            answer_status="answered",
+        ),
+        sources=[],
+    )
+
+    result = evaluate_answer(response=response, expected_answerable=False)
+
+    assert result.refused_by_status is False
+    assert result.semantic_refusal is True
+    assert result.effective_refusal is True
+    assert result.correct_refusal is True
+    assert result.citation_applicable is False
+    assert result.citation_precision is None
+
+
+def test_evaluate_answer_marks_ungrounded_citation_as_not_applicable() -> None:
+    response = ChatResponse(
+        query="What objective does K-means minimise?",
+        user_id="demo-user",
+        mode="ungrounded",
+        answer_status="answered",
+        answer="K-means minimises within-cluster sum of squares.",
+        claims=[
+            ChatClaim(
+                claim="K-means minimises within-cluster sum of squares.",
+                source_chunk_ids=[],
+                support_level="unsupported",
+                evidence_quote="",
+            )
+        ],
+        overall_groundedness=0.0,
+        evidence_state=_evidence_state(
+            evidence_strength="none",
+            source_coverage=0.0,
+            supported_claim_count=0,
+            answer_status="answered",
+        ),
+        sources=[],
+    )
+
+    result = evaluate_answer(response=response, expected_answerable=True)
+
+    assert result.citation_applicable is False
+    assert result.citation_precision is None
+    assert result.citation_coverage is None
 
 
 def test_evaluate_quiz_items_counts_traceability_labels() -> None:

@@ -406,8 +406,14 @@ export type AnswerEvaluation = {
   supported_claim_count: number
   unsupported_claim_count: number
   contradicted_claim_count: number
-  citation_precision: number
+  cited_claim_count: number
+  citation_applicable: boolean
+  citation_precision: number | null
+  citation_coverage: number | null
   unsupported_claim_rate: number
   groundedness_score: number
+  refused_by_status: boolean
+  semantic_refusal: boolean
+  effective_refusal: boolean
   correct_refusal: boolean
 }

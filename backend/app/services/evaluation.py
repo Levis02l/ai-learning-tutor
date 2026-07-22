@@ -9,6 +9,31 @@ REFUSAL_STATUSES = {
     "needs_more_material",
 }
 TRACEABLE_LABELS = {"fully_traceable", "partially_traceable"}
+SEMANTIC_REFUSAL_MARKERS = (
+    "cannot determine",
+    "can't determine",
+    "cannot answer",
+    "can't answer",
+    "do not have enough",
+    "don't have enough",
+    "does not contain",
+    "do not contain",
+    "doesn't contain",
+    "insufficient evidence",
+    "insufficient information",
+    "not enough information",
+    "not provided",
+    "not stated",
+    "not mention",
+    "not included",
+    "no evidence",
+    "no information",
+    "no source",
+    "outside the uploaded",
+    "outside the provided",
+    "uploaded material does not",
+    "uploaded materials do not",
+)
 
 
 def evaluate_answer(
@@ -32,25 +57,48 @@ def evaluate_answer(
         for claim in response.claims
         if claim.source_chunk_ids and claim.support_level in SUPPORTED_LABELS
     )
-    citation_precision = (
-        correctly_cited_claim_count / cited_claim_count if cited_claim_count else 0.0
-    )
     unsupported_claim_rate = (
         unsupported_claim_count / claim_count if claim_count else 0.0
     )
-    refused = response.answer_status in REFUSAL_STATUSES
+    refused_by_status = response.answer_status in REFUSAL_STATUSES
+    semantic_refusal = is_semantic_refusal(response.answer)
+    effective_refusal = refused_by_status or semantic_refusal
+    citation_applicable = (
+        response.mode != "ungrounded"
+        and not effective_refusal
+        and claim_count > 0
+    )
+    citation_precision = (
+        round(correctly_cited_claim_count / cited_claim_count, 3)
+        if citation_applicable and cited_claim_count
+        else None
+    )
+    citation_coverage = (
+        round(cited_claim_count / claim_count, 3) if citation_applicable else None
+    )
 
     return AnswerEvaluationResponse(
         claim_count=claim_count,
         supported_claim_count=supported_claim_count,
         unsupported_claim_count=unsupported_claim_count,
         contradicted_claim_count=contradicted_claim_count,
-        citation_precision=round(citation_precision, 3),
+        cited_claim_count=cited_claim_count,
+        citation_applicable=citation_applicable,
+        citation_precision=citation_precision,
+        citation_coverage=citation_coverage,
         unsupported_claim_rate=round(unsupported_claim_rate, 3),
         groundedness_score=response.overall_groundedness,
-        correct_refusal=(not expected_answerable and refused)
-        or (expected_answerable and not refused),
+        refused_by_status=refused_by_status,
+        semantic_refusal=semantic_refusal,
+        effective_refusal=effective_refusal,
+        correct_refusal=(not expected_answerable and effective_refusal)
+        or (expected_answerable and not effective_refusal),
     )
+
+
+def is_semantic_refusal(answer: str) -> bool:
+    normalized = " ".join(answer.lower().split())
+    return any(marker in normalized for marker in SEMANTIC_REFUSAL_MARKERS)
 
 
 def evaluate_quiz_items(*, items: list[QuizItemResponse]) -> QuizEvaluationResponse:

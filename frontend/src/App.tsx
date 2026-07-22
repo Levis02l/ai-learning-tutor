@@ -2141,8 +2141,8 @@ function EvaluationMatrix({
     },
     {
       label: 'Citation precision',
-      grounded: `${Math.round(grounded.citation_precision * 100)}%`,
-      ungrounded: `${Math.round(ungrounded.citation_precision * 100)}%`,
+      grounded: formatEvaluationPercent(grounded.citation_precision),
+      ungrounded: formatEvaluationPercent(ungrounded.citation_precision),
       direction: 'higher',
     },
     {
@@ -2755,7 +2755,7 @@ function AnswerMetrics({ evaluation }: { evaluation: AnswerEvaluation }) {
   return (
     <div className="metric-strip">
       <Metric label="Groundedness" value={`${Math.round(evaluation.groundedness_score * 100)}%`} />
-      <Metric label="Citation" value={`${Math.round(evaluation.citation_precision * 100)}%`} />
+      <Metric label="Citation" value={formatEvaluationPercent(evaluation.citation_precision)} />
       <Metric label="Unsupported" value={`${Math.round(evaluation.unsupported_claim_rate * 100)}%`} />
       <Metric label="Claims" value={evaluation.claim_count} />
     </div>
@@ -2822,6 +2822,10 @@ function formatDate(value: string) {
 
 function formatNullablePercent(value: number | null) {
   return value == null ? 'Unobserved' : `${Math.round(value * 100)}%`
+}
+
+function formatEvaluationPercent(value: number | null) {
+  return value == null ? 'N/A' : `${Math.round(value * 100)}%`
 }
 
 function formatProgressStatus(status: ProgressConceptStatus) {
