@@ -1,0 +1,508 @@
+{
+  "policy_conformance": {
+    "adaptive": {
+      "scenario_n": 24,
+      "action_accuracy_count": 24,
+      "action_accuracy_rate": 1.0,
+      "strategy_accuracy_count": 24,
+      "strategy_accuracy_rate": 1.0,
+      "exact_policy_match_count": 24,
+      "exact_policy_match_rate": 1.0
+    },
+    "baseline": {
+      "scenario_n": 24,
+      "action_accuracy_count": 24,
+      "action_accuracy_rate": 1.0,
+      "strategy_accuracy_count": 24,
+      "strategy_accuracy_rate": 1.0,
+      "exact_policy_match_count": 24,
+      "exact_policy_match_rate": 1.0
+    }
+  },
+  "registered_directional_behavior_g01_g06": {
+    "adaptive": {
+      "success_count": 6,
+      "denominator": 6,
+      "rate": 1.0,
+      "groups": [
+        {
+          "group_id": "AP_G01",
+          "expected_behavior": "registered_adaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "scaffolded"
+            },
+            {
+              "action": "explain",
+              "strategy": "concise"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G02",
+          "expected_behavior": "registered_adaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "scaffolded"
+            },
+            {
+              "action": "explain",
+              "strategy": "concise"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G03",
+          "expected_behavior": "registered_adaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "quiz",
+              "strategy": "guided"
+            },
+            {
+              "action": "quiz",
+              "strategy": "challenging"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G04",
+          "expected_behavior": "registered_adaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "quiz",
+              "strategy": "guided"
+            },
+            {
+              "action": "quiz",
+              "strategy": "challenging"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G05",
+          "expected_behavior": "registered_adaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "scaffolded"
+            },
+            {
+              "action": "quiz",
+              "strategy": "challenging"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G06",
+          "expected_behavior": "registered_adaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "scaffolded"
+            },
+            {
+              "action": "quiz",
+              "strategy": "challenging"
+            }
+          ]
+        }
+      ]
+    },
+    "baseline": {
+      "success_count": 6,
+      "denominator": 6,
+      "rate": 1.0,
+      "groups": [
+        {
+          "group_id": "AP_G01",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G02",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G03",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "quiz",
+              "strategy": "guided"
+            },
+            {
+              "action": "quiz",
+              "strategy": "guided"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G04",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "quiz",
+              "strategy": "guided"
+            },
+            {
+              "action": "quiz",
+              "strategy": "guided"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G05",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G06",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "registered_ordinal_behavior_g07_g08": {
+    "adaptive": {
+      "success_count": 2,
+      "denominator": 2,
+      "rate": 1.0,
+      "groups": [
+        {
+          "group_id": "AP_G07",
+          "expected_behavior": "registered_ordinal_adaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "scaffolded"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "concise"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G08",
+          "expected_behavior": "registered_ordinal_adaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "scaffolded"
+            },
+            {
+              "action": "hint",
+              "strategy": "guided"
+            },
+            {
+              "action": "quiz",
+              "strategy": "challenging"
+            }
+          ]
+        }
+      ]
+    },
+    "baseline": {
+      "success_count": 2,
+      "denominator": 2,
+      "rate": 1.0,
+      "groups": [
+        {
+          "group_id": "AP_G07",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            }
+          ]
+        },
+        {
+          "group_id": "AP_G08",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true,
+          "actual_sequence": [
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            },
+            {
+              "action": "explain",
+              "strategy": "guided"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "supplementary_adjacent_triplet_contrasts": {
+    "adaptive": {
+      "success_count": 4,
+      "denominator": 4,
+      "rate": 1.0,
+      "groups": [
+        {
+          "group_id": "AP_G07",
+          "contrast": "low_to_medium",
+          "expected_behavior": "registered_adaptation",
+          "success": true
+        },
+        {
+          "group_id": "AP_G07",
+          "contrast": "medium_to_high",
+          "expected_behavior": "registered_adaptation",
+          "success": true
+        },
+        {
+          "group_id": "AP_G08",
+          "contrast": "low_to_medium",
+          "expected_behavior": "registered_adaptation",
+          "success": true
+        },
+        {
+          "group_id": "AP_G08",
+          "contrast": "medium_to_high",
+          "expected_behavior": "registered_adaptation",
+          "success": true
+        }
+      ]
+    },
+    "baseline": {
+      "success_count": 4,
+      "denominator": 4,
+      "rate": 1.0,
+      "groups": [
+        {
+          "group_id": "AP_G07",
+          "contrast": "low_to_medium",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true
+        },
+        {
+          "group_id": "AP_G07",
+          "contrast": "medium_to_high",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true
+        },
+        {
+          "group_id": "AP_G08",
+          "contrast": "low_to_medium",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true
+        },
+        {
+          "group_id": "AP_G08",
+          "contrast": "medium_to_high",
+          "expected_behavior": "registered_nonadaptation",
+          "success": true
+        }
+      ]
+    }
+  },
+  "review_due_behavior_g09": {
+    "adaptive": {
+      "expected_behavior": "registered_review_due_adaptation",
+      "success_count": 1,
+      "denominator": 1,
+      "rate": 1.0,
+      "actual_sequence": [
+        {
+          "action": "hint",
+          "strategy": "guided"
+        },
+        {
+          "action": "review",
+          "strategy": "review_drill"
+        }
+      ]
+    },
+    "baseline": {
+      "expected_behavior": "registered_nonadaptation",
+      "success_count": 1,
+      "denominator": 1,
+      "rate": 1.0,
+      "actual_sequence": [
+        {
+          "action": "explain",
+          "strategy": "guided"
+        },
+        {
+          "action": "explain",
+          "strategy": "guided"
+        }
+      ]
+    }
+  },
+  "explicit_intent_action_fidelity_g10_g11": {
+    "adaptive": {
+      "success_count": 2,
+      "denominator": 2,
+      "rate": 1.0,
+      "groups": [
+        {
+          "group_id": "AP_G10",
+          "required_action": "hint",
+          "success": true,
+          "actual_actions": [
+            "hint",
+            "hint"
+          ]
+        },
+        {
+          "group_id": "AP_G11",
+          "required_action": "quiz",
+          "success": true,
+          "actual_actions": [
+            "quiz",
+            "quiz"
+          ]
+        }
+      ]
+    },
+    "baseline": {
+      "success_count": 2,
+      "denominator": 2,
+      "rate": 1.0,
+      "groups": [
+        {
+          "group_id": "AP_G10",
+          "required_action": "hint",
+          "success": true,
+          "actual_actions": [
+            "hint",
+            "hint"
+          ]
+        },
+        {
+          "group_id": "AP_G11",
+          "required_action": "quiz",
+          "success": true,
+          "actual_actions": [
+            "quiz",
+            "quiz"
+          ]
+        }
+      ]
+    }
+  },
+  "over_adaptation_g10_g11": {
+    "adaptive": {
+      "violation_count": 0,
+      "scenario_denominator": 4,
+      "rate": 0.0
+    },
+    "baseline": {
+      "violation_count": 0,
+      "scenario_denominator": 4,
+      "rate": 0.0
+    }
+  },
+  "identical_policy_controls": {
+    "registered_count": 4,
+    "responses_identical_count": 4,
+    "canonical_reuse_count": 4,
+    "structural_tie_count": 4,
+    "controls": [
+      {
+        "case_id": "adaptive_formal_g03_low",
+        "responses_identical": true,
+        "canonical_execution_reused": true,
+        "revealed_preference": "tie",
+        "structural_tie": true
+      },
+      {
+        "case_id": "adaptive_formal_g04_low",
+        "responses_identical": true,
+        "canonical_execution_reused": true,
+        "revealed_preference": "tie",
+        "structural_tie": true
+      },
+      {
+        "case_id": "adaptive_formal_g07_medium",
+        "responses_identical": true,
+        "canonical_execution_reused": true,
+        "revealed_preference": "tie",
+        "structural_tie": true
+      },
+      {
+        "case_id": "adaptive_formal_g11_low",
+        "responses_identical": true,
+        "canonical_execution_reused": true,
+        "revealed_preference": "tie",
+        "structural_tie": true
+      }
+    ]
+  }
+}

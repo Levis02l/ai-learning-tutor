@@ -1,0 +1,108 @@
+{
+  "primary": {
+    "unit": "paired_scenario",
+    "total_n": 24,
+    "adaptive_better_count": 11,
+    "baseline_better_count": 2,
+    "tie_count": 11,
+    "non_tie_n": 13,
+    "adaptive_better_rate_all": 0.4583333333333333,
+    "baseline_better_rate_all": 0.08333333333333333,
+    "tie_rate_all": 0.4583333333333333,
+    "adaptive_better_rate_non_ties": 0.8461538461538461,
+    "test": "exact_two_sided_sign_test_on_non_ties",
+    "null_probability": 0.5,
+    "p_value": 0.0224609375,
+    "effect_direction": "adaptive"
+  },
+  "clustered_sensitivity": {
+    "unit": "registered_counterfactual_group",
+    "total_group_n": 11,
+    "adaptive_direction_count": 7,
+    "baseline_direction_count": 0,
+    "tied_group_count": 4,
+    "non_tied_group_n": 7,
+    "test": "exact_two_sided_sign_test_on_nonzero_group_directions",
+    "null_probability": 0.5,
+    "p_value": 0.015625,
+    "groups": [
+      {
+        "group_id": "AP_G01",
+        "scenario_count": 2,
+        "score_sum": 1,
+        "score_mean": 0.5,
+        "direction": "adaptive_direction"
+      },
+      {
+        "group_id": "AP_G02",
+        "scenario_count": 2,
+        "score_sum": 1,
+        "score_mean": 0.5,
+        "direction": "adaptive_direction"
+      },
+      {
+        "group_id": "AP_G03",
+        "scenario_count": 2,
+        "score_sum": 1,
+        "score_mean": 0.5,
+        "direction": "adaptive_direction"
+      },
+      {
+        "group_id": "AP_G04",
+        "scenario_count": 2,
+        "score_sum": 0,
+        "score_mean": 0.0,
+        "direction": "tied_group"
+      },
+      {
+        "group_id": "AP_G05",
+        "scenario_count": 2,
+        "score_sum": 2,
+        "score_mean": 1.0,
+        "direction": "adaptive_direction"
+      },
+      {
+        "group_id": "AP_G06",
+        "scenario_count": 2,
+        "score_sum": 2,
+        "score_mean": 1.0,
+        "direction": "adaptive_direction"
+      },
+      {
+        "group_id": "AP_G07",
+        "scenario_count": 3,
+        "score_sum": 1,
+        "score_mean": 0.3333333333333333,
+        "direction": "adaptive_direction"
+      },
+      {
+        "group_id": "AP_G08",
+        "scenario_count": 3,
+        "score_sum": 1,
+        "score_mean": 0.3333333333333333,
+        "direction": "adaptive_direction"
+      },
+      {
+        "group_id": "AP_G09",
+        "scenario_count": 2,
+        "score_sum": 0,
+        "score_mean": 0.0,
+        "direction": "tied_group"
+      },
+      {
+        "group_id": "AP_G10",
+        "scenario_count": 2,
+        "score_sum": 0,
+        "score_mean": 0.0,
+        "direction": "tied_group"
+      },
+      {
+        "group_id": "AP_G11",
+        "scenario_count": 2,
+        "score_sum": 0,
+        "score_mean": 0.0,
+        "direction": "tied_group"
+      }
+    ]
+  }
+}

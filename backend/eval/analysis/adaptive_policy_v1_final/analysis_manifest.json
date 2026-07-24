@@ -1,0 +1,33 @@
+{
+  "analysis_version": "adaptive-policy-v1-b-final-1",
+  "script_path": "backend/eval/analyze_adaptive_policy_v1.py",
+  "script_sha256": "b28ef92687cdfee040400dbc0ae0332d31f2b3c812ba10ac70bc0b8f6845d1d0",
+  "bootstrap": {
+    "resamples": 20000,
+    "seed_namespace": "adaptive-policy-v1-secondary-bootstrap-v1"
+  },
+  "secondary_p_values_calculated": false,
+  "holm_adjustment": "not_applicable",
+  "input_paths": {
+    "annotation": "/Users/haiqingji/Documents/AI 学习导师/backend/eval/annotations/adaptive_policy_v1_formal_24case_v2_author_reviewed_blind_annotation.csv",
+    "reveal": "/Users/haiqingji/Documents/AI 学习导师/backend/eval/results/adaptive_policy/formal/adaptive_policy_v1_formal_24case_v2/reveal_key.json",
+    "raw_results": "/Users/haiqingji/Documents/AI 学习导师/backend/eval/results/adaptive_policy/formal/adaptive_policy_v1_formal_24case_v2/raw_results.json",
+    "validity_audit": "/Users/haiqingji/Documents/AI 学习导师/backend/eval/results/adaptive_policy/formal/adaptive_policy_v1_formal_24case_v2/validity_audit.json",
+    "dataset": "/Users/haiqingji/Documents/AI 学习导师/backend/eval/datasets/adaptive_policy_v1_formal_candidate.json"
+  },
+  "input_sha256": {
+    "annotation": "38bdb085fe05e967c7a3bbe139815ebb2ecf14679f75ce8f841278f088f3e7e1",
+    "reveal": "0fbc184c65d5d24af4eb702daf36972950d1d9851393efbece45c25089b8bf32",
+    "raw_results": "657af308f091ccd08795b6de6a46f3e96f0c9524d2a30548617d19ca191d4ce6",
+    "validity_audit": "1218e379bf0139d8d4601b13c0ea99b1652191b9ea7cbc9fe796f63a9a269437",
+    "dataset": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db"
+  },
+  "output_sha256": {
+    "revealed_annotations.csv": "cb6f591cfb77974eaf868f9cf2a1454c7b4b31c83788f8509b1039b36ff7b5d4",
+    "primary_and_clustered_results.json": "291838f03355113060234a8f45f6521e3476f8818eeb699d31024147874a2c6b",
+    "secondary_results.json": "d501503abed7523bd71d1fdb56be40b48908a481e0a860422b610fd98ef8a805",
+    "manipulation_results.json": "575c6c034fed428cee7ff0a3daba55e9332aac1d8361fd7eb47551631d7b3ab3",
+    "integrity_audit.json": "9f10b16e85a284a3f7196b0100b030465d224eae08109b513aec639b72feb7c7",
+    "summary.json": "aef61efcedc47cdd948e718655d07dbfaa46ac9d8e3bb84c2a459b1c75f2d5ec"
+  }
+}

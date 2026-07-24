@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "analysis_version": "adaptive-policy-v1-b-final-1",
+  "input_case_count": 24,
+  "unique_case_count": 24,
+  "group_count": 11,
+  "raw_result_count": 24,
+  "formal_dataset_scenario_count": 24,
+  "invalidated_formal_v1_used": false,
+  "frozen_annotation_overwritten": false,
+  "revealed_dataset_is_separate": true,
+  "original_blinded_labels_preserved": true,
+  "secondary_pairing_preserved": true,
+  "input_sha256": {
+    "annotation": "38bdb085fe05e967c7a3bbe139815ebb2ecf14679f75ce8f841278f088f3e7e1",
+    "reveal": "0fbc184c65d5d24af4eb702daf36972950d1d9851393efbece45c25089b8bf32",
+    "raw_results": "657af308f091ccd08795b6de6a46f3e96f0c9524d2a30548617d19ca191d4ce6",
+    "validity_audit": "1218e379bf0139d8d4601b13c0ea99b1652191b9ea7cbc9fe796f63a9a269437",
+    "dataset": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db"
+  }
+}
