@@ -15,6 +15,12 @@
       "date": "2026-07-24",
       "timing": "after_invalidated_run_before_annotation_or_outcome_analysis",
       "scope": "policy_quiz_supplied_evidence_plumbing_and_execution_preflight_only"
+    },
+    {
+      "id": "replacement_formal_v2_generation_authorization",
+      "date": "2026-07-24",
+      "timing": "after_strengthened_post_amendment_2_preflight",
+      "scope": "authorization_metadata_only_no_experimental_input_change"
     }
   ],
   "candidate_commit": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
@@ -61,7 +67,7 @@
     {
       "role": "formal_runtime_config",
       "path": "backend/eval/configs/adaptive_policy_v1_formal.config.json",
-      "sha256": "d4df33efe77b7d547ff4ecc38d7957039274bd456f35b1cc17c7a51dd6c120bb"
+      "sha256": "30fe4eb46d83b7ce914c6926d63905a563e411fbe50237588c7b380b88edb617"
     },
     {
       "role": "protocol_annotation_rubric_and_statistical_plan",
@@ -116,12 +122,17 @@
     {
       "role": "amendment_2_human_readable_freeze",
       "path": "backend/eval/protocols/adaptive_policy_v1_final_freeze.md",
-      "sha256": "d850633785cf4b4c242851294ca7d1ffe28079e5317e5b1ad077f0f85d0b3f26"
+      "sha256": "435aca268e6171ecaf8025c3de7a6374374984ee311f01185b8d7130afda6799"
     },
     {
       "role": "invalidated_formal_run_v1_provenance",
       "path": "backend/eval/protocols/adaptive_policy_v1_invalidated_formal_run_v1.json",
       "sha256": "087237c3b751e25bca57787750865a96d555eb9dbdd520d031eddb78346f3086"
+    },
+    {
+      "role": "replacement_formal_v2_generation_authorization",
+      "path": "backend/eval/protocols/adaptive_policy_v1_formal_v2_authorization.json",
+      "sha256": "ca75fdbc7444213871c17dc5e47625f26f6ef174d0fc3b0db15c72eef518f1fa"
     }
   ],
   "invalidated_formal_run_v1": {
@@ -138,8 +149,10 @@
     "proposed_run_id": "adaptive_policy_v1_formal_24case_v2",
     "complete_24_scenario_run_required": true,
     "partial_recovery_allowed": false,
-    "generation_authorized": false,
-    "next_gate": "strengthened_post_commit_preflight_and_explicit_authorization"
+    "generation_authorized": true,
+    "authorization_record": "backend/eval/protocols/adaptive_policy_v1_formal_v2_authorization.json",
+    "authorization_sha256": "ca75fdbc7444213871c17dc5e47625f26f6ef174d0fc3b0db15c72eef518f1fa",
+    "next_gate": "strengthened_post_authorization_preflight_then_exactly_one_complete_run"
   },
   "pilot_validity_signoff": {
     "run_id": "adaptive_policy_v1_pilot_v1",

@@ -1,0 +1,56 @@
+{
+  "authorization_id": "adaptive_policy_v1_formal_v2_generation_authorization",
+  "authorization_date": "2026-07-24",
+  "status": "AUTHORIZED",
+  "scope": "exactly_one_complete_replacement_formal_generation_run",
+  "amendment_2_commit": "9416e37f4d5c857244d7c17ba237d663631275a8",
+  "invalidated_run": {
+    "run_id": "adaptive_policy_v1_formal_24case_v1",
+    "preserved_unchanged": true,
+    "excluded_from_annotation": true,
+    "excluded_from_outcome_analysis": true
+  },
+  "authorized_run": {
+    "run_id": "adaptive_policy_v1_formal_24case_v2",
+    "run_type": "formal",
+    "complete_scenario_count": 24,
+    "partial_recovery_allowed": false,
+    "whole_experiment_rerun_allowed": false
+  },
+  "frozen_inputs": {
+    "formal_dataset_sha256": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db",
+    "adaptive_policy_version": "rule_v2",
+    "baseline_policy_version": "intent_state_blind_v1",
+    "generation_adapter_version": "policy_treatment_only_v1",
+    "runner_version": "adaptive_eval_v1_b_2",
+    "model": "gpt-5.4-mini",
+    "embedding_model": "text-embedding-3-small",
+    "blinding_algorithm": "seeded_balanced_shuffle_v1",
+    "blinding_seed": "adaptive-policy-v1-formal-blinding-v1"
+  },
+  "expected_structure": {
+    "group_count": 11,
+    "scenario_count": 24,
+    "condition_artifact_count": 48,
+    "identical_policy_control_count": 4,
+    "canonical_response_execution_count": 44,
+    "expected_successful_provider_generation_count_before_retries": 49,
+    "adaptive_as_a_count": 12,
+    "adaptive_as_b_count": 12
+  },
+  "prohibited": [
+    "formal_dataset_change",
+    "learner_state_profile_change",
+    "expected_policy_change",
+    "policy_or_baseline_change",
+    "evidence_fixture_change",
+    "prompt_or_generation_adapter_change",
+    "model_or_generation_setting_change",
+    "retry_policy_change",
+    "blinding_change",
+    "annotation_or_statistical_plan_change",
+    "partial_v1_salvage",
+    "outcome_driven_tuning"
+  ],
+  "post_generation_gate": "integrity_and_validity_audit_only_before_blind_annotation"
+}

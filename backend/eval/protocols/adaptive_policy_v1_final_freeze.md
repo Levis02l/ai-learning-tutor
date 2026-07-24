@@ -80,10 +80,12 @@ quiz prompt, rejects any live concept-retrieval call, and requires every
 generated quiz source ID to be a subset of the corresponding frozen fixture.
 The registered canonical policy-quiz execution count is 12.
 
-A complete 24-scenario replacement run is required. Its proposed run ID is
-`adaptive_policy_v1_formal_24case_v2`. Amendment 2 does not itself authorize
-that generation run; explicit authorization is still required after the
-strengthened post-commit preflight passes.
+A complete 24-scenario replacement run is required. Its run ID is
+`adaptive_policy_v1_formal_24case_v2`. Replacement generation was explicitly
+authorized after the strengthened post-commit preflight passed. The
+machine-readable authorization is
+`adaptive_policy_v1_formal_v2_authorization.json`. This authorization changes
+only the run safety guard and does not alter any experimental input.
 
 ## Frozen Experiment
 
@@ -216,9 +218,9 @@ The preflight must pass with:
 - unchanged production concept resolution; and
 - a clean Git worktree.
 
-The replacement formal generation guard remains disabled until a passing
-post-Amendment-2 preflight has been reviewed and explicit generation
-authorization is given. When authorized, the replacement must be a complete
-24-scenario run with a new run ID. Formal outputs must be retained even if a
-condition fails. No prompt, dataset, evidence, Policy, model, or threshold
-changes may be made after inspecting formal outputs.
+The replacement formal generation guard is authorized only for the complete
+24-scenario run named `adaptive_policy_v1_formal_24case_v2`. A fresh
+strengthened preflight and clean Git worktree are still required immediately
+before generation. Formal outputs must be retained even if a condition fails.
+No prompt, dataset, evidence, Policy, model, or threshold changes may be made
+after inspecting formal outputs.

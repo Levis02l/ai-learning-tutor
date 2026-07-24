@@ -39,6 +39,6 @@
     "canonical_response_execution_count": 44,
     "canonical_policy_quiz_execution_count": 12,
     "expected_successful_provider_generation_count": 49,
-    "replacement_run_authorized": false
+    "replacement_run_authorized": true
   }
 }
