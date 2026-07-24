@@ -745,7 +745,11 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         raise ValueError("Cannot write an empty CSV")
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as destination:
-        writer = csv.DictWriter(destination, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(
+            destination,
+            fieldnames=list(rows[0]),
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
 
