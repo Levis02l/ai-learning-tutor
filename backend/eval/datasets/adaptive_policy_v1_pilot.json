@@ -1,0 +1,590 @@
+{
+  "schema_version": "adaptive_policy_v1_pilot_1.0",
+  "dataset_id": "adaptive_policy_v1_pilot",
+  "status": "development_pilot_not_formal",
+  "created_date": "2026-07-24",
+  "formal_candidate_lock": {
+    "commit": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
+    "dataset_sha256": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db",
+    "rule": "no_model_generation_or_development_testing"
+  },
+  "course": {
+    "course_id": 2,
+    "course_name": "data analyze",
+    "user_id": "demo-user",
+    "document_id": 3,
+    "source_filename": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf"
+  },
+  "policy": {
+    "adaptive_policy_version": "rule_v2",
+    "misconception": null,
+    "evidence_condition": "sufficient",
+    "baseline_mapping": {
+      "explain": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "hint": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "practice": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "review": {
+        "selected_action": "review",
+        "response_strategy": "review_drill"
+      },
+      "unknown": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      }
+    }
+  },
+  "topology": {
+    "group_count": 4,
+    "scenario_count": 8,
+    "adaptive_baseline_comparisons": 8,
+    "condition_artifact_count": 16,
+    "identical_policy_scenarios": 1,
+    "planned_canonical_response_execution_count": 15,
+    "expected_successful_provider_generation_count": 15
+  },
+  "generation_control": {
+    "identical_policy_handling": "single_generation_reuse",
+    "identical_policy_case_ids": [
+      "adaptive_pilot_p01_medium"
+    ],
+    "condition_artifact_count": 16,
+    "planned_canonical_response_execution_count": 15,
+    "expected_successful_provider_generation_count": 15,
+    "provider_call_accounting_note": "Fifteen canonical condition executions are planned. The frozen review execution makes no provider call, while the low-state scaffolded explanation makes one additional comprehension-check call, so fifteen successful provider generations are expected before retries."
+  },
+  "learner_profiles": {
+    "low": {
+      "mastery_score": 0.25,
+      "recent_accuracy": 0.25,
+      "attempt_count": 8,
+      "consecutive_errors": 1,
+      "last_reviewed_at": null,
+      "review_due": false
+    },
+    "medium": {
+      "mastery_score": 0.58,
+      "recent_accuracy": 0.625,
+      "attempt_count": 8,
+      "consecutive_errors": 0,
+      "last_reviewed_at": null,
+      "review_due": false
+    },
+    "high": {
+      "mastery_score": 0.88,
+      "recent_accuracy": 0.875,
+      "attempt_count": 8,
+      "consecutive_errors": 0,
+      "last_reviewed_at": null,
+      "review_due": false
+    }
+  },
+  "concept_registry": [
+    {
+      "concept_id": 10,
+      "name": "Total Sum of Squares",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 13,
+      "name": "Data Standardization",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 15,
+      "name": "Silhouette Method",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 23,
+      "name": "Optimal centroid update",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    }
+  ],
+  "evidence_fixtures": [
+    {
+      "fixture_id": "adaptive_pilot_evidence_p01",
+      "course_id": 2,
+      "concept_id": 23,
+      "page_targets": [
+        5,
+        6
+      ],
+      "ordered_chunks": [
+        {
+          "chunk_id": 91,
+          "content_sha256": "a3fcdbb39f9c9ab97c11b16363ca36ff2155bad039c0f6bd9e5fde1d4ccd7c40",
+          "chunk_index": 8
+        },
+        {
+          "chunk_id": 92,
+          "content_sha256": "04c35303ce0f369a5af15e820e5b38e9571f14fd200bd9edb1c6a606d7d44c35",
+          "chunk_index": 9
+        },
+        {
+          "chunk_id": 93,
+          "content_sha256": "92b108508bf9d19664c856b2742701a30bc92b0050db19e0f5941ba8fc62a579",
+          "chunk_index": 10
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 3,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "50edf51e846021f10f7e88e44a295995fe9ffacac19d80101d6ff08450d443da"
+    },
+    {
+      "fixture_id": "adaptive_pilot_evidence_p02",
+      "course_id": 2,
+      "concept_id": 10,
+      "page_targets": [
+        9,
+        10
+      ],
+      "ordered_chunks": [
+        {
+          "chunk_id": 98,
+          "content_sha256": "7d3182763bd54c4e6bced26d9cc3d5fe608f2540394a6e965f7e9578bd1b57a8",
+          "chunk_index": 15
+        },
+        {
+          "chunk_id": 99,
+          "content_sha256": "216d6e48c3dbe1dc3723b31d2fb86c3e201a6dfbe611f0fed2274cc189028a68",
+          "chunk_index": 16
+        },
+        {
+          "chunk_id": 100,
+          "content_sha256": "346d75247ba71812790f021b4127cf331fed4293e9206582c587079bb237e87a",
+          "chunk_index": 17
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 3,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "30d7f31c0a155e70126f916d816a3e56e358302d4188d85c7b8a9770d355d952"
+    },
+    {
+      "fixture_id": "adaptive_pilot_evidence_p03",
+      "course_id": 2,
+      "concept_id": 15,
+      "page_targets": [
+        13,
+        14
+      ],
+      "ordered_chunks": [
+        {
+          "chunk_id": 104,
+          "content_sha256": "cfbb960dc1b4c4cd9347dcdee0fa325e74b32d82446291be157c99059f9473bd",
+          "chunk_index": 21
+        },
+        {
+          "chunk_id": 105,
+          "content_sha256": "9431af782fb5ed78c5438eefcfb0b331950dc6187fd3bf82234e2d9071818e3f",
+          "chunk_index": 22
+        },
+        {
+          "chunk_id": 106,
+          "content_sha256": "65382a3a4d35729f13e44775160236c255ee9f691114c09b600d9cc54fc4ffa4",
+          "chunk_index": 23
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 3,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "b0ccb8e5f0bfdce206656f3cf8ddb2b48ecfb5f93fcbca1052024e9d0ac4b1b4"
+    },
+    {
+      "fixture_id": "adaptive_pilot_evidence_p04",
+      "course_id": 2,
+      "concept_id": 13,
+      "page_targets": [
+        10,
+        11
+      ],
+      "ordered_chunks": [
+        {
+          "chunk_id": 100,
+          "content_sha256": "346d75247ba71812790f021b4127cf331fed4293e9206582c587079bb237e87a",
+          "chunk_index": 17
+        },
+        {
+          "chunk_id": 101,
+          "content_sha256": "02eb5c6b90fb3eaf3d1bd1be62db83845aff595225d0874b73e1d74a4aac0d94",
+          "chunk_index": 18
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 2,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "b5cd2179efb36fb31059edced2ae6dc5beff0e7c2e15cfc167766377c8e22c4f"
+    }
+  ],
+  "review_fixtures": [
+    {
+      "fixture_id": "adaptive_pilot_review_p03_due",
+      "course_id": 2,
+      "concept_id": 15,
+      "question": "How does the Silhouette Method use average silhouette width to choose K?",
+      "reference_answer": "It selects the value of K that maximizes the average silhouette width, balancing within-cluster compactness and separation from neighboring clusters.",
+      "source_chunk_ids": [
+        104,
+        105
+      ],
+      "origin": "evaluation_frozen_review_fixture",
+      "fixture_sha256": "bcf7e11e6856ce185c29e0698620e7f3a153c82e83e06ed6d6328712a9540dde"
+    }
+  ],
+  "scenarios": [
+    {
+      "case_id": "adaptive_pilot_p01_low",
+      "group_id": "P01",
+      "group_type": "pilot_state_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Explain why the Optimal centroid update is the arithmetic mean when K-means cluster assignments are fixed.",
+      "concept": {
+        "concept_id": 23,
+        "name": "Optimal centroid update",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_pilot_evidence_p01",
+      "review_fixture_id": null,
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "The learner has low mastery (0.25), low recent accuracy, and one consecutive error for Optimal centroid update."
+      }
+    },
+    {
+      "case_id": "adaptive_pilot_p01_medium",
+      "group_id": "P01",
+      "group_type": "pilot_state_pair",
+      "scenario_position": "medium",
+      "course_id": 2,
+      "question": "Explain why the Optimal centroid update is the arithmetic mean when K-means cluster assignments are fixed.",
+      "concept": {
+        "concept_id": 23,
+        "name": "Optimal centroid update",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.58,
+        "recent_accuracy": 0.625,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_pilot_evidence_p01",
+      "review_fixture_id": null,
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "The learner has medium mastery (0.58), moderate recent accuracy, and no consecutive errors for Optimal centroid update."
+      }
+    },
+    {
+      "case_id": "adaptive_pilot_p02_medium",
+      "group_id": "P02",
+      "group_type": "pilot_state_pair",
+      "scenario_position": "medium",
+      "course_id": 2,
+      "question": "Let's continue with how Total Sum of Squares decomposes across and within clusters.",
+      "concept": {
+        "concept_id": 10,
+        "name": "Total Sum of Squares",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.58,
+        "recent_accuracy": 0.625,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_pilot_evidence_p02",
+      "review_fixture_id": null,
+      "expected_adaptive_policy": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "The learner has medium mastery (0.58), moderate recent accuracy, and no review due for Total Sum of Squares."
+      }
+    },
+    {
+      "case_id": "adaptive_pilot_p02_high",
+      "group_id": "P02",
+      "group_type": "pilot_state_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Let's continue with how Total Sum of Squares decomposes across and within clusters.",
+      "concept": {
+        "concept_id": 10,
+        "name": "Total Sum of Squares",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_pilot_evidence_p02",
+      "review_fixture_id": null,
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "challenging"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "The learner has high mastery (0.88), high recent accuracy, and no review due for Total Sum of Squares."
+      }
+    },
+    {
+      "case_id": "adaptive_pilot_p03_review_false",
+      "group_id": "P03",
+      "group_type": "pilot_review_due_pair",
+      "scenario_position": "review_false",
+      "course_id": 2,
+      "question": "Let's continue with the Silhouette Method for choosing the number of clusters.",
+      "concept": {
+        "concept_id": 15,
+        "name": "Silhouette Method",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "review_due",
+      "learner_state": {
+        "mastery_score": 0.58,
+        "recent_accuracy": 0.625,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_pilot_evidence_p03",
+      "review_fixture_id": null,
+      "expected_adaptive_policy": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "The learner has medium mastery of the Silhouette Method and no review is currently due."
+      }
+    },
+    {
+      "case_id": "adaptive_pilot_p03_review_true",
+      "group_id": "P03",
+      "group_type": "pilot_review_due_pair",
+      "scenario_position": "review_true",
+      "course_id": 2,
+      "question": "Let's continue with the Silhouette Method for choosing the number of clusters.",
+      "concept": {
+        "concept_id": 15,
+        "name": "Silhouette Method",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "review_due",
+      "learner_state": {
+        "mastery_score": 0.58,
+        "recent_accuracy": 0.625,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": true
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_pilot_evidence_p03",
+      "review_fixture_id": "adaptive_pilot_review_p03_due",
+      "expected_adaptive_policy": {
+        "selected_action": "review",
+        "response_strategy": "review_drill"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "The learner has medium mastery of the Silhouette Method and a source-traceable review item is due."
+      }
+    },
+    {
+      "case_id": "adaptive_pilot_p04_low",
+      "group_id": "P04",
+      "group_type": "pilot_intent_fidelity_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Give me a hint for why Data Standardization matters when variables are measured on different scales. Do not give me the full explanation.",
+      "concept": {
+        "concept_id": 13,
+        "name": "Data Standardization",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "hint",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_pilot_evidence_p04",
+      "review_fixture_id": null,
+      "expected_adaptive_policy": {
+        "selected_action": "hint",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "The learner has low mastery (0.25), low recent accuracy, and one consecutive error for Data Standardization."
+      }
+    },
+    {
+      "case_id": "adaptive_pilot_p04_high",
+      "group_id": "P04",
+      "group_type": "pilot_intent_fidelity_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Give me a hint for why Data Standardization matters when variables are measured on different scales. Do not give me the full explanation.",
+      "concept": {
+        "concept_id": 13,
+        "name": "Data Standardization",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "hint",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_pilot_evidence_p04",
+      "review_fixture_id": null,
+      "expected_adaptive_policy": {
+        "selected_action": "hint",
+        "response_strategy": "concise"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "The learner has high mastery (0.88), high recent accuracy, and no consecutive errors for Data Standardization."
+      }
+    }
+  ]
+}

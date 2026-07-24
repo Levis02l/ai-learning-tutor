@@ -1,0 +1,770 @@
+{
+  "$defs": {
+    "AnnotationContext": {
+      "additionalProperties": false,
+      "properties": {
+        "learner_vignette": {
+          "title": "Learner Vignette",
+          "type": "string"
+        }
+      },
+      "required": [
+        "learner_vignette"
+      ],
+      "title": "AnnotationContext",
+      "type": "object"
+    },
+    "ConceptRegistryEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "concept_id": {
+          "title": "Concept Id",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "production_attempt_count": {
+          "minimum": 0,
+          "title": "Production Attempt Count",
+          "type": "integer"
+        },
+        "production_state_status": {
+          "enum": [
+            "observed",
+            "unobserved"
+          ],
+          "title": "Production State Status",
+          "type": "string"
+        },
+        "evaluation_state_status": {
+          "const": "observed",
+          "title": "Evaluation State Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "concept_id",
+        "name",
+        "production_attempt_count",
+        "production_state_status",
+        "evaluation_state_status"
+      ],
+      "title": "ConceptRegistryEntry",
+      "type": "object"
+    },
+    "CourseDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "title": "Course Id",
+          "type": "integer"
+        },
+        "course_name": {
+          "title": "Course Name",
+          "type": "string"
+        },
+        "user_id": {
+          "title": "User Id",
+          "type": "string"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "integer"
+        },
+        "source_filename": {
+          "title": "Source Filename",
+          "type": "string"
+        }
+      },
+      "required": [
+        "course_id",
+        "course_name",
+        "user_id",
+        "document_id",
+        "source_filename"
+      ],
+      "title": "CourseDefinition",
+      "type": "object"
+    },
+    "EvidenceChunkDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "chunk_id": {
+          "title": "Chunk Id",
+          "type": "integer"
+        },
+        "content_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "chunk_index": {
+          "minimum": 0,
+          "title": "Chunk Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "chunk_id",
+        "content_sha256",
+        "chunk_index"
+      ],
+      "title": "EvidenceChunkDefinition",
+      "type": "object"
+    },
+    "EvidenceFixture": {
+      "additionalProperties": false,
+      "properties": {
+        "fixture_id": {
+          "title": "Fixture Id",
+          "type": "string"
+        },
+        "course_id": {
+          "title": "Course Id",
+          "type": "integer"
+        },
+        "concept_id": {
+          "title": "Concept Id",
+          "type": "integer"
+        },
+        "page_targets": {
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Page Targets",
+          "type": "array"
+        },
+        "ordered_chunks": {
+          "items": {
+            "$ref": "#/$defs/EvidenceChunkDefinition"
+          },
+          "minItems": 1,
+          "title": "Ordered Chunks",
+          "type": "array"
+        },
+        "evidence_state": {
+          "$ref": "#/$defs/FrozenEvidenceState"
+        },
+        "fixture_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Fixture Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "course_id",
+        "concept_id",
+        "page_targets",
+        "ordered_chunks",
+        "evidence_state",
+        "fixture_sha256"
+      ],
+      "title": "EvidenceFixture",
+      "type": "object"
+    },
+    "ExpectedPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "selected_action": {
+          "enum": [
+            "explain",
+            "hint",
+            "quiz",
+            "review",
+            "refuse"
+          ],
+          "title": "Selected Action",
+          "type": "string"
+        },
+        "response_strategy": {
+          "enum": [
+            "scaffolded",
+            "guided",
+            "concise",
+            "challenging",
+            "refusal",
+            "review_drill",
+            "contrastive",
+            "definition_clarification",
+            "prerequisite_scaffolded",
+            "reasoning_guidance",
+            "source_correction"
+          ],
+          "title": "Response Strategy",
+          "type": "string"
+        }
+      },
+      "required": [
+        "selected_action",
+        "response_strategy"
+      ],
+      "title": "ExpectedPolicy",
+      "type": "object"
+    },
+    "FormalCandidateLock": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "const": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
+          "title": "Commit",
+          "type": "string"
+        },
+        "dataset_sha256": {
+          "const": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db",
+          "title": "Dataset Sha256",
+          "type": "string"
+        },
+        "rule": {
+          "const": "no_model_generation_or_development_testing",
+          "title": "Rule",
+          "type": "string"
+        }
+      },
+      "required": [
+        "commit",
+        "dataset_sha256",
+        "rule"
+      ],
+      "title": "FormalCandidateLock",
+      "type": "object"
+    },
+    "FrozenEvidenceState": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_strength": {
+          "const": "high",
+          "title": "Evidence Strength",
+          "type": "string"
+        },
+        "source_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Source Coverage",
+          "type": "number"
+        },
+        "retrieved_chunk_count": {
+          "minimum": 1,
+          "title": "Retrieved Chunk Count",
+          "type": "integer"
+        },
+        "top_similarity": {
+          "title": "Top Similarity",
+          "type": "null"
+        },
+        "requires_evidence": {
+          "const": true,
+          "title": "Requires Evidence",
+          "type": "boolean"
+        },
+        "retrieval_scope": {
+          "const": "concept",
+          "title": "Retrieval Scope",
+          "type": "string"
+        },
+        "sufficiency_assessment": {
+          "const": "human_audited_frozen_fixture",
+          "title": "Sufficiency Assessment",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence_strength",
+        "source_coverage",
+        "retrieved_chunk_count",
+        "top_similarity",
+        "requires_evidence",
+        "retrieval_scope",
+        "sufficiency_assessment"
+      ],
+      "title": "FrozenEvidenceState",
+      "type": "object"
+    },
+    "LearnerStateDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "mastery_score": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Mastery Score",
+          "type": "number"
+        },
+        "recent_accuracy": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Recent Accuracy",
+          "type": "number"
+        },
+        "attempt_count": {
+          "minimum": 0,
+          "title": "Attempt Count",
+          "type": "integer"
+        },
+        "consecutive_errors": {
+          "minimum": 0,
+          "title": "Consecutive Errors",
+          "type": "integer"
+        },
+        "last_reviewed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Reviewed At"
+        },
+        "review_due": {
+          "title": "Review Due",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "mastery_score",
+        "recent_accuracy",
+        "attempt_count",
+        "consecutive_errors",
+        "last_reviewed_at",
+        "review_due"
+      ],
+      "title": "LearnerStateDefinition",
+      "type": "object"
+    },
+    "PilotGenerationControl": {
+      "additionalProperties": false,
+      "properties": {
+        "identical_policy_handling": {
+          "const": "single_generation_reuse",
+          "title": "Identical Policy Handling",
+          "type": "string"
+        },
+        "identical_policy_case_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Identical Policy Case Ids",
+          "type": "array"
+        },
+        "condition_artifact_count": {
+          "title": "Condition Artifact Count",
+          "type": "integer"
+        },
+        "planned_canonical_response_execution_count": {
+          "title": "Planned Canonical Response Execution Count",
+          "type": "integer"
+        },
+        "expected_successful_provider_generation_count": {
+          "title": "Expected Successful Provider Generation Count",
+          "type": "integer"
+        },
+        "provider_call_accounting_note": {
+          "title": "Provider Call Accounting Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identical_policy_handling",
+        "identical_policy_case_ids",
+        "condition_artifact_count",
+        "planned_canonical_response_execution_count",
+        "expected_successful_provider_generation_count",
+        "provider_call_accounting_note"
+      ],
+      "title": "PilotGenerationControl",
+      "type": "object"
+    },
+    "PilotReviewFixture": {
+      "additionalProperties": false,
+      "properties": {
+        "fixture_id": {
+          "title": "Fixture Id",
+          "type": "string"
+        },
+        "course_id": {
+          "title": "Course Id",
+          "type": "integer"
+        },
+        "concept_id": {
+          "title": "Concept Id",
+          "type": "integer"
+        },
+        "question": {
+          "title": "Question",
+          "type": "string"
+        },
+        "reference_answer": {
+          "title": "Reference Answer",
+          "type": "string"
+        },
+        "source_chunk_ids": {
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Source Chunk Ids",
+          "type": "array"
+        },
+        "origin": {
+          "const": "evaluation_frozen_review_fixture",
+          "title": "Origin",
+          "type": "string"
+        },
+        "fixture_sha256": {
+          "title": "Fixture Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "course_id",
+        "concept_id",
+        "question",
+        "reference_answer",
+        "source_chunk_ids",
+        "origin",
+        "fixture_sha256"
+      ],
+      "title": "PilotReviewFixture",
+      "type": "object"
+    },
+    "PilotScenario": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "title": "Case Id",
+          "type": "string"
+        },
+        "group_id": {
+          "enum": [
+            "P01",
+            "P02",
+            "P03",
+            "P04"
+          ],
+          "title": "Group Id",
+          "type": "string"
+        },
+        "group_type": {
+          "enum": [
+            "pilot_state_pair",
+            "pilot_review_due_pair",
+            "pilot_intent_fidelity_pair"
+          ],
+          "title": "Group Type",
+          "type": "string"
+        },
+        "scenario_position": {
+          "title": "Scenario Position",
+          "type": "string"
+        },
+        "course_id": {
+          "title": "Course Id",
+          "type": "integer"
+        },
+        "question": {
+          "title": "Question",
+          "type": "string"
+        },
+        "concept": {
+          "$ref": "#/$defs/ScenarioConcept"
+        },
+        "detected_intent": {
+          "enum": [
+            "explain",
+            "hint",
+            "practice",
+            "review",
+            "unknown"
+          ],
+          "title": "Detected Intent",
+          "type": "string"
+        },
+        "counterfactual_dimension": {
+          "enum": [
+            "learner_state_profile",
+            "review_due"
+          ],
+          "title": "Counterfactual Dimension",
+          "type": "string"
+        },
+        "learner_state": {
+          "$ref": "#/$defs/LearnerStateDefinition"
+        },
+        "misconception": {
+          "title": "Misconception",
+          "type": "null"
+        },
+        "evidence_fixture_id": {
+          "title": "Evidence Fixture Id",
+          "type": "string"
+        },
+        "review_fixture_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Fixture Id"
+        },
+        "expected_adaptive_policy": {
+          "$ref": "#/$defs/ExpectedPolicy"
+        },
+        "expected_baseline_policy": {
+          "$ref": "#/$defs/ExpectedPolicy"
+        },
+        "annotation_context": {
+          "$ref": "#/$defs/AnnotationContext"
+        }
+      },
+      "required": [
+        "case_id",
+        "group_id",
+        "group_type",
+        "scenario_position",
+        "course_id",
+        "question",
+        "concept",
+        "detected_intent",
+        "counterfactual_dimension",
+        "learner_state",
+        "misconception",
+        "evidence_fixture_id",
+        "expected_adaptive_policy",
+        "expected_baseline_policy",
+        "annotation_context"
+      ],
+      "title": "PilotScenario",
+      "type": "object"
+    },
+    "PilotTopology": {
+      "additionalProperties": false,
+      "properties": {
+        "group_count": {
+          "title": "Group Count",
+          "type": "integer"
+        },
+        "scenario_count": {
+          "title": "Scenario Count",
+          "type": "integer"
+        },
+        "adaptive_baseline_comparisons": {
+          "title": "Adaptive Baseline Comparisons",
+          "type": "integer"
+        },
+        "condition_artifact_count": {
+          "title": "Condition Artifact Count",
+          "type": "integer"
+        },
+        "identical_policy_scenarios": {
+          "title": "Identical Policy Scenarios",
+          "type": "integer"
+        },
+        "planned_canonical_response_execution_count": {
+          "title": "Planned Canonical Response Execution Count",
+          "type": "integer"
+        },
+        "expected_successful_provider_generation_count": {
+          "title": "Expected Successful Provider Generation Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "group_count",
+        "scenario_count",
+        "adaptive_baseline_comparisons",
+        "condition_artifact_count",
+        "identical_policy_scenarios",
+        "planned_canonical_response_execution_count",
+        "expected_successful_provider_generation_count"
+      ],
+      "title": "PilotTopology",
+      "type": "object"
+    },
+    "PolicyDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "adaptive_policy_version": {
+          "const": "rule_v2",
+          "title": "Adaptive Policy Version",
+          "type": "string"
+        },
+        "misconception": {
+          "title": "Misconception",
+          "type": "null"
+        },
+        "evidence_condition": {
+          "const": "sufficient",
+          "title": "Evidence Condition",
+          "type": "string"
+        },
+        "baseline_mapping": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExpectedPolicy"
+          },
+          "propertyNames": {
+            "enum": [
+              "explain",
+              "hint",
+              "practice",
+              "review",
+              "unknown"
+            ]
+          },
+          "title": "Baseline Mapping",
+          "type": "object"
+        }
+      },
+      "required": [
+        "adaptive_policy_version",
+        "misconception",
+        "evidence_condition",
+        "baseline_mapping"
+      ],
+      "title": "PolicyDefinition",
+      "type": "object"
+    },
+    "ScenarioConcept": {
+      "additionalProperties": false,
+      "properties": {
+        "concept_id": {
+          "title": "Concept Id",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "state_status": {
+          "const": "observed",
+          "title": "State Status",
+          "type": "string"
+        },
+        "resolver_confidence": {
+          "maximum": 1.0,
+          "minimum": 0.72,
+          "title": "Resolver Confidence",
+          "type": "number"
+        },
+        "resolver_reason": {
+          "title": "Resolver Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "concept_id",
+        "name",
+        "state_status",
+        "resolver_confidence",
+        "resolver_reason"
+      ],
+      "title": "ScenarioConcept",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "adaptive_policy_v1_pilot_1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "dataset_id": {
+      "const": "adaptive_policy_v1_pilot",
+      "title": "Dataset Id",
+      "type": "string"
+    },
+    "status": {
+      "const": "development_pilot_not_formal",
+      "title": "Status",
+      "type": "string"
+    },
+    "created_date": {
+      "title": "Created Date",
+      "type": "string"
+    },
+    "formal_candidate_lock": {
+      "$ref": "#/$defs/FormalCandidateLock"
+    },
+    "course": {
+      "$ref": "#/$defs/CourseDefinition"
+    },
+    "policy": {
+      "$ref": "#/$defs/PolicyDefinition"
+    },
+    "topology": {
+      "$ref": "#/$defs/PilotTopology"
+    },
+    "generation_control": {
+      "$ref": "#/$defs/PilotGenerationControl"
+    },
+    "learner_profiles": {
+      "additionalProperties": {
+        "$ref": "#/$defs/LearnerStateDefinition"
+      },
+      "propertyNames": {
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ]
+      },
+      "title": "Learner Profiles",
+      "type": "object"
+    },
+    "concept_registry": {
+      "items": {
+        "$ref": "#/$defs/ConceptRegistryEntry"
+      },
+      "title": "Concept Registry",
+      "type": "array"
+    },
+    "evidence_fixtures": {
+      "items": {
+        "$ref": "#/$defs/EvidenceFixture"
+      },
+      "title": "Evidence Fixtures",
+      "type": "array"
+    },
+    "review_fixtures": {
+      "items": {
+        "$ref": "#/$defs/PilotReviewFixture"
+      },
+      "title": "Review Fixtures",
+      "type": "array"
+    },
+    "scenarios": {
+      "items": {
+        "$ref": "#/$defs/PilotScenario"
+      },
+      "title": "Scenarios",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "status",
+    "created_date",
+    "formal_candidate_lock",
+    "course",
+    "policy",
+    "topology",
+    "generation_control",
+    "learner_profiles",
+    "concept_registry",
+    "evidence_fixtures",
+    "review_fixtures",
+    "scenarios"
+  ],
+  "title": "AdaptivePolicyPilotDataset",
+  "type": "object"
+}

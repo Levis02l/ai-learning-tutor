@@ -1,0 +1,30 @@
+{
+  "experiment_id": "adaptive_policy_v1",
+  "protocol_version": "v1_b_candidate_pilot",
+  "adaptive_policy_version": "rule_v2",
+  "baseline_policy_version": "intent_state_blind_v1",
+  "model": {
+    "provider": "openai",
+    "name": "configured_by_backend_env"
+  },
+  "generation": {
+    "temperature": "production_service_defined",
+    "max_tokens": "production_service_defined",
+    "max_retries": 2,
+    "retry_initial_delay_seconds": 2.0
+  },
+  "evidence": {
+    "provenance": "human_audited_frozen_fixture",
+    "top_similarity": null,
+    "live_retrieval_allowed": false
+  },
+  "blinding": {
+    "algorithm": "seeded_balanced_shuffle_v1",
+    "seed": "adaptive-policy-v1-pilot-blinding-v1"
+  },
+  "versions": {
+    "runner_version": "adaptive_eval_v1_b_pilot_1",
+    "generation_adapter_version": "policy_treatment_only_v1",
+    "prompt_version": "production_tutor_response_service"
+  }
+}
