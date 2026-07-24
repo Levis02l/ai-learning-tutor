@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Literal, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.document import Chunk, Document
 from app.services.concepts import (
     ConceptLearnerState,
     resolve_concept_for_focus,
@@ -271,6 +273,38 @@ def verify_production_concept_resolution(
             raise ValueError(f"{group_id} resolver confidence is stale")
         if resolved.reason != scenario.concept.resolver_reason:
             raise ValueError(f"{group_id} resolver reason is stale")
+
+
+def verify_production_dataset_inputs(
+    dataset: AdaptivePolicyDataset,
+    db: Session,
+) -> None:
+    verify_production_concept_resolution(dataset, db)
+    for fixture in dataset.evidence_fixtures:
+        _verify_fixture_chunks(db=db, dataset=dataset, fixture=fixture)
+
+
+def planned_canonical_response_execution_count(
+    dataset: AdaptivePolicyDataset,
+) -> int:
+    return sum(
+        1
+        + int(
+            scenario.expected_baseline_policy
+            != scenario.expected_adaptive_policy
+        )
+        for scenario in dataset.scenarios
+    )
+
+
+def expected_successful_provider_generation_count(
+    dataset: AdaptivePolicyDataset,
+) -> int:
+    return sum(
+        _provider_generation_count(policy)
+        for scenario in dataset.scenarios
+        for policy in _canonical_policies_for_scenario(scenario)
+    )
 
 
 def write_json_schema(path: Path = DEFAULT_SCHEMA_PATH) -> None:
@@ -542,7 +576,7 @@ def _validate_generation_control(dataset: AdaptivePolicyDataset) -> None:
 
     identical_count = len(identical_case_ids)
     independent_count = len(dataset.scenarios) - identical_count
-    planned_calls = independent_count * 2 + identical_count
+    planned_calls = planned_canonical_response_execution_count(dataset)
     if control.identical_policy_scenarios != identical_count:
         raise ValueError("identical_policy_scenarios is inconsistent")
     if control.independent_condition_scenarios != independent_count:
@@ -553,6 +587,24 @@ def _validate_generation_control(dataset: AdaptivePolicyDataset) -> None:
         raise ValueError("planned_model_generation_call_count is inconsistent")
     if dataset.topology.planned_model_generation_call_count != planned_calls:
         raise ValueError("topology generation call count is inconsistent")
+
+
+def _canonical_policies_for_scenario(
+    scenario: AdaptivePolicyScenario,
+) -> list[ExpectedPolicy]:
+    policies = [scenario.expected_adaptive_policy]
+    if scenario.expected_baseline_policy != scenario.expected_adaptive_policy:
+        policies.append(scenario.expected_baseline_policy)
+    return policies
+
+
+def _provider_generation_count(policy: ExpectedPolicy) -> int:
+    if policy.selected_action in {"review", "refuse"}:
+        return 0
+    return 1 + int(
+        policy.selected_action == "explain"
+        and policy.response_strategy == "scaffolded"
+    )
 
 
 def _validate_fixture_hashes(dataset: AdaptivePolicyDataset) -> None:
@@ -570,6 +622,36 @@ def _validate_fixture_hashes(dataset: AdaptivePolicyDataset) -> None:
         ).hexdigest()
         if actual_hash != fixture.fixture_sha256:
             raise ValueError(f"{fixture.fixture_id} fixture SHA256 is invalid")
+
+
+def _verify_fixture_chunks(
+    *,
+    db: Session,
+    dataset: AdaptivePolicyDataset,
+    fixture: EvidenceFixture,
+) -> None:
+    expected_ids = [chunk.chunk_id for chunk in fixture.ordered_chunks]
+    rows = db.execute(
+        select(Chunk, Document)
+        .join(Document, Document.id == Chunk.document_id)
+        .where(
+            Chunk.id.in_(expected_ids),
+            Document.id == dataset.course.document_id,
+            Document.course_id == dataset.course.course_id,
+            Document.user_id == dataset.course.user_id,
+        )
+    ).all()
+    by_id = {chunk.id: (chunk, document) for chunk, document in rows}
+    if set(by_id) != set(expected_ids):
+        raise ValueError(f"{fixture.fixture_id} contains unavailable chunks")
+
+    for expected in fixture.ordered_chunks:
+        chunk, _ = by_id[expected.chunk_id]
+        if chunk.chunk_metadata.get("chunk_index") != expected.chunk_index:
+            raise ValueError(f"Chunk {chunk.id} index changed")
+        actual_hash = hashlib.sha256(chunk.content.encode()).hexdigest()
+        if actual_hash != expected.content_sha256:
+            raise ValueError(f"Chunk {chunk.id} content SHA256 changed")
 
 
 def _group_scenarios(

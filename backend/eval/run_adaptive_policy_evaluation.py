@@ -33,9 +33,28 @@ from app.services.policy import (
 from app.services.retrieval import RetrievedChunk
 from app.services.tutor_response import TutorResponse, execute_tutor_decision
 from eval.run_answer_evaluation import create_run_dir, file_sha256
-from eval.validate_adaptive_policy_dataset import EvidenceFixture, ExpectedPolicy
+from eval.validate_adaptive_policy_dataset import (
+    DEFAULT_DATASET_PATH as DEFAULT_FORMAL_DATASET_PATH,
+)
+from eval.validate_adaptive_policy_dataset import (
+    AdaptivePolicyDataset as AdaptivePolicyFormalDataset,
+)
+from eval.validate_adaptive_policy_dataset import (
+    AdaptivePolicyScenario as FormalScenario,
+)
+from eval.validate_adaptive_policy_dataset import (
+    EvidenceFixture,
+    ExpectedPolicy,
+    ReviewFixture,
+    expected_successful_provider_generation_count,
+    load_and_validate_dataset,
+    planned_canonical_response_execution_count,
+    verify_production_dataset_inputs,
+)
 from eval.validate_adaptive_policy_pilot import (
-    DEFAULT_DATASET_PATH,
+    DEFAULT_DATASET_PATH as DEFAULT_PILOT_DATASET_PATH,
+)
+from eval.validate_adaptive_policy_pilot import (
     AdaptivePolicyPilotDataset,
     PilotReviewFixture,
     PilotScenario,
@@ -46,11 +65,25 @@ from eval.validate_adaptive_policy_pilot import (
 DEFAULT_CONFIG_PATH = (
     Path(__file__).parent / "configs" / "adaptive_policy_v1.config.json"
 )
+DEFAULT_FORMAL_CONFIG_PATH = (
+    Path(__file__).parent
+    / "configs"
+    / "adaptive_policy_v1_formal.config.json"
+)
+DEFAULT_FORMAL_FREEZE_PATH = (
+    Path(__file__).parent
+    / "protocols"
+    / "adaptive_policy_v1_final_freeze.json"
+)
 DEFAULT_OUTPUT_ROOT = Path(__file__).parent / "results" / "adaptive_policy"
-RUNNER_VERSION = "adaptive_eval_v1_b_pilot_1"
+RUNNER_VERSION = "adaptive_eval_v1_b_1"
 BASELINE_POLICY_VERSION = "intent_state_blind_v1"
 GENERATION_ADAPTER_VERSION = "policy_treatment_only_v1"
 Condition = Literal["adaptive", "baseline"]
+RunType = Literal["pilot", "formal"]
+RunDataset = AdaptivePolicyPilotDataset | AdaptivePolicyFormalDataset
+RunScenario = PilotScenario | FormalScenario
+RunReviewFixture = PilotReviewFixture | ReviewFixture
 
 
 @dataclass(frozen=True)
@@ -177,10 +210,137 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]:
     return payload
 
 
+def _load_dataset(*, run_type: RunType, path: Path) -> RunDataset:
+    if run_type == "pilot":
+        return load_and_validate_pilot(path)
+    return load_and_validate_dataset(path)
+
+
+def _verify_production_inputs(
+    *,
+    run_type: RunType,
+    dataset: RunDataset,
+    db: Session,
+) -> None:
+    if run_type == "pilot":
+        if not isinstance(dataset, AdaptivePolicyPilotDataset):
+            raise TypeError("Pilot run requires the pilot dataset")
+        verify_production_pilot_inputs(dataset, db)
+        return
+    if not isinstance(dataset, AdaptivePolicyFormalDataset):
+        raise TypeError("Formal run requires the formal dataset")
+    verify_production_dataset_inputs(dataset, db)
+
+
+def _validate_runtime_config(
+    *,
+    run_type: RunType,
+    dataset: RunDataset,
+    dataset_path: Path,
+    config: dict[str, Any],
+) -> None:
+    versions = config.get("versions")
+    if not isinstance(versions, dict):
+        raise ValueError("Evaluation config lacks versions")
+    if versions.get("generation_adapter_version") != GENERATION_ADAPTER_VERSION:
+        raise ValueError("Generation adapter version does not match config")
+
+    if run_type == "pilot":
+        if not isinstance(dataset, AdaptivePolicyPilotDataset):
+            raise TypeError("Pilot run requires the pilot dataset")
+        return
+
+    if not isinstance(dataset, AdaptivePolicyFormalDataset):
+        raise TypeError("Formal run requires the formal dataset")
+    freeze = config.get("formal_freeze")
+    if not isinstance(freeze, dict):
+        raise ValueError("Formal config lacks formal_freeze")
+    dataset_hash = file_sha256(dataset_path)
+    if freeze.get("dataset_sha256") != dataset_hash:
+        raise ValueError("Formal dataset SHA256 does not match frozen config")
+    if freeze.get("scenario_count") != len(dataset.scenarios):
+        raise ValueError("Formal scenario count does not match frozen config")
+    if (
+        freeze.get("canonical_response_execution_count")
+        != planned_canonical_response_execution_count(dataset)
+    ):
+        raise ValueError("Formal canonical execution count is stale")
+    if (
+        freeze.get("expected_successful_provider_generation_count")
+        != expected_successful_provider_generation_count(dataset)
+    ):
+        raise ValueError("Formal provider generation count is stale")
+    if config.get("adaptive_policy_version") != dataset.policy.adaptive_policy_version:
+        raise ValueError("Adaptive policy version does not match formal dataset")
+    if config.get("baseline_policy_version") != BASELINE_POLICY_VERSION:
+        raise ValueError("Baseline policy version does not match runner")
+
+    model = config.get("model")
+    if not isinstance(model, dict):
+        raise ValueError("Formal config lacks model")
+    if model.get("provider") != "openai":
+        raise ValueError("Formal provider must be openai")
+    if model.get("name") != settings.openai_chat_model:
+        raise ValueError("Configured chat model differs from formal freeze")
+    if model.get("embedding_name") != settings.openai_embedding_model:
+        raise ValueError("Configured embedding model differs from formal freeze")
+    if versions.get("runner_version") != RUNNER_VERSION:
+        raise ValueError("Runner version does not match formal freeze")
+    generation = config.get("generation")
+    if not isinstance(generation, dict):
+        raise ValueError("Formal config lacks generation settings")
+    expected_generation = {
+        "tutor_temperature": 0.2,
+        "tutor_max_tokens": 1000,
+        "quiz_temperature": 0.3,
+        "quiz_max_tokens": 2200,
+    }
+    for key, expected in expected_generation.items():
+        if generation.get(key) != expected:
+            raise ValueError(f"Formal {key} differs from the production path")
+    _verify_formal_freeze_manifest(
+        freeze_path=DEFAULT_FORMAL_FREEZE_PATH,
+        config=config,
+    )
+
+
+def _verify_formal_freeze_manifest(
+    *,
+    freeze_path: Path,
+    config: dict[str, Any],
+) -> None:
+    with freeze_path.open(encoding="utf-8") as file:
+        freeze = json.load(file)
+    if freeze.get("status") != "frozen_formal_generation_authorized_after_preflight":
+        raise ValueError("Formal freeze manifest is not authorized")
+    config_freeze = config["formal_freeze"]
+    if freeze.get("freeze_version") != config_freeze.get("freeze_version"):
+        raise ValueError("Formal freeze version does not match config")
+
+    repo_root = Path(__file__).resolve().parents[2]
+    locked_inputs = freeze.get("locked_inputs")
+    if not isinstance(locked_inputs, list) or not locked_inputs:
+        raise ValueError("Formal freeze manifest has no locked inputs")
+    for item in locked_inputs:
+        if not isinstance(item, dict):
+            raise ValueError("Formal freeze input entry is invalid")
+        relative_path = item.get("path")
+        expected_hash = item.get("sha256")
+        if not isinstance(relative_path, str) or not isinstance(
+            expected_hash, str
+        ):
+            raise ValueError("Formal freeze input path/hash is invalid")
+        path = repo_root / relative_path
+        if not path.is_file():
+            raise ValueError(f"Frozen input is missing: {relative_path}")
+        if file_sha256(path) != expected_hash:
+            raise ValueError(f"Frozen input SHA256 changed: {relative_path}")
+
+
 def build_adaptive_decision(
     *,
-    dataset: AdaptivePolicyPilotDataset,
-    scenario: PilotScenario,
+    dataset: RunDataset,
+    scenario: RunScenario,
     chunks: list[RetrievedChunk],
 ) -> PolicyDecision:
     learner_state, concept_state = _materialize_learner_state(
@@ -232,8 +392,8 @@ def build_adaptive_decision(
 def build_baseline_decision(
     *,
     adaptive_decision: PolicyDecision,
-    dataset: AdaptivePolicyPilotDataset,
-    scenario: PilotScenario,
+    dataset: RunDataset,
+    scenario: RunScenario,
     chunks: list[RetrievedChunk],
 ) -> PolicyDecision:
     expected = scenario.expected_baseline_policy
@@ -302,8 +462,8 @@ def build_generation_decision(decision: PolicyDecision) -> PolicyDecision:
 
 def run_scenario(
     *,
-    dataset: AdaptivePolicyPilotDataset,
-    scenario: PilotScenario,
+    dataset: RunDataset,
+    scenario: RunScenario,
     provider: RecordingRetryProvider,
 ) -> dict[str, Any]:
     started = perf_counter()
@@ -394,7 +554,7 @@ def run_scenario(
 def load_frozen_chunks(
     *,
     db: Session,
-    dataset: AdaptivePolicyPilotDataset,
+    dataset: RunDataset,
     fixture: EvidenceFixture,
 ) -> list[RetrievedChunk]:
     expected_ids = [chunk.chunk_id for chunk in fixture.ordered_chunks]
@@ -460,9 +620,9 @@ def rollback_only_session(
         connection.close()
 
 
-def run_pilot(
+def run_dataset(
     *,
-    dataset: AdaptivePolicyPilotDataset,
+    dataset: RunDataset,
     provider: RecordingRetryProvider,
 ) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
@@ -509,13 +669,14 @@ def run_pilot(
 def write_run_artifacts(
     *,
     output_dir: Path,
-    dataset: AdaptivePolicyPilotDataset,
+    dataset: RunDataset,
     config: dict[str, Any],
     dataset_path: Path,
     config_path: Path,
     results: list[dict[str, Any]],
     provider_events: list[dict[str, Any]],
     run_id: str,
+    run_type: RunType,
     git_commit: str,
     git_clean: bool,
     effective_max_retries: int,
@@ -535,16 +696,16 @@ def write_run_artifacts(
         result["case_id"] for result in results if result.get("error")
     ]
     canonical_execution_count = _canonical_execution_count(results)
-    expected_canonical_execution_count = (
-        dataset.topology.planned_canonical_response_execution_count
+    expected_canonical_execution_count = _planned_canonical_execution_count(
+        dataset
     )
     provider_event_count = len(provider_events)
-    expected_provider_event_count = (
-        dataset.topology.expected_successful_provider_generation_count
+    expected_provider_event_count = _expected_provider_event_count(
+        dataset
     )
     manifest = {
         "run_id": run_id,
-        "run_type": "pilot",
+        "run_type": run_type,
         "runner_version": RUNNER_VERSION,
         "generation_adapter_version": GENERATION_ADAPTER_VERSION,
         "generated_at": generated_at,
@@ -557,7 +718,12 @@ def write_run_artifacts(
         "dataset_sha256": dataset_hash,
         "config_path": str(config_path),
         "config_sha256": config_hash,
-        "formal_candidate_lock": dataset.formal_candidate_lock.model_dump(),
+        "formal_dataset_lock": _formal_dataset_lock(
+            dataset=dataset,
+            dataset_hash=dataset_hash,
+            config=config,
+            run_type=run_type,
+        ),
         "model": {
             "provider": "openai",
             "name": settings.openai_chat_model,
@@ -613,7 +779,7 @@ def write_run_artifacts(
         **config,
         "runtime": {
             "run_id": run_id,
-            "run_type": "pilot",
+            "run_type": run_type,
             "dataset_path": str(dataset_path),
             "dataset_sha256": dataset_hash,
             "config_sha256": config_hash,
@@ -724,7 +890,7 @@ def _execute_condition_safely(
     condition: Condition,
     decision: PolicyDecision,
     fixture: EvidenceFixture,
-    review_fixture: PilotReviewFixture | None,
+    review_fixture: RunReviewFixture | None,
     provider: RecordingRetryProvider,
 ) -> dict[str, Any]:
     if decision.selected_action == "review":
@@ -862,8 +1028,8 @@ def serialize_response(response: TutorResponse) -> dict[str, Any]:
 
 def _materialize_learner_state(
     *,
-    dataset: AdaptivePolicyPilotDataset,
-    scenario: PilotScenario,
+    dataset: RunDataset,
+    scenario: RunScenario,
 ) -> tuple[LearnerState, ConceptLearnerState]:
     state = scenario.learner_state
     learner = LearnerState(
@@ -902,7 +1068,7 @@ def _frozen_sufficient_evidence(
         retrieved_chunk_count=fixture.evidence_state.retrieved_chunk_count,
         top_similarity=None,
         requires_evidence=fixture.evidence_state.requires_evidence,
-        reason="Human-audited frozen pilot evidence fixture.",
+        reason="Human-audited frozen evaluation evidence fixture.",
         retrieval_scope=fixture.evidence_state.retrieval_scope,
         source_chunk_ids=[chunk.chunk_id for chunk in chunks],
     )
@@ -910,8 +1076,8 @@ def _frozen_sufficient_evidence(
 
 def _fixture_for(
     *,
-    dataset: AdaptivePolicyPilotDataset,
-    scenario: PilotScenario,
+    dataset: RunDataset,
+    scenario: RunScenario,
 ) -> EvidenceFixture:
     return next(
         fixture
@@ -922,9 +1088,9 @@ def _fixture_for(
 
 def _review_fixture_for(
     *,
-    dataset: AdaptivePolicyPilotDataset,
-    scenario: PilotScenario,
-) -> PilotReviewFixture | None:
+    dataset: RunDataset,
+    scenario: RunScenario,
+) -> RunReviewFixture | None:
     if scenario.review_fixture_id is None:
         return None
     return next(
@@ -938,7 +1104,7 @@ def _review_fixture_for(
 def _frozen_review_queue(
     *,
     decision: PolicyDecision,
-    review_fixture: PilotReviewFixture | None,
+    review_fixture: RunReviewFixture | None,
 ) -> Iterator[None]:
     if decision.selected_action != "review":
         yield
@@ -1068,6 +1234,45 @@ def _canonical_execution_count(results: list[dict[str, Any]]) -> int:
     return len(execution_ids)
 
 
+def _planned_canonical_execution_count(dataset: RunDataset) -> int:
+    if isinstance(dataset, AdaptivePolicyPilotDataset):
+        return dataset.topology.planned_canonical_response_execution_count
+    return planned_canonical_response_execution_count(dataset)
+
+
+def _expected_provider_event_count(dataset: RunDataset) -> int:
+    if isinstance(dataset, AdaptivePolicyPilotDataset):
+        return dataset.topology.expected_successful_provider_generation_count
+    return expected_successful_provider_generation_count(dataset)
+
+
+def _formal_dataset_lock(
+    *,
+    dataset: RunDataset,
+    dataset_hash: str,
+    config: dict[str, Any],
+    run_type: RunType,
+) -> dict[str, Any]:
+    if run_type == "pilot":
+        if not isinstance(dataset, AdaptivePolicyPilotDataset):
+            raise TypeError("Pilot run requires the pilot dataset")
+        return dataset.formal_candidate_lock.model_dump()
+
+    if not isinstance(dataset, AdaptivePolicyFormalDataset):
+        raise TypeError("Formal run requires the formal dataset")
+    freeze = config.get("formal_freeze")
+    if not isinstance(freeze, dict):
+        raise ValueError("Formal config lacks formal_freeze")
+    if freeze.get("dataset_sha256") != dataset_hash:
+        raise ValueError("Formal dataset SHA256 does not match frozen config")
+    return {
+        "dataset_id": dataset.dataset_id,
+        "dataset_sha256": dataset_hash,
+        "freeze_version": freeze.get("freeze_version"),
+        "candidate_commit": freeze.get("candidate_commit"),
+    }
+
+
 def _condition_error(
     *,
     adaptive: dict[str, Any],
@@ -1126,9 +1331,9 @@ def git_worktree_is_clean() -> bool:
     return not result.stdout.strip()
 
 
-def _default_run_id() -> str:
+def _default_run_id(run_type: RunType) -> str:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    return f"adaptive_policy_v1_pilot_{timestamp}"
+    return f"adaptive_policy_v1_{run_type}_{timestamp}"
 
 
 def parse_args() -> argparse.Namespace:
@@ -1140,8 +1345,8 @@ def parse_args() -> argparse.Namespace:
         choices=["pilot", "formal"],
         default="pilot",
     )
-    parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET_PATH)
-    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument("--dataset", type=Path)
+    parser.add_argument("--config", type=Path)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--run-id")
     parser.add_argument("--max-retries", type=int)
@@ -1149,37 +1354,81 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--confirm-pilot-generation",
         action="store_true",
-        help="Required explicit guard before any model-generation call.",
+        help="Required explicit guard before pilot model-generation calls.",
+    )
+    parser.add_argument(
+        "--confirm-formal-generation",
+        action="store_true",
+        help="Required explicit guard before formal model-generation calls.",
+    )
+    parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="Validate frozen inputs and runtime without model generation.",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    if args.run_type != "pilot":
-        raise ValueError(
-            "Formal V1-B execution is disabled until the final formal freeze"
-        )
-    if not args.confirm_pilot_generation:
+    run_type = cast(RunType, args.run_type)
+    dataset_path = args.dataset or (
+        DEFAULT_PILOT_DATASET_PATH
+        if run_type == "pilot"
+        else DEFAULT_FORMAL_DATASET_PATH
+    )
+    config_path = args.config or (
+        DEFAULT_CONFIG_PATH
+        if run_type == "pilot"
+        else DEFAULT_FORMAL_CONFIG_PATH
+    )
+    if (
+        not args.preflight_only
+        and run_type == "pilot"
+        and not args.confirm_pilot_generation
+    ):
         raise ValueError(
             "Pilot model generation requires --confirm-pilot-generation"
         )
+    if (
+        not args.preflight_only
+        and run_type == "formal"
+        and not args.confirm_formal_generation
+    ):
+        raise ValueError(
+            "Formal model generation requires --confirm-formal-generation"
+        )
 
-    dataset = load_and_validate_pilot(args.dataset)
-    config = load_config(args.config)
+    dataset = _load_dataset(run_type=run_type, path=dataset_path)
+    config = load_config(config_path)
+    _validate_runtime_config(
+        run_type=run_type,
+        dataset=dataset,
+        dataset_path=dataset_path,
+        config=config,
+    )
     with rollback_only_session() as db:
-        verify_production_pilot_inputs(dataset, db)
+        _verify_production_inputs(run_type=run_type, dataset=dataset, db=db)
 
     git_commit = git_commit_hash()
     git_clean = git_worktree_is_clean()
     if not git_clean:
         raise ValueError(
-            "Pilot generation requires a clean Git worktree"
+            f"{run_type.capitalize()} evaluation requires a clean Git worktree"
         )
-    run_id = args.run_id or _default_run_id()
+    if args.preflight_only:
+        print(
+            f"V1-B {run_type} preflight PASS: "
+            f"{len(dataset.scenarios)} scenarios, "
+            f"dataset SHA256 {file_sha256(dataset_path)}, "
+            f"Git {git_commit}."
+        )
+        return
+
+    run_id = args.run_id or _default_run_id(run_type)
     output_dir = create_run_dir(
         output_root=args.output_root,
-        run_type="pilot",
+        run_type=run_type,
         run_id=run_id,
         explicit_run_id=args.run_id is not None,
     )
@@ -1194,12 +1443,21 @@ def main() -> None:
         if args.retry_initial_delay is not None
         else float(generation_config["retry_initial_delay_seconds"])
     )
+    if run_type == "formal":
+        if max_retries != int(generation_config["max_retries"]):
+            raise ValueError("Formal max_retries is frozen by the config")
+        if retry_delay != float(
+            generation_config["retry_initial_delay_seconds"]
+        ):
+            raise ValueError(
+                "Formal retry_initial_delay_seconds is frozen by the config"
+            )
     provider = RecordingRetryProvider(
         OpenAIProvider(),
         max_retries=max_retries,
         retry_initial_delay=retry_delay,
     )
-    results = run_pilot(
+    results = run_dataset(
         dataset=dataset,
         provider=provider,
     )
@@ -1207,17 +1465,18 @@ def main() -> None:
         output_dir=output_dir,
         dataset=dataset,
         config=config,
-        dataset_path=args.dataset,
-        config_path=args.config,
+        dataset_path=dataset_path,
+        config_path=config_path,
         results=results,
         provider_events=provider.events,
         run_id=run_id,
+        run_type=run_type,
         git_commit=git_commit,
         git_clean=git_clean,
         effective_max_retries=max_retries,
         effective_retry_initial_delay=retry_delay,
     )
-    print(f"Wrote V1-B pilot artifacts to {output_dir}")
+    print(f"Wrote V1-B {run_type} artifacts to {output_dir}")
 
 
 if __name__ == "__main__":

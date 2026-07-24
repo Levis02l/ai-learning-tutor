@@ -1,17 +1,16 @@
-# Adaptive Policy V1-B Evaluation Protocol Draft
+# Adaptive Policy V1-B Evaluation Protocol
 
 ## Status
 
-**Draft for methodological review. Not frozen.**
+**Frozen for the V1-B formal experiment on 24 July 2026.**
 
-This document defines the proposed V1-B evaluation of learner-state-aware
-pedagogical policy. It does not authorize a formal run, create a formal dataset,
-or change production tutoring behaviour.
+This document defines the V1-B evaluation of learner-state-aware pedagogical
+policy. It does not change production tutoring behaviour.
 
-The protocol must be reviewed together with
-`adaptive_policy_v1_dataset_design.md`. A later freeze record must identify the
-approved dataset, evidence fixtures, prompts, model configuration, policy
-version, implementation commit, and file hashes.
+The authoritative frozen inputs, versions, counts, and file hashes are recorded
+in `adaptive_policy_v1_final_freeze.json` and
+`adaptive_policy_v1_final_freeze.md`. Those records authorize only a formal run
+that passes the runner's frozen-input preflight.
 
 ## 1. Scope and claim boundary
 
@@ -73,12 +72,12 @@ better. H2c is the primary comparative hypothesis.
 
 ## 4. Experimental design
 
-The proposed formal design contains:
+The frozen formal design contains:
 
 - 24 frozen scenario instances;
 - 11 counterfactual scenario groups;
 - 2 response conditions for each instance;
-- 48 generated responses in total;
+- 48 condition-level response artifacts in total;
 - 24 paired Adaptive/Baseline response comparisons.
 
 The scenario structure is:
@@ -95,9 +94,14 @@ There are eight low/high structured groups in total. Six are
 state-adaptation pairs used in the directional-sensitivity denominator. Two are
 explicit-intent fidelity pairs used in the action-fidelity denominator.
 
-The 48 generated outputs are not 48 independent samples. Adaptive and Baseline
-outputs are paired within each scenario, and scenarios are additionally grouped
-by shared counterfactual question/evidence context.
+The 48 condition-level artifacts are not 48 independent samples. Adaptive and
+Baseline outputs are paired within each scenario, and scenarios are
+additionally grouped by shared counterfactual question/evidence context. Four
+pre-registered identical-policy controls reuse one canonical TutorResponse
+execution. Under the frozen service path, the 44 canonical executions are
+expected to produce 49 provider-generation events: one deterministic review
+execution produces none, while six scaffolded explanations each add one
+comprehension-check generation.
 
 ## 5. Experimental conditions
 
@@ -464,8 +468,14 @@ V1-B must not introduce or evaluate:
 This draft does not modify the production Policy Controller or
 TutorResponseService.
 
-## 16. Next approval gate
+## 16. Formal authorization gate
 
-The next gate is a joint review of this protocol and the dataset design. Only
-after approval should the 11 concrete groups and 24 concrete scenario instances
-be authored. Runner implementation follows dataset audit, not this draft.
+The independent Pilot completed successfully and received validity sign-off.
+The 11 groups, 24 scenario instances, evidence fixtures, Baseline mapping,
+Policy version, generation adapter, runner, model/configuration, blinding
+procedure, annotation rubric, and statistical plan are frozen together in the
+V1-B final-freeze records.
+
+The next permitted operation is a read-only formal preflight. Model generation
+is authorized only after that preflight passes against a clean Git worktree and
+the exact frozen hashes. No second Pilot or outcome-driven tuning is permitted.

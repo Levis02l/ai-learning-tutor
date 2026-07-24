@@ -8,7 +8,9 @@ from pydantic import ValidationError
 import eval.validate_adaptive_policy_dataset as validator
 from eval.validate_adaptive_policy_dataset import (
     DEFAULT_DATASET_PATH,
+    expected_successful_provider_generation_count,
     load_and_validate_dataset,
+    planned_canonical_response_execution_count,
     verify_production_concept_resolution,
 )
 
@@ -19,6 +21,8 @@ def test_candidate_dataset_validates() -> None:
     assert dataset.topology.group_count == 11
     assert len(dataset.scenarios) == 24
     assert dataset.generation_control.planned_model_generation_call_count == 44
+    assert planned_canonical_response_execution_count(dataset) == 44
+    assert expected_successful_provider_generation_count(dataset) == 49
     assert dataset.generation_control.identical_policy_case_ids == [
         "adaptive_formal_g03_low",
         "adaptive_formal_g04_low",

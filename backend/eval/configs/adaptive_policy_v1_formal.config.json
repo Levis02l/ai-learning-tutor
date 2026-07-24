@@ -1,0 +1,42 @@
+{
+  "experiment_id": "adaptive_policy_v1",
+  "protocol_version": "v1_b_final_freeze_1",
+  "adaptive_policy_version": "rule_v2",
+  "baseline_policy_version": "intent_state_blind_v1",
+  "model": {
+    "provider": "openai",
+    "name": "gpt-5.4-mini",
+    "embedding_name": "text-embedding-3-small"
+  },
+  "generation": {
+    "tutor_temperature": 0.2,
+    "tutor_max_tokens": 1000,
+    "quiz_temperature": 0.3,
+    "quiz_max_tokens": 2200,
+    "max_retries": 2,
+    "retry_initial_delay_seconds": 2.0
+  },
+  "evidence": {
+    "provenance": "human_audited_frozen_fixture",
+    "top_similarity": null,
+    "live_retrieval_allowed": false
+  },
+  "blinding": {
+    "algorithm": "seeded_balanced_shuffle_v1",
+    "seed": "adaptive-policy-v1-formal-blinding-v1"
+  },
+  "versions": {
+    "runner_version": "adaptive_eval_v1_b_1",
+    "generation_adapter_version": "policy_treatment_only_v1",
+    "prompt_version": "production_tutor_response_service"
+  },
+  "formal_freeze": {
+    "freeze_version": "v1_b_final_freeze_1",
+    "candidate_commit": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
+    "dataset_sha256": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db",
+    "scenario_count": 24,
+    "condition_artifact_count": 48,
+    "canonical_response_execution_count": 44,
+    "expected_successful_provider_generation_count": 49
+  }
+}

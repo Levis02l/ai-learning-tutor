@@ -7,18 +7,28 @@ from sqlalchemy import create_engine, text
 from app.llm.provider import LLMProviderError, LLMResponse
 from app.services.retrieval import RetrievedChunk
 from eval.run_adaptive_policy_evaluation import (
+    DEFAULT_FORMAL_CONFIG_PATH,
     RecordingRetryProvider,
     _annotation_response_view,
     _execute_condition_safely,
+    _expected_provider_event_count,
     _fixture_for,
+    _planned_canonical_execution_count,
     _reuse_condition_artifact,
     _review_fixture_for,
+    _validate_runtime_config,
     build_adaptive_decision,
     build_baseline_decision,
     build_blinded_artifacts,
     load_config,
     rollback_only_session,
     write_run_artifacts,
+)
+from eval.validate_adaptive_policy_dataset import (
+    DEFAULT_DATASET_PATH as DEFAULT_FORMAL_DATASET_PATH,
+)
+from eval.validate_adaptive_policy_dataset import (
+    load_and_validate_dataset,
 )
 from eval.validate_adaptive_policy_pilot import (
     DEFAULT_DATASET_PATH,
@@ -366,6 +376,7 @@ def test_run_artifacts_record_effective_runtime_and_git_state(
         results=[],
         provider_events=[],
         run_id="provenance_test",
+        run_type="pilot",
         git_commit="abc123",
         git_clean=True,
         effective_max_retries=5,
@@ -387,6 +398,103 @@ def test_run_artifacts_record_effective_runtime_and_git_state(
     assert run_config["runtime"]["effective_generation_runtime"] == {
         "max_retries": 5,
         "retry_initial_delay_seconds": 0.25,
+    }
+
+
+def test_formal_runtime_config_locks_dataset_model_and_execution_counts() -> None:
+    dataset = load_and_validate_dataset()
+    config = load_config(DEFAULT_FORMAL_CONFIG_PATH)
+
+    _validate_runtime_config(
+        run_type="formal",
+        dataset=dataset,
+        dataset_path=DEFAULT_FORMAL_DATASET_PATH,
+        config=config,
+    )
+
+    assert _planned_canonical_execution_count(dataset) == 44
+    assert _expected_provider_event_count(dataset) == 49
+
+
+def test_formal_runtime_config_rejects_changed_dataset_hash() -> None:
+    dataset = load_and_validate_dataset()
+    config = load_config(DEFAULT_FORMAL_CONFIG_PATH)
+    config["formal_freeze"]["dataset_sha256"] = "0" * 64
+
+    with pytest.raises(ValueError, match="dataset SHA256"):
+        _validate_runtime_config(
+            run_type="formal",
+            dataset=dataset,
+            dataset_path=DEFAULT_FORMAL_DATASET_PATH,
+            config=config,
+        )
+
+
+def test_formal_dataset_builds_registered_adaptive_and_baseline_decisions() -> None:
+    dataset = load_and_validate_dataset()
+    scenario = next(
+        item
+        for item in dataset.scenarios
+        if item.case_id == "adaptive_formal_g01_low"
+    )
+    fixture = _fixture_for(dataset=dataset, scenario=scenario)
+    chunks = [_chunk(item.chunk_id) for item in fixture.ordered_chunks]
+
+    adaptive = build_adaptive_decision(
+        dataset=dataset,
+        scenario=scenario,
+        chunks=chunks,
+    )
+    baseline = build_baseline_decision(
+        adaptive_decision=adaptive,
+        dataset=dataset,
+        scenario=scenario,
+        chunks=chunks,
+    )
+
+    assert (adaptive.selected_action, adaptive.response_strategy) == (
+        "explain",
+        "scaffolded",
+    )
+    assert (baseline.selected_action, baseline.response_strategy) == (
+        "explain",
+        "guided",
+    )
+
+
+def test_formal_artifacts_record_the_frozen_dataset_lock(
+    tmp_path: Path,
+) -> None:
+    dataset = load_and_validate_dataset()
+    config = load_config(DEFAULT_FORMAL_CONFIG_PATH)
+
+    write_run_artifacts(
+        output_dir=tmp_path,
+        dataset=dataset,
+        config=config,
+        dataset_path=DEFAULT_FORMAL_DATASET_PATH,
+        config_path=DEFAULT_FORMAL_CONFIG_PATH,
+        results=[],
+        provider_events=[],
+        run_id="formal_provenance_test",
+        run_type="formal",
+        git_commit="freeze123",
+        git_clean=True,
+        effective_max_retries=2,
+        effective_retry_initial_delay=2.0,
+    )
+
+    manifest = json.loads(
+        (tmp_path / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["run_type"] == "formal"
+    assert manifest["formal_dataset_lock"] == {
+        "dataset_id": "adaptive_policy_v1_formal_candidate",
+        "dataset_sha256": (
+            "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db"
+        ),
+        "freeze_version": "v1_b_final_freeze_1",
+        "candidate_commit": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
     }
 
 
