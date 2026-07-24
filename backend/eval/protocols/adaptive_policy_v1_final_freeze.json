@@ -3,6 +3,14 @@
   "freeze_version": "v1_b_final_freeze_1",
   "freeze_date": "2026-07-24",
   "status": "frozen_formal_generation_authorized_after_preflight",
+  "amendments": [
+    {
+      "id": "statistical_clarification_1",
+      "date": "2026-07-24",
+      "timing": "before_formal_data_generation",
+      "scope": "exact_group_clustered_sensitivity_algorithm_only"
+    }
+  ],
   "candidate_commit": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
   "pilot_harness_commit": "75241841a3588dc15328087c238c7faa46e9bea7",
   "formal_design": {
@@ -51,7 +59,7 @@
     {
       "role": "protocol_annotation_rubric_and_statistical_plan",
       "path": "backend/eval/protocols/adaptive_policy_v1_protocol.md",
-      "sha256": "dd139ff169198505043c234ad765a4e26315694712ae4a46028c7690fa4b59c3"
+      "sha256": "8aa53d9d8d793a6c63cb6b1b0cac31a7073b1359dab90475ffd8c44016376ef4"
     },
     {
       "role": "dataset_design",
@@ -125,7 +133,30 @@
     "primary_outcome": "blinded_pairwise_pedagogical_preference",
     "primary_test": "exact_two_sided_sign_test_on_non_ties",
     "ties": "excluded_from_test_denominator_but_reported",
-    "group_clustered_sensitivity_analysis": true,
+    "group_clustered_sensitivity_analysis": {
+      "enabled": true,
+      "scenario_encoding": {
+        "adaptive_better": 1,
+        "tie": 0,
+        "baseline_better": -1
+      },
+      "group_unit_count": 11,
+      "group_score": "arithmetic_mean_of_scenario_scores",
+      "group_weighting": "one_equal_vote_per_registered_group",
+      "direction_rule": {
+        "positive": "adaptive_direction",
+        "zero": "tied_group",
+        "negative": "baseline_direction"
+      },
+      "test": "exact_two_sided_sign_test_on_nonzero_group_directions",
+      "null_adaptive_direction_probability": 0.5,
+      "ties": "excluded_from_test_denominator_but_reported",
+      "prohibited": [
+        "magnitude_threshold",
+        "group_size_weighting",
+        "post_hoc_tie_break"
+      ]
+    },
     "secondary_rubric": "four_outcomes_scored_0_1_2",
     "secondary_multiplicity": "holm_if_all_four_p_values_reported",
     "author_review_required": true

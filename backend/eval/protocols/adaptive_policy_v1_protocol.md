@@ -288,10 +288,28 @@ The pre-registered primary inferential test is an exact two-sided sign test on
 non-tie preferences under a 0.5 null preference probability. Ties are excluded
 from the sign-test denominator but must remain visible in all reporting.
 
-Because instances within a counterfactual group share question and evidence, a
-group-clustered sensitivity analysis should also be reported. The primary
-scenario-level test and clustered sensitivity result must both be retained,
-including any disagreement between them.
+Because instances within a counterfactual group share question and evidence,
+the following group-clustered sensitivity analysis is pre-registered:
+
+1. Encode each revealed scenario preference as `+1` for
+   `adaptive_better`, `0` for `tie`, and `-1` for `baseline_better`.
+2. For each of the 11 registered counterfactual groups, calculate the
+   arithmetic mean of its scenario scores. Each group therefore contributes
+   one direction regardless of whether it contains two or three scenarios.
+3. Classify a positive group mean as `adaptive_direction`, an exactly zero
+   mean as `tied_group`, and a negative mean as `baseline_direction`.
+4. Apply an exact two-sided sign test to the nonzero group directions under a
+   0.5 null probability of an Adaptive direction. Tied groups are excluded
+   from the test denominator but retained in reporting.
+5. Report Adaptive-direction group count, Baseline-direction group count,
+   tied-group count, all 11 registered groups, and the non-tied group
+   denominator.
+
+No magnitude threshold, weighting by group size, or post-hoc tie-break is
+permitted. This is a sensitivity analysis; the primary analysis remains the
+24-scenario exact sign test. The primary scenario-level result and clustered
+sensitivity result must both be retained, including any disagreement between
+them.
 
 ### 9.2 Secondary response outcomes
 

@@ -2,7 +2,8 @@
 
 ## Status
 
-**Frozen on 24 July 2026.**
+**Frozen on 24 July 2026; Statistical Clarification Amendment 1 applied before
+formal data generation.**
 
 The independent eight-scenario Pilot completed successfully and received
 validity sign-off. No second Pilot is authorized. The next permitted operation
@@ -11,6 +12,28 @@ formal run.
 
 The machine-readable authority for this freeze is
 `adaptive_policy_v1_final_freeze.json`.
+
+## Amendment 1 - Group-Clustered Sensitivity Analysis
+
+Before any formal output was generated, the group-clustered sensitivity method
+was specified exactly:
+
+1. Encode each scenario preference as Adaptive better `= +1`, tie `= 0`, and
+   Baseline better `= -1`.
+2. Compute the arithmetic mean within each of the 11 registered
+   counterfactual groups.
+3. Classify a positive mean as Adaptive-direction, zero as a tied group, and a
+   negative mean as Baseline-direction.
+4. Run an exact two-sided sign test over nonzero group directions under a 0.5
+   null probability.
+5. Report all direction counts, all 11 groups, tied groups, and the non-tied
+   denominator.
+
+Each group receives one vote regardless of whether it contains two or three
+scenarios. No threshold, group-size weighting, or post-hoc tie-break is
+allowed. The primary analysis remains the exact sign test over the 24
+scenario-level blinded preferences. This amendment changes no scenario,
+evidence, Policy, Baseline, prompt, model, runner behaviour, or A/B assignment.
 
 ## Frozen Experiment
 
