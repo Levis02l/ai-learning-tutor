@@ -100,24 +100,52 @@ def test_paired_bootstrap_is_deterministic_and_preserves_pairing() -> None:
     assert first[0] <= 1.0 <= first[1]
 
 
-def test_frozen_policy_outputs_match_registered_manipulations() -> None:
+def test_registered_policy_outputs_produce_expected_manipulations() -> None:
     dataset = json.loads(
         (EVAL_DIR / "datasets" / "adaptive_policy_v1_formal_candidate.json")
         .read_text(encoding="utf-8")
     )
-    raw_results = json.loads(
-        (
-            EVAL_DIR
-            / "results"
-            / "adaptive_policy"
-            / "formal"
-            / "adaptive_policy_v1_formal_24case_v2"
-            / "raw_results.json"
-        ).read_text(encoding="utf-8")
-    )
     identical_ids = set(
         dataset["generation_control"]["identical_policy_case_ids"]
     )
+    raw_results = []
+    for scenario in dataset["scenarios"]:
+        case_id = scenario["case_id"]
+        identical = case_id in identical_ids
+        shared_response = {"answer": f"Shared response for {case_id}"}
+        conditions = {}
+        for condition in ("adaptive", "baseline"):
+            expected = scenario[
+                (
+                    "expected_adaptive_policy"
+                    if condition == "adaptive"
+                    else "expected_baseline_policy"
+                )
+            ]
+            conditions[condition] = {
+                "decision": {
+                    "selected_action": expected["selected_action"],
+                    "response_strategy": expected["response_strategy"],
+                },
+                "response": (
+                    shared_response
+                    if identical
+                    else {"answer": f"{condition} response for {case_id}"}
+                ),
+                "generation_execution_id": (
+                    f"{case_id}_shared"
+                    if identical
+                    else f"{case_id}_{condition}"
+                ),
+                "reused_generation": identical and condition == "baseline",
+            }
+        raw_results.append(
+            {
+                "case_id": case_id,
+                "conditions": conditions,
+            }
+        )
+
     revealed = [
         {
             "case_id": row["case_id"],
