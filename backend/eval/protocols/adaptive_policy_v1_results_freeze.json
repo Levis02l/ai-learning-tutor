@@ -1,0 +1,49 @@
+{
+  "experiment": "adaptive_policy_v1",
+  "evaluation_stage": "V1-B",
+  "status": "FINAL_RESULTS_FROZEN",
+  "freeze_date": "2026-07-24",
+  "valid_formal_run": "adaptive_policy_v1_formal_24case_v2",
+  "invalidated_formal_v1_used": false,
+  "analysis_version": "adaptive-policy-v1-b-final-1",
+  "results_fact_sheet": {
+    "path": "backend/eval/protocols/adaptive_policy_v1_results_fact_sheet.md",
+    "sha256": "892b733bd5e3644e555fe2c0cc93cb8cf2551237264e4bf971f08987e87119b0"
+  },
+  "frozen_inputs": {
+    "annotation_sha256": "38bdb085fe05e967c7a3bbe139815ebb2ecf14679f75ce8f841278f088f3e7e1",
+    "reveal_key_sha256": "0fbc184c65d5d24af4eb702daf36972950d1d9851393efbece45c25089b8bf32",
+    "raw_results_sha256": "657af308f091ccd08795b6de6a46f3e96f0c9524d2a30548617d19ca191d4ce6",
+    "validity_audit_sha256": "1218e379bf0139d8d4601b13c0ea99b1652191b9ea7cbc9fe796f63a9a269437",
+    "formal_dataset_sha256": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db"
+  },
+  "analysis_artifacts": {
+    "analysis_manifest_sha256": "45de4c8aa3a7bbffd43ea9cf598efd1ff3e67009931cedb6eaefbc8e530a2dfb",
+    "revealed_annotations_sha256": "cb6f591cfb77974eaf868f9cf2a1454c7b4b31c83788f8509b1039b36ff7b5d4",
+    "primary_and_clustered_results_sha256": "291838f03355113060234a8f45f6521e3476f8818eeb699d31024147874a2c6b",
+    "secondary_results_sha256": "d501503abed7523bd71d1fdb56be40b48908a481e0a860422b610fd98ef8a805",
+    "manipulation_results_sha256": "575c6c034fed428cee7ff0a3daba55e9332aac1d8361fd7eb47551631d7b3ab3",
+    "integrity_audit_sha256": "9f10b16e85a284a3f7196b0100b030465d224eae08109b513aec639b72feb7c7",
+    "summary_sha256": "aef61efcedc47cdd948e718655d07dbfaa46ac9d8e3bb84c2a459b1c75f2d5ec"
+  },
+  "primary_result": {
+    "scenario_n": 24,
+    "adaptive_better": 11,
+    "baseline_better": 2,
+    "ties": 11,
+    "non_tie_n": 13,
+    "exact_two_sided_sign_test_p": 0.0224609375
+  },
+  "clustered_sensitivity": {
+    "group_n": 11,
+    "adaptive_direction": 7,
+    "baseline_direction": 0,
+    "tied_groups": 4,
+    "non_tied_group_n": 7,
+    "exact_two_sided_sign_test_p": 0.015625
+  },
+  "annotation_method": "AI-assisted blinded annotation followed by final author review and sign-off.",
+  "claim_boundary": "Controlled policy sensitivity and judged pedagogical appropriateness; no actual learning-gain or causal student-performance claim.",
+  "results_and_annotations_must_not_be_modified": true,
+  "rerun_authorized": false
+}
