@@ -26,17 +26,19 @@
     "seed": "adaptive-policy-v1-formal-blinding-v1"
   },
   "versions": {
-    "runner_version": "adaptive_eval_v1_b_1",
+    "runner_version": "adaptive_eval_v1_b_2",
     "generation_adapter_version": "policy_treatment_only_v1",
     "prompt_version": "production_tutor_response_service"
   },
   "formal_freeze": {
-    "freeze_version": "v1_b_final_freeze_1",
+    "freeze_version": "v1_b_final_freeze_2",
     "candidate_commit": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
     "dataset_sha256": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db",
     "scenario_count": 24,
     "condition_artifact_count": 48,
     "canonical_response_execution_count": 44,
-    "expected_successful_provider_generation_count": 49
+    "canonical_policy_quiz_execution_count": 12,
+    "expected_successful_provider_generation_count": 49,
+    "replacement_run_authorized": false
   }
 }

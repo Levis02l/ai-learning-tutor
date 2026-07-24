@@ -21,6 +21,7 @@ from eval.run_adaptive_policy_evaluation import (
     build_baseline_decision,
     build_blinded_artifacts,
     load_config,
+    planned_policy_quiz_execution_count,
     rollback_only_session,
     write_run_artifacts,
 )
@@ -414,6 +415,7 @@ def test_formal_runtime_config_locks_dataset_model_and_execution_counts() -> Non
 
     assert _planned_canonical_execution_count(dataset) == 44
     assert _expected_provider_event_count(dataset) == 49
+    assert planned_policy_quiz_execution_count(dataset) == 12
 
 
 def test_formal_runtime_config_rejects_changed_dataset_hash() -> None:
@@ -493,7 +495,7 @@ def test_formal_artifacts_record_the_frozen_dataset_lock(
         "dataset_sha256": (
             "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db"
         ),
-        "freeze_version": "v1_b_final_freeze_1",
+        "freeze_version": "v1_b_final_freeze_2",
         "candidate_commit": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
     }
 

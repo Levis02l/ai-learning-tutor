@@ -17,6 +17,7 @@ from app.services.quiz import (
     QuizGenerationError,
     generate_comprehension_check,
     generate_quiz_items,
+    generate_quiz_items_from_chunks,
 )
 from app.services.retrieval import RetrievedChunk, retrieve_relevant_chunks
 from app.services.review import get_due_review_items
@@ -203,17 +204,32 @@ def _quiz_response(
     top_k: int,
     llm_provider: LLMProvider | None,
 ) -> TutorResponse:
-    quiz_items = generate_quiz_items(
-        db=db,
-        topic=decision.query,
-        user_id=decision.user_id,
-        course_id=decision.course_id,
-        count=1,
-        difficulty=_quiz_difficulty(decision),
-        top_k=top_k,
-        origin="policy_quiz",
-        llm_provider=llm_provider,
-    )
+    concept_snapshot = decision.concept_state_snapshot or {}
+    if decision.evidence_chunks:
+        quiz_items = generate_quiz_items_from_chunks(
+            db=db,
+            topic=decision.query,
+            user_id=decision.user_id,
+            course_id=decision.course_id,
+            concept_id=concept_snapshot.get("concept_id"),
+            chunks=decision.evidence_chunks,
+            count=1,
+            difficulty=_quiz_difficulty(decision),
+            origin="policy_quiz",
+            llm_provider=llm_provider,
+        )
+    else:
+        quiz_items = generate_quiz_items(
+            db=db,
+            topic=decision.query,
+            user_id=decision.user_id,
+            course_id=decision.course_id,
+            count=1,
+            difficulty=_quiz_difficulty(decision),
+            top_k=top_k,
+            origin="policy_quiz",
+            llm_provider=llm_provider,
+        )
     return TutorResponse(
         decision=decision,
         answer_status="quiz_ready",

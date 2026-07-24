@@ -2,13 +2,15 @@
 
 ## Status
 
-**Frozen on 24 July 2026; Statistical Clarification Amendment 1 applied before
-formal data generation.**
+**Frozen on 24 July 2026; Statistical Clarification Amendment 1 and Frozen
+Evidence Execution Correction Amendment 2 applied.**
 
 The independent eight-scenario Pilot completed successfully and received
-validity sign-off. No second Pilot is authorized. The next permitted operation
-is a read-only formal preflight followed, if it passes, by one frozen 24-case
-formal run.
+validity sign-off. No second Pilot is authorized. The first formal execution
+was invalidated before annotation or outcome analysis because of the
+deterministic evidence-execution bug documented below. The next permitted
+operation is a strengthened read-only formal preflight. Replacement formal
+generation requires separate explicit authorization after that preflight.
 
 The machine-readable authority for this freeze is
 `adaptive_policy_v1_final_freeze.json`.
@@ -34,6 +36,54 @@ scenarios. No threshold, group-size weighting, or post-hoc tie-break is
 allowed. The primary analysis remains the exact sign test over the 24
 scenario-level blinded preferences. This amendment changes no scenario,
 evidence, Policy, Baseline, prompt, model, runner behaviour, or A/B assignment.
+
+## Amendment 2 - Frozen Evidence Execution Correction
+
+The first formal execution,
+`adaptive_policy_v1_formal_24case_v1`, was invalidated before annotation and
+before outcome analysis. Its integrity audit found that policy-generated quiz
+items re-ran live concept retrieval instead of consuming the evidence chunks
+already supplied by the frozen `PolicyDecision`. This deterministic execution
+bug affected 7 of 24 scenarios and 11 condition artifacts.
+
+The run remains permanently preserved at:
+
+```text
+backend/eval/results/adaptive_policy/formal/adaptive_policy_v1_formal_24case_v1/
+```
+
+It is excluded in full from primary and secondary efficacy analysis. It must
+not be annotated, partially salvaged, overwritten, deleted, or combined with a
+later result set. The reveal key was used only to verify the registered 12/12
+A/B balance; it was not used for annotation or outcome analysis. Exact
+provenance and artifact hashes are recorded in
+`adaptive_policy_v1_invalidated_formal_run_v1.json`.
+
+Amendment 2 authorizes one narrow execution correction:
+
+```text
+PolicyDecision.evidence_chunks
+        -> policy quiz generation
+        -> generate from those supplied chunks
+```
+
+The product-level fallback to ordinary quiz retrieval remains available only
+when no decision evidence was supplied. This correction changes evidence
+plumbing only. It does not change any formal scenario, learner profile,
+expected decision, Policy rule, Baseline mapping, evidence fixture, prompt,
+model, generation setting, retry policy, blinding rule, annotation rubric, or
+statistical analysis.
+
+The formal preflight now executes every canonical policy-quiz path with a
+non-network provider. It verifies the exact frozen chunk order supplied to the
+quiz prompt, rejects any live concept-retrieval call, and requires every
+generated quiz source ID to be a subset of the corresponding frozen fixture.
+The registered canonical policy-quiz execution count is 12.
+
+A complete 24-scenario replacement run is required. Its proposed run ID is
+`adaptive_policy_v1_formal_24case_v2`. Amendment 2 does not itself authorize
+that generation run; explicit authorization is still required after the
+strengthened post-commit preflight passes.
 
 ## Frozen Experiment
 
@@ -160,11 +210,15 @@ The preflight must pass with:
 - the frozen model and embedding model;
 - matching Policy, Baseline, runner, and adapter versions;
 - 44 canonical executions and 49 expected provider events;
+- 12 canonical policy-quiz execution probes using the exact frozen chunks;
+- zero live concept-retrieval calls during those quiz probes;
 - all frozen chunks present with unchanged hashes;
 - unchanged production concept resolution; and
 - a clean Git worktree.
 
-Only after a passing preflight may the formal generation guard be used. Formal
-outputs must be retained even if a condition fails. No prompt, dataset,
-evidence, Policy, model, or threshold changes may be made after inspecting
-formal outputs.
+The replacement formal generation guard remains disabled until a passing
+post-Amendment-2 preflight has been reviewed and explicit generation
+authorization is given. When authorized, the replacement must be a complete
+24-scenario run with a new run ID. Formal outputs must be retained even if a
+condition fails. No prompt, dataset, evidence, Policy, model, or threshold
+changes may be made after inspecting formal outputs.

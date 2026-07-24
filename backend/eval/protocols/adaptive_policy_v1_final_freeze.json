@@ -1,14 +1,20 @@
 {
   "freeze_id": "adaptive_policy_v1_final_freeze_1",
-  "freeze_version": "v1_b_final_freeze_1",
+  "freeze_version": "v1_b_final_freeze_2",
   "freeze_date": "2026-07-24",
-  "status": "frozen_formal_generation_authorized_after_preflight",
+  "status": "frozen_amendment_2_preflight_authorized",
   "amendments": [
     {
       "id": "statistical_clarification_1",
       "date": "2026-07-24",
       "timing": "before_formal_data_generation",
       "scope": "exact_group_clustered_sensitivity_algorithm_only"
+    },
+    {
+      "id": "frozen_evidence_execution_correction_2",
+      "date": "2026-07-24",
+      "timing": "after_invalidated_run_before_annotation_or_outcome_analysis",
+      "scope": "policy_quiz_supplied_evidence_plumbing_and_execution_preflight_only"
     }
   ],
   "candidate_commit": "7ab5be7923e1cd1a8d9b85b8432278f855c588a2",
@@ -19,6 +25,7 @@
     "condition_artifact_count": 48,
     "identical_policy_control_count": 4,
     "canonical_response_execution_count": 44,
+    "canonical_policy_quiz_execution_count": 12,
     "expected_successful_provider_generation_count": 49,
     "adaptive_as_a_count": 12,
     "adaptive_as_b_count": 12
@@ -26,7 +33,7 @@
   "locked_versions": {
     "adaptive_policy": "rule_v2",
     "baseline_policy": "intent_state_blind_v1",
-    "runner": "adaptive_eval_v1_b_1",
+    "runner": "adaptive_eval_v1_b_2",
     "generation_adapter": "policy_treatment_only_v1",
     "prompt": "production_tutor_response_service",
     "blinding_algorithm": "seeded_balanced_shuffle_v1",
@@ -54,7 +61,7 @@
     {
       "role": "formal_runtime_config",
       "path": "backend/eval/configs/adaptive_policy_v1_formal.config.json",
-      "sha256": "42e09a76ea6b07d06240e492c524e318251ffbd616b97df0e33e410bff45b5c2"
+      "sha256": "d4df33efe77b7d547ff4ecc38d7957039274bd456f35b1cc17c7a51dd6c120bb"
     },
     {
       "role": "protocol_annotation_rubric_and_statistical_plan",
@@ -74,7 +81,7 @@
     {
       "role": "evaluation_runner_blinding_and_annotation_projection",
       "path": "backend/eval/run_adaptive_policy_evaluation.py",
-      "sha256": "1aedf32eb47b837e9436e24b613fdc8187b1caec500ab4086efa2096fd4236da"
+      "sha256": "febfca6a586c36b0f8b9de1487446f1763be8c2baca2745014b318c0233ac39c"
     },
     {
       "role": "formal_dataset_validator",
@@ -94,7 +101,7 @@
     {
       "role": "production_tutor_response_and_prompt_path",
       "path": "backend/app/services/tutor_response.py",
-      "sha256": "a3f53b62eb18e25e8ebe3fa7da8383d28a72e5b9efd80cdcf1b65b204b3af7bc"
+      "sha256": "fb902d2199f816cc977e01965c6414558e492157287c21e587da4d9ec03a2616"
     },
     {
       "role": "production_quiz_generation_path",
@@ -105,8 +112,35 @@
       "role": "production_llm_provider",
       "path": "backend/app/llm/openai_provider.py",
       "sha256": "528ab17570a4a6a413a4fb6fe0ac0842b04de0ca171859ea3d34b507ce8bf690"
+    },
+    {
+      "role": "amendment_2_human_readable_freeze",
+      "path": "backend/eval/protocols/adaptive_policy_v1_final_freeze.md",
+      "sha256": "d850633785cf4b4c242851294ca7d1ffe28079e5317e5b1ad077f0f85d0b3f26"
+    },
+    {
+      "role": "invalidated_formal_run_v1_provenance",
+      "path": "backend/eval/protocols/adaptive_policy_v1_invalidated_formal_run_v1.json",
+      "sha256": "087237c3b751e25bca57787750865a96d555eb9dbdd520d031eddb78346f3086"
     }
   ],
+  "invalidated_formal_run_v1": {
+    "run_id": "adaptive_policy_v1_formal_24case_v1",
+    "status": "INVALIDATED_PRE_ANNOTATION",
+    "validity_audit_sha256": "85592183d503d9366a7cfd332f6b87220ce7059e905f1432b2952f281e5639fa",
+    "annotation_performed": false,
+    "outcome_analysis_performed": false,
+    "eligible_for_primary_analysis": false,
+    "eligible_for_secondary_analysis": false,
+    "preserved_unchanged": true
+  },
+  "replacement_formal_run": {
+    "proposed_run_id": "adaptive_policy_v1_formal_24case_v2",
+    "complete_24_scenario_run_required": true,
+    "partial_recovery_allowed": false,
+    "generation_authorized": false,
+    "next_gate": "strengthened_post_commit_preflight_and_explicit_authorization"
+  },
   "pilot_validity_signoff": {
     "run_id": "adaptive_policy_v1_pilot_v1",
     "result_directory": "backend/eval/results/adaptive_policy/pilot/adaptive_policy_v1_pilot_v1",

@@ -339,6 +339,62 @@ def test_quiz_action_reuses_quiz_service_for_one_item(monkeypatch) -> None:
     assert response.quiz_items[0].id == 7
 
 
+def test_policy_quiz_uses_decision_evidence_without_live_retrieval(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_generate_from_chunks(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["chunk_ids"] = [
+            chunk.chunk_id for chunk in kwargs["chunks"]
+        ]
+        captured["concept_id"] = kwargs["concept_id"]
+        captured["count"] = kwargs["count"]
+        captured["difficulty"] = kwargs["difficulty"]
+        captured["origin"] = kwargs["origin"]
+        item = _quiz_item(
+            item_id=8,
+            concept_id=kwargs["concept_id"],
+            origin=kwargs["origin"],
+        )
+        item.source_chunk_ids = [7]
+        return [item]
+
+    def fail_live_retrieval(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("Policy quiz must not re-run live retrieval")
+
+    monkeypatch.setattr(
+        "app.services.tutor_response.generate_quiz_items_from_chunks",
+        fake_generate_from_chunks,
+    )
+    monkeypatch.setattr(
+        "app.services.tutor_response.generate_quiz_items",
+        fail_live_retrieval,
+    )
+
+    response = execute_tutor_decision(
+        db=None,  # type: ignore[arg-type]
+        decision=_decision(
+            selected_action="quiz",
+            response_strategy="challenging",
+            evidence_chunks=[_chunk(chunk_id=7), _chunk(chunk_id=8)],
+            concept_state_snapshot=_concept_snapshot(),
+        ),
+        llm_provider=FailingLLMProvider(),
+    )
+
+    assert captured == {
+        "chunk_ids": [7, 8],
+        "concept_id": 9,
+        "count": 1,
+        "difficulty": "hard",
+        "origin": "policy_quiz",
+    }
+    assert response.answer_status == "quiz_ready"
+    assert response.quiz_items[0].origin == "policy_quiz"
+    assert set(response.quiz_items[0].source_chunk_ids).issubset({7, 8})
+
+
 def test_llm_response_rejects_invalid_json(monkeypatch) -> None:
     provider = FakeLLMProvider(text="not json")
     monkeypatch.setattr(

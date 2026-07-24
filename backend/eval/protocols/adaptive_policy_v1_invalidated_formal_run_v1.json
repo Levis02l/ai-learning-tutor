@@ -1,0 +1,73 @@
+{
+  "record_id": "adaptive_policy_v1_invalidated_formal_run_v1",
+  "record_date": "2026-07-24",
+  "run_id": "adaptive_policy_v1_formal_24case_v1",
+  "status": "INVALIDATED_PRE_ANNOTATION",
+  "validity_status": "FAIL_DO_NOT_ANNOTATE",
+  "preservation": {
+    "result_directory": "backend/eval/results/adaptive_policy/formal/adaptive_policy_v1_formal_24case_v1",
+    "preserved_unchanged": true,
+    "eligible_for_primary_analysis": false,
+    "eligible_for_secondary_analysis": false,
+    "annotation_performed": false,
+    "outcome_analysis_performed": false,
+    "partial_salvage_allowed": false,
+    "partial_recovery_allowed": false
+  },
+  "methodological_decision": {
+    "exclusion_reason": "frozen_evidence_execution_violation",
+    "decision_basis": "deterministic_protocol_violation_only",
+    "outcome_driven": false,
+    "replacement_policy": "complete_24_scenario_replacement_run_required",
+    "replacement_run_id": "adaptive_policy_v1_formal_24case_v2",
+    "replacement_run_authorized": false
+  },
+  "root_cause": {
+    "category": "deterministic_evaluation_execution_bug",
+    "summary": "Policy-generated quiz execution re-ran live concept retrieval instead of consuming the evidence chunks already supplied by the frozen PolicyDecision.",
+    "code_path": "execute_tutor_decision -> _quiz_response -> generate_quiz_items -> _retrieve_quiz_chunks",
+    "affected_scenario_count": 7,
+    "affected_condition_artifact_count": 11,
+    "affected_origin": "policy_quiz",
+    "unaffected_path": "comprehension_check"
+  },
+  "execution_provenance": {
+    "formal_command": ".venv/bin/python -m eval.run_adaptive_policy_evaluation --run-type formal --dataset eval/datasets/adaptive_policy_v1_formal_candidate.json --config eval/configs/adaptive_policy_v1_formal.config.json --output-root eval/results/adaptive_policy --run-id adaptive_policy_v1_formal_24case_v1 --confirm-formal-generation",
+    "git_commit": "03da3da71a7948ff0407f2232a956d30d3044684",
+    "git_clean": true,
+    "dataset_sha256": "3221a85d87ebb788a603e93d3e48343edaf02d2c1595a3574558c4be30bf36db",
+    "config_sha256": "42e09a76ea6b07d06240e492c524e318251ffbd616b97df0e33e410bff45b5c2",
+    "freeze_manifest_sha256": "b7addbb04bb18ce71092151891c76786b6b2ad662ca1d120526a1e4bf42c7751",
+    "runner_version": "adaptive_eval_v1_b_1",
+    "generation_adapter_version": "policy_treatment_only_v1",
+    "model": "gpt-5.4-mini",
+    "embedding_model": "text-embedding-3-small"
+  },
+  "execution_counts": {
+    "scenarios_attempted": 24,
+    "scenarios_succeeded": 24,
+    "condition_artifact_count": 48,
+    "canonical_response_execution_count": 44,
+    "provider_event_count": 49,
+    "provider_attempt_count": 49,
+    "retry_count": 0,
+    "adaptive_as_a_count": 12,
+    "adaptive_as_b_count": 12
+  },
+  "blinding_integrity": {
+    "reveal_key_used_for_annotation": false,
+    "reveal_key_used_for_outcome_analysis": false,
+    "reveal_key_use": "integrity_balance_verification_only",
+    "specific_pair_outcomes_inspected": false
+  },
+  "artifact_sha256": {
+    "validity_audit.json": "85592183d503d9366a7cfd332f6b87220ce7059e905f1432b2952f281e5639fa",
+    "manifest.json": "1fb885b5eb69451b461c0705a1dd564f9ae18a383fb1657c1d4df161a4b31f6d",
+    "run_config.json": "39c1acfce8a026b6f1f54ea5942b970609a1ad1b2736a634045f4b3a78ee04be",
+    "raw_results.json": "8a04b4e845b705aca4d6691e9f6d05653bee9072c081f10d3afa681a8ef0f914",
+    "raw_results.jsonl": "12a891f22874ca9bd0a5fbbd9133b8f88995643c600c80c9995a6874b49eebc1",
+    "provider_events.json": "540e9a7cafad0b01fc9ff263537835e50555ba4bcbe82244822a05aba46922c3",
+    "blinded_pairs.json": "d09e63eaf370db5fcb9ac44407f694490ae3b2ac22211ddd5e5f6f1bc30bf745",
+    "reveal_key.json": "0fbc184c65d5d24af4eb702daf36972950d1d9851393efbece45c25089b8bf32"
+  }
+}

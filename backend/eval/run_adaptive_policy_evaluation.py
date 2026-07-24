@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import random
+import re
 import subprocess
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, replace
@@ -76,7 +77,7 @@ DEFAULT_FORMAL_FREEZE_PATH = (
     / "adaptive_policy_v1_final_freeze.json"
 )
 DEFAULT_OUTPUT_ROOT = Path(__file__).parent / "results" / "adaptive_policy"
-RUNNER_VERSION = "adaptive_eval_v1_b_1"
+RUNNER_VERSION = "adaptive_eval_v1_b_2"
 BASELINE_POLICY_VERSION = "intent_state_blind_v1"
 GENERATION_ADAPTER_VERSION = "policy_treatment_only_v1"
 Condition = Literal["adaptive", "baseline"]
@@ -202,6 +203,53 @@ class RecordingRetryProvider:
         raise RuntimeError("Unreachable provider retry state")
 
 
+class _FrozenEvidenceQuizProbeProvider:
+    def __init__(self) -> None:
+        self.prompt_chunk_ids: list[list[int]] = []
+
+    def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = 800,
+        temperature: float = 0.2,
+    ) -> LLMResponse:
+        del system_prompt, max_tokens, temperature
+        chunk_ids = [
+            int(match)
+            for match in re.findall(r"\[chunk_id=(\d+)\]", user_prompt)
+        ]
+        if not chunk_ids:
+            raise ValueError("Quiz preflight received no frozen evidence chunks")
+        self.prompt_chunk_ids.append(chunk_ids)
+        source_chunk_id = chunk_ids[0]
+        return LLMResponse(
+            text=json.dumps(
+                {
+                    "items": [
+                        {
+                            "question": "Which statement matches the source?",
+                            "options": [
+                                {"id": "A", "text": "Supported statement"},
+                                {"id": "B", "text": "Distractor one"},
+                                {"id": "C", "text": "Distractor two"},
+                                {"id": "D", "text": "Distractor three"},
+                            ],
+                            "correct_option_id": "A",
+                            "answer": "Supported statement",
+                            "explanation": "The frozen source supports option A.",
+                            "source_chunk_ids": [source_chunk_id],
+                            "evidence_quote": "Frozen evidence excerpt.",
+                            "question_type": "conceptual",
+                            "traceability_label": "fully_traceable",
+                        }
+                    ]
+                }
+            )
+        )
+
+
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]:
     with path.open(encoding="utf-8") as file:
         payload = json.load(file)
@@ -230,6 +278,139 @@ def _verify_production_inputs(
     if not isinstance(dataset, AdaptivePolicyFormalDataset):
         raise TypeError("Formal run requires the formal dataset")
     verify_production_dataset_inputs(dataset, db)
+
+
+def planned_policy_quiz_execution_count(
+    dataset: AdaptivePolicyFormalDataset,
+) -> int:
+    count = 0
+    for scenario in dataset.scenarios:
+        if scenario.expected_adaptive_policy.selected_action == "quiz":
+            count += 1
+        if (
+            scenario.expected_baseline_policy
+            != scenario.expected_adaptive_policy
+            and scenario.expected_baseline_policy.selected_action == "quiz"
+        ):
+            count += 1
+    return count
+
+
+def verify_formal_policy_quiz_execution(
+    *,
+    dataset: AdaptivePolicyFormalDataset,
+    db: Session,
+) -> dict[str, int]:
+    expected_count = planned_policy_quiz_execution_count(dataset)
+    execution_count = 0
+    provider_call_count = 0
+
+    def fail_live_retrieval(*args: Any, **kwargs: Any) -> None:
+        del args, kwargs
+        raise AssertionError(
+            "Formal policy quiz attempted live concept retrieval"
+        )
+
+    with (
+        patch(
+            "app.services.tutor_response.generate_quiz_items",
+            side_effect=fail_live_retrieval,
+        ),
+        patch(
+            "app.services.quiz._resolve_quiz_concept_id",
+            side_effect=fail_live_retrieval,
+        ),
+        patch(
+            "app.services.quiz._retrieve_quiz_chunks",
+            side_effect=fail_live_retrieval,
+        ),
+    ):
+        for scenario in dataset.scenarios:
+            fixture = _fixture_for(dataset=dataset, scenario=scenario)
+            chunks = load_frozen_chunks(
+                db=db,
+                dataset=dataset,
+                fixture=fixture,
+            )
+            expected_chunk_ids = [
+                chunk.chunk_id for chunk in fixture.ordered_chunks
+            ]
+            adaptive = build_adaptive_decision(
+                dataset=dataset,
+                scenario=scenario,
+                chunks=chunks,
+            )
+            baseline = build_baseline_decision(
+                adaptive_decision=adaptive,
+                dataset=dataset,
+                scenario=scenario,
+                chunks=chunks,
+            )
+            canonical_decisions = [adaptive]
+            if (
+                scenario.expected_adaptive_policy
+                != scenario.expected_baseline_policy
+            ):
+                canonical_decisions.append(baseline)
+
+            for decision in canonical_decisions:
+                if decision.selected_action != "quiz":
+                    continue
+                decision_chunk_ids = [
+                    chunk.chunk_id for chunk in decision.evidence_chunks
+                ]
+                if decision_chunk_ids != expected_chunk_ids:
+                    raise ValueError(
+                        f"{scenario.case_id} quiz decision evidence differs "
+                        "from the frozen fixture"
+                    )
+
+                provider = _FrozenEvidenceQuizProbeProvider()
+                response = execute_tutor_decision(
+                    db=db,
+                    decision=build_generation_decision(decision),
+                    top_k=len(expected_chunk_ids),
+                    llm_provider=provider,
+                )
+                execution_count += 1
+                provider_call_count += len(provider.prompt_chunk_ids)
+
+                if provider.prompt_chunk_ids != [expected_chunk_ids]:
+                    raise ValueError(
+                        f"{scenario.case_id} quiz prompt evidence differs "
+                        "from the frozen fixture"
+                    )
+                if not response.quiz_items:
+                    raise ValueError(
+                        f"{scenario.case_id} quiz preflight returned no item"
+                    )
+                allowed_source_ids = set(expected_chunk_ids)
+                for item in response.quiz_items:
+                    if not item.source_chunk_ids:
+                        raise ValueError(
+                            f"{scenario.case_id} quiz item lacks source IDs"
+                        )
+                    if not set(item.source_chunk_ids).issubset(
+                        allowed_source_ids
+                    ):
+                        raise ValueError(
+                            f"{scenario.case_id} quiz item escaped frozen "
+                            "evidence"
+                        )
+
+    if execution_count != expected_count:
+        raise ValueError(
+            "Formal policy quiz execution probe count differs from plan"
+        )
+    if provider_call_count != expected_count:
+        raise ValueError(
+            "Formal policy quiz provider probe count differs from plan"
+        )
+    return {
+        "canonical_policy_quiz_execution_count": execution_count,
+        "fake_provider_call_count": provider_call_count,
+        "live_retrieval_call_count": 0,
+    }
 
 
 def _validate_runtime_config(
@@ -270,6 +451,11 @@ def _validate_runtime_config(
         != expected_successful_provider_generation_count(dataset)
     ):
         raise ValueError("Formal provider generation count is stale")
+    if (
+        freeze.get("canonical_policy_quiz_execution_count")
+        != planned_policy_quiz_execution_count(dataset)
+    ):
+        raise ValueError("Formal policy quiz execution count is stale")
     if config.get("adaptive_policy_version") != dataset.policy.adaptive_policy_version:
         raise ValueError("Adaptive policy version does not match formal dataset")
     if config.get("baseline_policy_version") != BASELINE_POLICY_VERSION:
@@ -311,8 +497,8 @@ def _verify_formal_freeze_manifest(
 ) -> None:
     with freeze_path.open(encoding="utf-8") as file:
         freeze = json.load(file)
-    if freeze.get("status") != "frozen_formal_generation_authorized_after_preflight":
-        raise ValueError("Formal freeze manifest is not authorized")
+    if freeze.get("status") != "frozen_amendment_2_preflight_authorized":
+        raise ValueError("Formal Amendment 2 preflight is not authorized")
     config_freeze = config["formal_freeze"]
     if freeze.get("freeze_version") != config_freeze.get("freeze_version"):
         raise ValueError("Formal freeze version does not match config")
@@ -1407,8 +1593,24 @@ def main() -> None:
         dataset_path=dataset_path,
         config=config,
     )
+    if (
+        run_type == "formal"
+        and not args.preflight_only
+        and not config["formal_freeze"].get("replacement_run_authorized", False)
+    ):
+        raise ValueError(
+            "Replacement formal generation is not authorized by Amendment 2"
+        )
+    quiz_execution_probe: dict[str, int] | None = None
     with rollback_only_session() as db:
         _verify_production_inputs(run_type=run_type, dataset=dataset, db=db)
+        if run_type == "formal":
+            if not isinstance(dataset, AdaptivePolicyFormalDataset):
+                raise TypeError("Formal run requires the formal dataset")
+            quiz_execution_probe = verify_formal_policy_quiz_execution(
+                dataset=dataset,
+                db=db,
+            )
 
     git_commit = git_commit_hash()
     git_clean = git_worktree_is_clean()
@@ -1417,11 +1619,18 @@ def main() -> None:
             f"{run_type.capitalize()} evaluation requires a clean Git worktree"
         )
     if args.preflight_only:
+        quiz_probe_message = (
+            ", "
+            f"{quiz_execution_probe['canonical_policy_quiz_execution_count']} "
+            "canonical policy-quiz executions verified with zero live retrieval"
+            if quiz_execution_probe is not None
+            else ""
+        )
         print(
             f"V1-B {run_type} preflight PASS: "
             f"{len(dataset.scenarios)} scenarios, "
             f"dataset SHA256 {file_sha256(dataset_path)}, "
-            f"Git {git_commit}."
+            f"Git {git_commit}{quiz_probe_message}."
         )
         return
 
