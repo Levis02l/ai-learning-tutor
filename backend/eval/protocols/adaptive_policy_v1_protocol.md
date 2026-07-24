@@ -154,6 +154,23 @@ invariant and implementation safeguard.
 The Baseline must not be deliberately weakened. It uses valid production
 strategy values and the same response-generation infrastructure as Adaptive.
 
+### 5.3 Identical-policy generation control
+
+Some scenarios are expected no-treatment controls: the Adaptive and Baseline
+conditions produce the same `selected_action` and `response_strategy`. When the
+question, ordered evidence fixture, PolicyDecision, prompt inputs, and
+generation configuration are identical, the evaluation must make one canonical
+model call and reuse that response for both condition-level artifacts.
+
+The two artifacts remain distinct for provenance and paired-analysis topology,
+but they are not independent model generations. Their registered pairwise
+preference is a tie. This prevents model-service variation from being
+misattributed to a policy treatment that did not occur.
+
+The candidate dataset identifies these cases prospectively. If later dataset
+changes alter which policies are identical, validation must recompute the set
+rather than relying on a stale manual list.
+
 ## 6. Controlled variables
 
 For an Adaptive/Baseline comparison of the same scenario, the following must be
@@ -194,6 +211,9 @@ The later evaluation harness must:
 4. construct the frozen state-blind decision for the Baseline condition;
 5. pass each decision through the same TutorResponseService machinery; and
 6. save both raw decisions, prompts or prompt hashes, evidence, and responses.
+
+For identical-policy controls, step 5 performs one canonical generation and
+step 6 writes two condition-level artifacts referencing that same generation.
 
 The harness must bypass production lookups that would re-resolve learner state
 or misconception data. It must explicitly provide `misconception = null`.

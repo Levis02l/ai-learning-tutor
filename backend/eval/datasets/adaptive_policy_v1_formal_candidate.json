@@ -1,0 +1,1398 @@
+{
+  "schema_version": "adaptive_policy_v1_candidate_1.0",
+  "dataset_id": "adaptive_policy_v1_formal_candidate",
+  "status": "candidate_not_frozen",
+  "created_date": "2026-07-24",
+  "course": {
+    "course_id": 2,
+    "course_name": "data analyze",
+    "user_id": "demo-user",
+    "document_id": 3,
+    "source_filename": "Lecture_notes_in_Unsupervised_Learning_2026_02_19.pdf"
+  },
+  "policy": {
+    "adaptive_policy_version": "rule_v2",
+    "misconception": null,
+    "evidence_condition": "sufficient",
+    "baseline_mapping": {
+      "explain": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "hint": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "practice": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "review": {
+        "selected_action": "review",
+        "response_strategy": "review_drill"
+      },
+      "unknown": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      }
+    }
+  },
+  "topology": {
+    "group_count": 11,
+    "scenario_count": 24,
+    "adaptive_baseline_comparisons": 24,
+    "generated_output_count": 48,
+    "state_adaptation_directional_pairs": 6,
+    "mastery_ordinal_triplets": 2,
+    "review_due_pairs": 1,
+    "explicit_intent_fidelity_pairs": 2,
+    "condition_artifact_count": 48,
+    "planned_model_generation_call_count": 44
+  },
+  "generation_control": {
+    "identical_policy_handling": "single_generation_reuse",
+    "independent_condition_scenarios": 20,
+    "identical_policy_scenarios": 4,
+    "identical_policy_case_ids": [
+      "adaptive_formal_g03_low",
+      "adaptive_formal_g04_low",
+      "adaptive_formal_g07_medium",
+      "adaptive_formal_g11_low"
+    ],
+    "condition_artifact_count": 48,
+    "planned_model_generation_call_count": 44,
+    "analysis_role": "expected_no_treatment_tie_controls",
+    "rule": "When the question, evidence fixture, expected PolicyDecision, and generation configuration are identical, generate one canonical response and reuse it for both condition-level artifacts."
+  },
+  "learner_profiles": {
+    "low": {
+      "mastery_score": 0.25,
+      "recent_accuracy": 0.25,
+      "attempt_count": 8,
+      "consecutive_errors": 1,
+      "last_reviewed_at": null,
+      "review_due": false
+    },
+    "medium": {
+      "mastery_score": 0.58,
+      "recent_accuracy": 0.625,
+      "attempt_count": 8,
+      "consecutive_errors": 0,
+      "last_reviewed_at": null,
+      "review_due": false
+    },
+    "high": {
+      "mastery_score": 0.88,
+      "recent_accuracy": 0.875,
+      "attempt_count": 8,
+      "consecutive_errors": 0,
+      "last_reviewed_at": null,
+      "review_due": false
+    }
+  },
+  "concept_registry": [
+    {
+      "concept_id": 3,
+      "name": "K-means Clustering",
+      "production_attempt_count": 2,
+      "production_state_status": "observed",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 6,
+      "name": "Within-Cluster Sum of Squares",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 7,
+      "name": "Euclidean Norm",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 14,
+      "name": "Elbow Method",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 16,
+      "name": "Silhouette Width",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 17,
+      "name": "K-medians Clustering",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 19,
+      "name": "Kernel K-means Clustering",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    },
+    {
+      "concept_id": 20,
+      "name": "Principal Component Analysis",
+      "production_attempt_count": 0,
+      "production_state_status": "unobserved",
+      "evaluation_state_status": "observed"
+    }
+  ],
+  "evidence_fixtures": [
+    {
+      "fixture_id": "adaptive_evidence_g01",
+      "course_id": 2,
+      "concept_id": 3,
+      "page_targets": [7],
+      "ordered_chunks": [
+        {
+          "chunk_id": 94,
+          "content_sha256": "09b2ba712b318cf2e25c6ffc3dcbacb84dc692f01e7c6640ae2ad840f15624cf",
+          "chunk_index": 11
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 1,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "6bc0e61db523ecc36309a7d1089cc8a74c14967e5ddfb914895bf3d697f2feaa"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g02",
+      "course_id": 2,
+      "concept_id": 20,
+      "page_targets": [49, 50, 51],
+      "ordered_chunks": [
+        {
+          "chunk_id": 154,
+          "content_sha256": "1f5aca9b70a4e1f8b137eba73e0eb0a6ddabd61379e77593de3a56dd39f5ea9f",
+          "chunk_index": 71
+        },
+        {
+          "chunk_id": 155,
+          "content_sha256": "5fa63455919e41b786a46dc41f5bcb1f4be01ee0e37285ee975549053fc4f93e",
+          "chunk_index": 72
+        },
+        {
+          "chunk_id": 156,
+          "content_sha256": "904f4bc7d9ef4af5c2adba9b03c9c87002c0fa5a023f90bb90b93ce9dc9b0b35",
+          "chunk_index": 73
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 3,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "5837f205bcb413624c939f01cda2339dd82f2f452d2666eb471823f7dc2580a2"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g03",
+      "course_id": 2,
+      "concept_id": 16,
+      "page_targets": [13, 14],
+      "ordered_chunks": [
+        {
+          "chunk_id": 104,
+          "content_sha256": "cfbb960dc1b4c4cd9347dcdee0fa325e74b32d82446291be157c99059f9473bd",
+          "chunk_index": 21
+        },
+        {
+          "chunk_id": 105,
+          "content_sha256": "9431af782fb5ed78c5438eefcfb0b331950dc6187fd3bf82234e2d9071818e3f",
+          "chunk_index": 22
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 2,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "f4f100e01769bf75f4a17f6595e56007d5a350a859cb3c1b0c83a33a28f3d975"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g04",
+      "course_id": 2,
+      "concept_id": 19,
+      "page_targets": [33],
+      "ordered_chunks": [
+        {
+          "chunk_id": 132,
+          "content_sha256": "e89962976fa7a7c7b5ff9c2b106dea4c3b07ef738527001574d8712c0759edce",
+          "chunk_index": 49
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 1,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "50b15622b52a147de4173ce27b439222c6f52c65aeb0dbf063dbba3ce3729dd4"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g05",
+      "course_id": 2,
+      "concept_id": 17,
+      "page_targets": [15, 16],
+      "ordered_chunks": [
+        {
+          "chunk_id": 107,
+          "content_sha256": "4168478881d2ed32b4fdd1b450471518bf9a9d25bc35a110a2a14ce711ef6c8e",
+          "chunk_index": 24
+        },
+        {
+          "chunk_id": 108,
+          "content_sha256": "e47c7391cce555f43b24e6a5c6149a521bd7ba82dd03b237c07c3debfb3a94c8",
+          "chunk_index": 25
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 2,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "28d2e784134ca82d4535dfcccb0dd5cd545cb0d61bb119c0de173eb0cf00db1b"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g06",
+      "course_id": 2,
+      "concept_id": 20,
+      "page_targets": [51, 52],
+      "ordered_chunks": [
+        {
+          "chunk_id": 158,
+          "content_sha256": "fe8aeb2f9091ae9bfe469e908bfb9aec407f026d236840505fec2bb52a34acdd",
+          "chunk_index": 75
+        },
+        {
+          "chunk_id": 159,
+          "content_sha256": "a4077a59808c1f68160787b781d85fa8f1205853ce700fd5df9fbbb3d8cb958f",
+          "chunk_index": 76
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 2,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "525d072a8e11b5bf8079b72b177f4fd0941a388c9085b02381f36b4dbd02c1a7"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g07",
+      "course_id": 2,
+      "concept_id": 19,
+      "page_targets": [35, 36],
+      "ordered_chunks": [
+        {
+          "chunk_id": 136,
+          "content_sha256": "b10bb001e67f63c98887f9e0b0ed3d61ed4901c78c1c9a862ef74c61d29e3233",
+          "chunk_index": 53
+        },
+        {
+          "chunk_id": 137,
+          "content_sha256": "f3c054a8053ce02f8152c681a86bea9a41bb8f84b56c215a87e313eddb4a3076",
+          "chunk_index": 54
+        },
+        {
+          "chunk_id": 138,
+          "content_sha256": "06430dbd628e6f06333fd088292d1adf5103bb339aa4d443a034e52a7b6f2750",
+          "chunk_index": 55
+        },
+        {
+          "chunk_id": 139,
+          "content_sha256": "5498f254dc34a2a215eecd5400799e4cee773cf43f1e560765d24f5d7012fd19",
+          "chunk_index": 56
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 4,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "8b2baa0c7e710cc8f16307c0b74bde02e50eb9de73a3284a7a488f05f3380cd3"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g08",
+      "course_id": 2,
+      "concept_id": 20,
+      "page_targets": [52, 54, 55],
+      "ordered_chunks": [
+        {
+          "chunk_id": 162,
+          "content_sha256": "08aba6a25ceee5d7f63f7f117e7ee062b7767fedf05c5a70a7d0c15ae4412ad1",
+          "chunk_index": 79
+        },
+        {
+          "chunk_id": 163,
+          "content_sha256": "ab0700b5c021eb096d15f3d1483ecfea6bec983e9bb664598788d2f44f80e399",
+          "chunk_index": 80
+        },
+        {
+          "chunk_id": 164,
+          "content_sha256": "00707c9bdfe4f0d7c7a5e8c1dff729bb7d63cb7e0f60ac4d3e18a41c33b715c6",
+          "chunk_index": 81
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 3,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "b1d87d8eb110bdadb5b5f97147712b3a16c620f5832e32aa51fef01cfb4539da"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g09",
+      "course_id": 2,
+      "concept_id": 14,
+      "page_targets": [12, 13],
+      "ordered_chunks": [
+        {
+          "chunk_id": 101,
+          "content_sha256": "02eb5c6b90fb3eaf3d1bd1be62db83845aff595225d0874b73e1d74a4aac0d94",
+          "chunk_index": 18
+        },
+        {
+          "chunk_id": 103,
+          "content_sha256": "d7dececec6bff46275c2dbcb898cad466e01bce2b8213fca25bfd17c2ee1742b",
+          "chunk_index": 20
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 2,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "77cf5dc629f1f0e4817872e684a286f1c1d275163424a52b921edf7d392c6a54"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g10",
+      "course_id": 2,
+      "concept_id": 6,
+      "page_targets": [11, 12, 13],
+      "ordered_chunks": [
+        {
+          "chunk_id": 101,
+          "content_sha256": "02eb5c6b90fb3eaf3d1bd1be62db83845aff595225d0874b73e1d74a4aac0d94",
+          "chunk_index": 18
+        },
+        {
+          "chunk_id": 102,
+          "content_sha256": "81bcf39216e519f8849ac0fd0adbf242b4575e07aeba563c652eae9ceab3cba5",
+          "chunk_index": 19
+        },
+        {
+          "chunk_id": 103,
+          "content_sha256": "d7dececec6bff46275c2dbcb898cad466e01bce2b8213fca25bfd17c2ee1742b",
+          "chunk_index": 20
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 3,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "cbf1c6c46dc3fb7fb1a12b095b93efa1f62b6ce978aba1dc821656b04e930fcf"
+    },
+    {
+      "fixture_id": "adaptive_evidence_g11",
+      "course_id": 2,
+      "concept_id": 7,
+      "page_targets": [7],
+      "ordered_chunks": [
+        {
+          "chunk_id": 94,
+          "content_sha256": "09b2ba712b318cf2e25c6ffc3dcbacb84dc692f01e7c6640ae2ad840f15624cf",
+          "chunk_index": 11
+        }
+      ],
+      "evidence_state": {
+        "evidence_strength": "high",
+        "source_coverage": 1.0,
+        "retrieved_chunk_count": 1,
+        "top_similarity": null,
+        "requires_evidence": true,
+        "retrieval_scope": "concept",
+        "sufficiency_assessment": "human_audited_frozen_fixture"
+      },
+      "fixture_sha256": "ffbafecdf6ea10c62dcd285611367170d74d374f4b01ff71df18e0cbcf0cb400"
+    }
+  ],
+  "review_fixtures": [
+    {
+      "fixture_id": "adaptive_review_g09_due",
+      "course_id": 2,
+      "concept_id": 14,
+      "question": "What does the Elbow method look for when choosing K?",
+      "reference_answer": "A value of K beyond which further reductions in WSS become marginal or the improvement drops sharply.",
+      "source_chunk_ids": [101, 103],
+      "origin": "evaluation_frozen_review_fixture"
+    }
+  ],
+  "scenarios": [
+    {
+      "case_id": "adaptive_formal_g01_low",
+      "group_id": "AP_G01",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Explain why Lloyd's algorithm for K-means Clustering can converge to a local rather than a global minimum.",
+      "concept": {
+        "concept_id": 3,
+        "name": "K-means Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g01",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g01_high",
+      "group_id": "AP_G01",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Explain why Lloyd's algorithm for K-means Clustering can converge to a local rather than a global minimum.",
+      "concept": {
+        "concept_id": 3,
+        "name": "K-means Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g01",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "concise"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g02_low",
+      "group_id": "AP_G02",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Explain, in Principal Component Analysis, why the first principal component is associated with the largest eigenvalue of the covariance matrix.",
+      "concept": {
+        "concept_id": 20,
+        "name": "Principal Component Analysis",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g02",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g02_high",
+      "group_id": "AP_G02",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Explain, in Principal Component Analysis, why the first principal component is associated with the largest eigenvalue of the covariance matrix.",
+      "concept": {
+        "concept_id": 20,
+        "name": "Principal Component Analysis",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g02",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "concise"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g03_low",
+      "group_id": "AP_G03",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Quiz me on how to interpret silhouette width, including what a(i), b(i), and s(i) mean.",
+      "concept": {
+        "concept_id": 16,
+        "name": "Silhouette Width",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "practice",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g03",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g03_high",
+      "group_id": "AP_G03",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Quiz me on how to interpret silhouette width, including what a(i), b(i), and s(i) mean.",
+      "concept": {
+        "concept_id": 16,
+        "name": "Silhouette Width",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "practice",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g03",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "challenging"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g04_low",
+      "group_id": "AP_G04",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Give me a practice question on how the kernel trick lets kernel K-means compute feature-space distances without explicitly constructing the feature map.",
+      "concept": {
+        "concept_id": 19,
+        "name": "Kernel K-means Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.833,
+        "resolver_reason": "token_coverage_match"
+      },
+      "detected_intent": "practice",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g04",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g04_high",
+      "group_id": "AP_G04",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Give me a practice question on how the kernel trick lets kernel K-means compute feature-space distances without explicitly constructing the feature map.",
+      "concept": {
+        "concept_id": 19,
+        "name": "Kernel K-means Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.833,
+        "resolver_reason": "token_coverage_match"
+      },
+      "detected_intent": "practice",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g04",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "challenging"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g05_low",
+      "group_id": "AP_G05",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Let's continue with K-medians clustering.",
+      "concept": {
+        "concept_id": 17,
+        "name": "K-medians Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g05",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g05_high",
+      "group_id": "AP_G05",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Let's continue with K-medians clustering.",
+      "concept": {
+        "concept_id": 17,
+        "name": "K-medians Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g05",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "challenging"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g06_low",
+      "group_id": "AP_G06",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Let's continue with Principal Component Analysis explained variance.",
+      "concept": {
+        "concept_id": 20,
+        "name": "Principal Component Analysis",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g06",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g06_high",
+      "group_id": "AP_G06",
+      "group_type": "state_adaptation_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Let's continue with Principal Component Analysis explained variance.",
+      "concept": {
+        "concept_id": 20,
+        "name": "Principal Component Analysis",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g06",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "challenging"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g07_low",
+      "group_id": "AP_G07",
+      "group_type": "mastery_ordinal_triplet",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Explain why different kernel choices can produce different outcomes in Kernel K-means Clustering.",
+      "concept": {
+        "concept_id": 19,
+        "name": "Kernel K-means Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g07",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g07_medium",
+      "group_id": "AP_G07",
+      "group_type": "mastery_ordinal_triplet",
+      "scenario_position": "medium",
+      "course_id": 2,
+      "question": "Explain why different kernel choices can produce different outcomes in Kernel K-means Clustering.",
+      "concept": {
+        "concept_id": 19,
+        "name": "Kernel K-means Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.58,
+        "recent_accuracy": 0.625,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g07",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.58. Recent accuracy: 62.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g07_high",
+      "group_id": "AP_G07",
+      "group_type": "mastery_ordinal_triplet",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Explain why different kernel choices can produce different outcomes in Kernel K-means Clustering.",
+      "concept": {
+        "concept_id": 19,
+        "name": "Kernel K-means Clustering",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "explain",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g07",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "concise"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g08_low",
+      "group_id": "AP_G08",
+      "group_type": "mastery_ordinal_triplet",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Let's continue with Principal Component Analysis before clustering.",
+      "concept": {
+        "concept_id": 20,
+        "name": "Principal Component Analysis",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g08",
+      "expected_adaptive_policy": {
+        "selected_action": "explain",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g08_medium",
+      "group_id": "AP_G08",
+      "group_type": "mastery_ordinal_triplet",
+      "scenario_position": "medium",
+      "course_id": 2,
+      "question": "Let's continue with Principal Component Analysis before clustering.",
+      "concept": {
+        "concept_id": 20,
+        "name": "Principal Component Analysis",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.58,
+        "recent_accuracy": 0.625,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g08",
+      "expected_adaptive_policy": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.58. Recent accuracy: 62.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g08_high",
+      "group_id": "AP_G08",
+      "group_type": "mastery_ordinal_triplet",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Let's continue with Principal Component Analysis before clustering.",
+      "concept": {
+        "concept_id": 20,
+        "name": "Principal Component Analysis",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g08",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "challenging"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g09_review_false",
+      "group_id": "AP_G09",
+      "group_type": "review_due_pair",
+      "scenario_position": "review_false",
+      "course_id": 2,
+      "question": "Let's continue with the Elbow method.",
+      "concept": {
+        "concept_id": 14,
+        "name": "Elbow Method",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "review_due",
+      "learner_state": {
+        "mastery_score": 0.58,
+        "recent_accuracy": 0.625,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g09",
+      "review_fixture_id": null,
+      "expected_adaptive_policy": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.58. Recent accuracy: 62.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g09_review_true",
+      "group_id": "AP_G09",
+      "group_type": "review_due_pair",
+      "scenario_position": "review_true",
+      "course_id": 2,
+      "question": "Let's continue with the Elbow method.",
+      "concept": {
+        "concept_id": 14,
+        "name": "Elbow Method",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "unknown",
+      "counterfactual_dimension": "review_due",
+      "learner_state": {
+        "mastery_score": 0.58,
+        "recent_accuracy": 0.625,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": true
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g09",
+      "review_fixture_id": "adaptive_review_g09_due",
+      "expected_adaptive_policy": {
+        "selected_action": "review",
+        "response_strategy": "review_drill"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "explain",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.58. Recent accuracy: 62.5% across 8 recorded attempts. Current consecutive errors: 0. A review item for this concept is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g10_low",
+      "group_id": "AP_G10",
+      "group_type": "explicit_intent_fidelity_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Give me a hint for why optimal Within-Cluster Sum of Squares cannot increase when K increases. Do not reveal the full answer.",
+      "concept": {
+        "concept_id": 6,
+        "name": "Within-Cluster Sum of Squares",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "hint",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g10",
+      "expected_adaptive_policy": {
+        "selected_action": "hint",
+        "response_strategy": "scaffolded"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g10_high",
+      "group_id": "AP_G10",
+      "group_type": "explicit_intent_fidelity_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Give me a hint for why optimal Within-Cluster Sum of Squares cannot increase when K increases. Do not reveal the full answer.",
+      "concept": {
+        "concept_id": 6,
+        "name": "Within-Cluster Sum of Squares",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "hint",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g10",
+      "expected_adaptive_policy": {
+        "selected_action": "hint",
+        "response_strategy": "concise"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "hint",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g11_low",
+      "group_id": "AP_G11",
+      "group_type": "explicit_intent_fidelity_pair",
+      "scenario_position": "low",
+      "course_id": 2,
+      "question": "Quiz me on how the Euclidean Norm is used to determine nearest-centroid assignment in the K-means algorithm.",
+      "concept": {
+        "concept_id": 7,
+        "name": "Euclidean Norm",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "practice",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.25,
+        "recent_accuracy": 0.25,
+        "attempt_count": 8,
+        "consecutive_errors": 1,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g11",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.25. Recent accuracy: 25% across 8 recorded attempts. Current consecutive errors: 1. No review item is due. No misconception flag is present."
+      }
+    },
+    {
+      "case_id": "adaptive_formal_g11_high",
+      "group_id": "AP_G11",
+      "group_type": "explicit_intent_fidelity_pair",
+      "scenario_position": "high",
+      "course_id": 2,
+      "question": "Quiz me on how the Euclidean Norm is used to determine nearest-centroid assignment in the K-means algorithm.",
+      "concept": {
+        "concept_id": 7,
+        "name": "Euclidean Norm",
+        "state_status": "observed",
+        "resolver_confidence": 0.9,
+        "resolver_reason": "compact_name_match"
+      },
+      "detected_intent": "practice",
+      "counterfactual_dimension": "learner_state_profile",
+      "learner_state": {
+        "mastery_score": 0.88,
+        "recent_accuracy": 0.875,
+        "attempt_count": 8,
+        "consecutive_errors": 0,
+        "last_reviewed_at": null,
+        "review_due": false
+      },
+      "misconception": null,
+      "evidence_fixture_id": "adaptive_evidence_g11",
+      "expected_adaptive_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "challenging"
+      },
+      "expected_baseline_policy": {
+        "selected_action": "quiz",
+        "response_strategy": "guided"
+      },
+      "annotation_context": {
+        "learner_vignette": "Mastery estimate: 0.88. Recent accuracy: 87.5% across 8 recorded attempts. Current consecutive errors: 0. No review item is due. No misconception flag is present."
+      }
+    }
+  ]
+}

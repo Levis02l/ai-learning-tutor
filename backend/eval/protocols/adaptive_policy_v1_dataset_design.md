@@ -70,6 +70,12 @@ The later concrete dataset may revise which course concept is assigned to a
 group, but it must not change the group counts or methodological role without a
 protocol revision before any output is generated.
 
+The 24 scenarios produce 48 condition-level response artifacts, but not 48
+independent observations or necessarily 48 independent model calls. When
+Adaptive and Baseline have identical PolicyDecision and generation inputs, one
+canonical response is reused for both artifacts as an expected
+no-treatment/tie control.
+
 ## 4. Counterfactual invariants
 
 Within each group, all instances must share:
